@@ -56,13 +56,55 @@ function tone(freq, dur, v, type = "sine", delay = 0) {
   g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(v, t + .01); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
   o.connect(g).connect(master); o.start(t); o.stop(t + dur + .05);
 }
+/* ---------- 진짜 녹음 파일 (sounds 폴더에 넣으면 자동으로 사용) ----------
+   sounds/chant.mp3   염불 (반복 재생)
+   sounds/moktak.mp3  목탁 한 번 치는 소리
+   sounds/bell.mp3    범종 한 번
+   sounds/nature.mp3  산사 자연 소리 (반복 재생)
+   파일이 없으면 브라우저가 만든 소리로 대신해요. */
+const rec = {}, recTried = {};
+async function loadRec(name) {
+  if (name in rec) return rec[name];
+  if (recTried[name]) return recTried[name];
+  recTried[name] = (async () => {
+    try { const r = await fetch(`sounds/${name}.mp3`); if (!r.ok) throw 0; const buf = await ac().decodeAudioData(await r.arrayBuffer()); rec[name] = buf; }
+    catch { rec[name] = null; }
+    return rec[name];
+  })();
+  return recTried[name];
+}
+function playRec(name, v = 1, loop = false) {
+  const buf = rec[name]; if (!buf) return null;
+  const c = ac(), s = c.createBufferSource(), g = c.createGain(); s.buffer = buf; s.loop = loop; g.gain.value = v;
+  s.connect(g).connect(master); s.start(); return { s, g };
+}
+function preloadRecs() { ["moktak", "bell", "chant", "nature"].forEach(loadRec); }
+
 const sfx = {
-  mok() { const c = ac(), t = c.currentTime, o = c.createOscillator(), g = c.createGain(), f = c.createBiquadFilter();
-    o.type = "triangle"; o.frequency.setValueAtTime(820, t); o.frequency.exponentialRampToValueAtTime(420, t + .08);
-    f.type = "bandpass"; f.frequency.value = 700; f.Q.value = 4;
-    g.gain.setValueAtTime(.9 * vol.fx, t); g.gain.exponentialRampToValueAtTime(.001, t + .18);
-    o.connect(f).connect(g).connect(master); o.start(t); o.stop(t + .2); },
-  bell() { [[110, .5], [220.5, .25], [331, .12], [466, .06]].forEach(([f, v]) => tone(f, 6, v * vol.fx)); },
+  mok() {
+    if (rec.moktak) { playRec("moktak", vol.fx); return; }
+    // 나무를 두드리는 소리: 짧은 마찰음 + 속이 빈 나무의 울림
+    const c = ac(), t = c.currentTime;
+    const n = c.createBufferSource(); n.buffer = noiseBuf; const nf = c.createBiquadFilter(), ng = c.createGain();
+    nf.type = "bandpass"; nf.frequency.value = 1500; nf.Q.value = 3;
+    ng.gain.setValueAtTime(.5 * vol.fx, t); ng.gain.exponentialRampToValueAtTime(.001, t + .03);
+    n.connect(nf).connect(ng).connect(master); n.start(t, rand(0, 1.5)); n.stop(t + .05);
+    [[520, .55, .11], [1040 * 1.02, .18, .06], [355, .3, .16]].forEach(([f, v, d]) => {
+      const o = c.createOscillator(), g = c.createGain(); o.type = "sine";
+      o.frequency.setValueAtTime(f * 1.04, t); o.frequency.exponentialRampToValueAtTime(f, t + .02);
+      g.gain.setValueAtTime(v * vol.fx, t); g.gain.exponentialRampToValueAtTime(.0001, t + d);
+      o.connect(g).connect(master); o.start(t); o.stop(t + d + .02);
+    });
+  },
+  bell() {
+    if (rec.bell) { playRec("bell", vol.fx); return; }
+    // 범종: 낮은 울림이 천천히 커졌다 작아지는 맥놀이
+    const c = ac(), t = c.currentTime;
+    const th = c.createBufferSource(); th.buffer = noiseBuf; const tf = c.createBiquadFilter(), tg = c.createGain();
+    tf.type = "lowpass"; tf.frequency.value = 160; tg.gain.setValueAtTime(.6 * vol.fx, t); tg.gain.exponentialRampToValueAtTime(.001, t + .25);
+    th.connect(tf).connect(tg).connect(master); th.start(t); th.stop(t + .3);
+    [[64, .32, 14], [64.6, .32, 14], [128.4, .14, 9], [168, .1, 7], [211, .06, 5], [348, .03, 3.5]].forEach(([f, v, d]) => tone(f, d, v * vol.fx));
+  },
   soft() { tone(523, 1.2, .07 * vol.fx); tone(784, 1.2, .04 * vol.fx, "sine", .15); },
   bead() { tone(1300, .07, .06 * vol.fx, "triangle"); },
   chime() { tone(rand(1700, 2600), 2.2, .12 * vol.chime); tone(rand(2600, 3200), 1.5, .05 * vol.chime, "sine", .03); },
@@ -84,7 +126,7 @@ function noiseLoop(kind) {
   loops[kind].gain.setTargetAtTime(vol[kind] * (kind === "wind" ? .45 : .2), c.currentTime, .4);
 }
 [["vWind", "wind"], ["vWater", "water"], ["vBird", "bird"], ["vChime", "chime"], ["vFx", "fx"]].forEach(([id, k]) => {
-  $(id).addEventListener("input", (e) => { vol[k] = e.target.value / 100; if (ctx && (k === "wind" || k === "water")) noiseLoop(k); });
+  $(id).addEventListener("input", (e) => { vol[k] = e.target.value / 100; if (ctx && (k === "wind" || k === "water")) { noiseLoop(k); if (natureRec) natureRec.g.gain.setTargetAtTime(.6 * Math.max(vol.wind, vol.water), ctx.currentTime, .3); } });
 });
 setInterval(() => {
   if (!ctx || !player) return;
@@ -93,14 +135,24 @@ setInterval(() => {
   if (vol.chime && Math.random() < .2 * vol.chime + .05) sfx.chime();
 }, 1500);
 
-let chantTimer = null;
-$("chantBtn").addEventListener("click", () => {
+let chantTimer = null, chantRec = null, natureRec = null;
+function stopChant() {
+  if (chantTimer) { clearInterval(chantTimer); chantTimer = null; }
+  if (chantRec) { const { s: src, g } = chantRec; g.gain.setTargetAtTime(0, ctx.currentTime, .4); setTimeout(() => { try { src.stop(); } catch {} }, 1500); chantRec = null; }
+  $("chantBtn").textContent = "염불 듣기"; $("chantBtn").classList.remove("on");
+}
+$("chantBtn").addEventListener("click", async () => {
   ac();
-  if (chantTimer) { clearInterval(chantTimer); chantTimer = null; $("chantBtn").textContent = "염불 듣기"; $("chantBtn").classList.remove("on"); return; }
-  let i = 0;
-  chantTimer = setInterval(() => { sfx.mok(); if (i % 4 === 0) { tone(146.8, 1.4, .05 * vol.fx); tone(220, 1.4, .03 * vol.fx); } i++; }, 700);
+  if (chantTimer || chantRec) { stopChant(); return; }
   $("chantBtn").textContent = "염불 멈추기"; $("chantBtn").classList.add("on");
+  await loadRec("chant");
+  if (!$("chantBtn").classList.contains("on")) return;
+  if (rec.chant) { chantRec = playRec("chant", .9 * vol.fx, true); return; }
+  // 녹음 파일이 없을 때: 염불할 때 치는 목탁 박자만 들려줘요
+  let i = 0; const beat = () => { sfx.mok(); i++; };
+  beat(); chantTimer = setInterval(beat, 820);
 });
+
 
 /* =========================================================
    3D 장면
@@ -291,25 +343,40 @@ function textSprite(text, { size = 40, color = "#ece6d8", bg = "rgba(16,21,29,.7
 }
 function makeMonk(nick, isMe) {
   const root = new THREE.Group(); const body = new THREE.Group(); root.add(body);
-  const robe = new THREE.Mesh(new THREE.CylinderGeometry(.34, .5, .85, 16), mat.robe); robe.position.y = .62; body.add(robe);
-  const sash = new THREE.Mesh(new THREE.BoxGeometry(.2, .95, .06), mat.sash); sash.position.set(.08, .66, .4); sash.rotation.z = -.55; body.add(sash);
-  const sashBack = sash.clone(); sashBack.position.z = -.4; body.add(sashBack);
-  [-.15, .15].forEach((x) => { const leg = new THREE.Mesh(new THREE.CylinderGeometry(.11, .12, .3, 8), mat.robe); leg.position.set(x, .15, 0); body.add(leg);
-    const shoe = new THREE.Mesh(new THREE.SphereGeometry(.12, 8, 6), M("#efe8d8")); shoe.scale.set(1, .6, 1.4); shoe.position.set(x, .04, .05); body.add(shoe); });
-  const head = new THREE.Group(); head.position.y = 1.38; body.add(head);
-  const skull = new THREE.Mesh(new THREE.SphereGeometry(.46, 24, 18), mat.skin); skull.scale.set(1, .95, .95); head.add(skull);
-  [-.15, .15].forEach((x) => { const e = new THREE.Mesh(new THREE.TorusGeometry(.055, .015, 6, 12, Math.PI), mat.eye); e.position.set(x, .02, .42); head.add(e);
-    const ch = new THREE.Mesh(new THREE.CircleGeometry(.06, 12), new THREE.MeshBasicMaterial({ color: "#e0866a", transparent: true, opacity: .55 })); ch.position.set(x * 1.45, -.09, .425); head.add(ch); });
-  const mouth = new THREE.Mesh(new THREE.TorusGeometry(.05, .012, 6, 12, Math.PI), mat.eye); mouth.rotation.z = Math.PI; mouth.position.set(0, -.13, .43); head.add(mouth);
-  const hands = new THREE.Group(); body.add(hands);
-  const handL = new THREE.Mesh(new THREE.SphereGeometry(.09, 8, 6), mat.skin), handR = handL.clone();
-  hands.add(handL, handR); handL.position.set(-.42, .62, .08); handR.position.set(.42, .62, .08);
-  const label = textSprite(nick || "스님", { color: isMe ? "#f2a65a" : "#ece6d8" }); label.position.y = 2.15; root.add(label);
+  // 몸통: 동글동글한 승복
+  const torso = new THREE.Mesh(new THREE.SphereGeometry(.42, 24, 18), mat.robe); torso.scale.set(1, 1.08, .92); torso.position.y = .62; body.add(torso);
+  const hem = new THREE.Mesh(new THREE.CylinderGeometry(.38, .44, .22, 20), mat.robe); hem.position.y = .34; body.add(hem);
+  // 가사: 몸에 감기는 대각선 띠
+  const sash = new THREE.Mesh(new THREE.TorusGeometry(.415, .075, 8, 32), mat.sash);
+  sash.position.y = .64; sash.scale.set(1, 1.08, .94); sash.rotation.set(0, Math.PI / 2, .8); body.add(sash);
+  // 다리와 신발
+  [-.15, .15].forEach((x) => {
+    const leg = new THREE.Mesh(new THREE.CapsuleGeometry(.1, .14, 4, 8), mat.robe); leg.position.set(x, .2, 0); body.add(leg);
+    const shoe = new THREE.Mesh(new THREE.SphereGeometry(.11, 10, 8), M("#efe8d8")); shoe.scale.set(1, .6, 1.4); shoe.position.set(x, .05, .05); body.add(shoe);
+  });
+  // 팔 (어깨를 축으로 움직여요)
+  const arm = (side) => {
+    const g = new THREE.Group(); g.position.set(side * .36, .86, 0); body.add(g);
+    const sleeve = new THREE.Mesh(new THREE.CapsuleGeometry(.1, .2, 4, 8), mat.robe); sleeve.position.y = -.16; g.add(sleeve);
+    const hand = new THREE.Mesh(new THREE.SphereGeometry(.085, 10, 8), mat.skin); hand.position.y = -.34; g.add(hand);
+    g.rotation.z = side * .3; return g;
+  };
+  const armL = arm(-1), armR = arm(1);
+  // 큰 머리
+  const head = new THREE.Group(); head.position.y = 1.42; body.add(head);
+  const skull = new THREE.Mesh(new THREE.SphereGeometry(.5, 28, 20), mat.skin); skull.scale.set(1, .96, .96); head.add(skull);
+  [-.16, .16].forEach((x) => {
+    const e = new THREE.Mesh(new THREE.TorusGeometry(.06, .016, 6, 12, Math.PI), mat.eye); e.position.set(x, .02, .465); head.add(e);
+    const ch = new THREE.Mesh(new THREE.CircleGeometry(.065, 14), new THREE.MeshBasicMaterial({ color: "#e0866a", transparent: true, opacity: .55 })); ch.position.set(x * 1.45, -.1, .462); ch.rotation.y = x * .9; head.add(ch);
+    const ear = new THREE.Mesh(new THREE.SphereGeometry(.08, 8, 6), mat.skin); ear.scale.set(.6, 1, 1); ear.position.set(x * 3.1, -.02, 0); head.add(ear);
+  });
+  const mouth = new THREE.Mesh(new THREE.TorusGeometry(.05, .013, 6, 12, Math.PI), mat.eye); mouth.rotation.z = Math.PI; mouth.position.set(0, -.14, .47); head.add(mouth);
+  const label = textSprite(nick || "스님", { size: 30, color: isMe ? "#f2a65a" : "#ece6d8", pad: 10 }); label.scale.multiplyScalar(.6); label.position.y = 2.25; root.add(label);
   scene.add(root);
-  return { root, body, head, hands, handL, handR, label, nick, pos: new THREE.Vector3(), target: new THREE.Vector3(), yaw: 0, anim: null, animT: 0, moving: false, bubble: null, bubbleUntil: 0 };
+  return { root, body, head, armL, armR, label, nick, pos: new THREE.Vector3(), target: new THREE.Vector3(), yaw: 0, anim: null, animT: 0, moving: false, bubble: null, bubbleUntil: 0 };
 }
-function setLabel(m, nick, isMe) { if (m.nick === nick) return; m.root.remove(m.label); m.label.material.map.dispose(); m.label = textSprite(nick || "스님", { color: isMe ? "#f2a65a" : "#ece6d8" }); m.label.position.y = 2.15; m.root.add(m.label); m.nick = nick; }
-function bubble(m, text) { if (m.bubble) { m.root.remove(m.bubble); m.bubble.material.map.dispose(); } m.bubble = textSprite(text, { size: 36, color: "#2a1a0c", bg: "rgba(243,238,227,.95)", pad: 12 }); m.bubble.position.y = 2.75; m.root.add(m.bubble); m.bubbleUntil = performance.now() + 2200; }
+function setLabel(m, nick, isMe) { if (m.nick === nick) return; m.root.remove(m.label); m.label.material.map.dispose(); m.label = textSprite(nick || "스님", { size: 30, color: isMe ? "#f2a65a" : "#ece6d8", pad: 10 }); m.label.scale.multiplyScalar(.6); m.label.position.y = 2.25; m.root.add(m.label); m.nick = nick; }
+function bubble(m, text) { if (m.bubble) { m.root.remove(m.bubble); m.bubble.material.map.dispose(); } m.bubble = textSprite(text, { size: 30, color: "#2a1a0c", bg: "rgba(243,238,227,.95)", pad: 10 }); m.bubble.scale.multiplyScalar(.65); m.bubble.position.y = 2.65; m.root.add(m.bubble); m.bubbleUntil = performance.now() + 2200; }
 function playAnim(m, name) { m.anim = name; m.animT = 0; }
 function animateMonk(m, dt, now) {
   // 걷기
@@ -329,8 +396,9 @@ function animateMonk(m, dt, now) {
   }
   m.body.rotation.x = bowX;
   m.body.position.z = Math.sin(bowX) * .25;
-  m.handL.position.set(-.42 + handsUp * .36, .62 + handsUp * .38, .08 + handsUp * .32);
-  m.handR.position.set(.42 - handsUp * .36, .62 + handsUp * .38, .08 + handsUp * .32);
+  const sw = m.moving && !m.anim ? Math.sin(now * .012) * .5 : 0;
+  m.armL.rotation.set(-1.25 * handsUp + sw, 0, -.3 + handsUp * .95);
+  m.armR.rotation.set(-1.25 * handsUp - sw, 0, .3 - handsUp * .95);
   if (m.bubble && now > m.bubbleUntil) { m.root.remove(m.bubble); m.bubble.material.map.dispose(); m.bubble = null; }
 }
 
@@ -635,8 +703,9 @@ $("nickInput").addEventListener("keydown", (e) => { if (e.key === "Enter") enter
 function enter() {
   const nick = $("nickInput").value.trim().slice(0, 8) || ["고요", "청산", "연화", "바람", "달빛", "솔향", "보리"][Math.floor(Math.random() * 7)];
   me.nick = nick; save();
-  $("gate").hidden = true; ac(); noiseLoop("wind"); noiseLoop("water");
-  player = makeMonk(nick, true); player.pos.copy(SPAWN); player.target.copy(SPAWN); player.yaw = Math.PI;
+  $("gate").hidden = true; ac(); preloadRecs(); noiseLoop("wind"); noiseLoop("water");
+  loadRec("nature").then((b) => { if (b) { natureRec = playRec("nature", .6 * Math.max(vol.wind, vol.water, .3), true); } });
+  player = makeMonk(nick, true); player.pos.set(SPAWN.x + rand(-3, 3), 0, SPAWN.z + rand(-1, 1.5)); player.target.copy(player.pos); player.yaw = Math.PI;
   zone = zoneOf(player.pos.x, player.pos.z); renderActions(); say(ZONES[zone].intro);
   connect();
 }
