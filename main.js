@@ -61,14 +61,17 @@ function tone(freq, dur, v, type = "sine", delay = 0) {
    sounds/moktak.mp3  목탁 한 번 치는 소리
    sounds/bell.mp3    범종 한 번
    sounds/nature.mp3  산사 자연 소리 (반복 재생)
+   sounds 폴더 없이 맨 바깥에 올려도 찾아요.
    파일이 없으면 브라우저가 만든 소리로 대신해요. */
 const rec = {}, recTried = {};
 async function loadRec(name) {
   if (name in rec) return rec[name];
   if (recTried[name]) return recTried[name];
   recTried[name] = (async () => {
-    try { const r = await fetch(`sounds/${name}.mp3`); if (!r.ok) throw 0; const buf = await ac().decodeAudioData(await r.arrayBuffer()); rec[name] = buf; }
-    catch { rec[name] = null; }
+    rec[name] = null;
+    for (const path of [`sounds/${name}.mp3`, `${name}.mp3`]) {
+      try { const r = await fetch(path); if (!r.ok) continue; rec[name] = await ac().decodeAudioData(await r.arrayBuffer()); break; } catch {}
+    }
     return rec[name];
   })();
   return recTried[name];
