@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>달빛암</title>
+<meta name="description" content="목탁 치고, 절하고, 탑돌이하며 잠시 쉬어 가는 온라인 절">
+<meta property="og:title" content="달빛암">
+<meta property="og:description" content="지금 접속한 사람들과 함께 수행하는 온라인 절">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Gowun+Dodum&display=swap">
+<link rel="stylesheet" href="style.css">
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "@supabase/supabase-js": "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/+esm"
+} }
+</script>
+</head>
+<body>
+<canvas id="world" aria-label="달빛암 3D 화면"></canvas>
+
+<!-- 입장 화면 -->
+<div id="gate" class="gate">
+  <div class="gate-card">
+    <p class="eyebrow">ONLINE TEMPLE</p>
+    <h1 id="siteTitle">달빛암</h1>
+    <p class="lead">목탁 한 번, 숨 한 번.<br>잠시 마음을 내려놓고 쉬어 가세요.</p>
+    <label for="nickInput">법명</label>
+    <input id="nickInput" maxlength="8" placeholder="예: 고요" autocomplete="off">
+    <button id="enterBtn" type="button" class="primary">입장하기</button>
+    <p class="hint">눌러 이동 · 끌어서 둘러보기 · 두 손가락으로 확대</p>
+  </div>
+</div>
+
+<!-- 상단 -->
+<div class="top">
+  <button id="roomBtn" class="chip" type="button"><span id="roomLabel">월하당 1</span> ▾</button>
+  <div class="chip-group">
+    <span class="chip plain" id="peopleChip">👤 <b id="peopleCount">1</b></span>
+    <button id="chantBtn" class="chip" type="button">염불 듣기</button>
+    <button id="soundBtn" class="chip" type="button" aria-label="자연 소리 설정">🎐</button>
+  </div>
+</div>
+
+<div id="placeTag" class="place-tag">마당</div>
+<div id="toasts" class="toasts" aria-live="polite"></div>
+
+<!-- 하단 행동 버튼 -->
+<div class="bottom">
+  <p id="saying" class="saying"></p>
+  <div id="actions" class="actions"></div>
+  <nav id="places" class="places" aria-label="장소 이동"></nav>
+</div>
+
+<!-- 법당(서버) 선택 -->
+<div id="roomPanel" class="panel" hidden>
+  <div class="panel-card">
+    <div class="panel-head"><h2>법당 고르기</h2><button class="close" data-close type="button" aria-label="닫기">✕</button></div>
+    <p class="muted">어느 법당에서도 같은 절을 이용할 수 있어요. 숫자는 실제 접속자 수예요.</p>
+    <div id="roomList" class="room-list"></div>
+  </div>
+</div>
+
+<!-- 자연 소리 -->
+<div id="soundPanel" class="panel" hidden>
+  <div class="panel-card">
+    <div class="panel-head"><h2>자연 소리</h2><button class="close" data-close type="button" aria-label="닫기">✕</button></div>
+    <div class="sliders">
+      <label for="vWind">바람</label><input type="range" id="vWind" min="0" max="100" value="30">
+      <label for="vWater">계곡물</label><input type="range" id="vWater" min="0" max="100" value="20">
+      <label for="vBird">새소리</label><input type="range" id="vBird" min="0" max="100" value="30">
+      <label for="vChime">풍경</label><input type="range" id="vChime" min="0" max="100" value="25">
+      <label for="vFx">목탁·종</label><input type="range" id="vFx" min="0" max="100" value="80">
+    </div>
+    <div class="stats" id="stats"></div>
+  </div>
+</div>
+
+<!-- 염주 -->
+<div id="beadPanel" class="beads-screen" hidden>
+  <button class="back" data-close type="button">← 돌아가기</button>
+  <div id="beadRing" class="bead-ring" role="button" tabindex="0" aria-label="염주 한 알 넘기기"></div>
+  <div class="bead-count"><b id="beadNum">0</b> / 108<br><span id="beadRound">첫 번째 바퀴</span></div>
+</div>
+
+<!-- 소원 연등 -->
+<div id="wishPanel" class="panel" hidden>
+  <div class="panel-card">
+    <div class="panel-head"><h2>소원 연등</h2><button class="close" data-close type="button" aria-label="닫기">✕</button></div>
+    <div class="row"><input id="wishInput" maxlength="40" placeholder="소원을 적어 주세요 (40자)" autocomplete="off"><button id="wishBtn" type="button" class="primary">달기</button></div>
+    <p class="muted" id="wishNote">마당 위에 연등으로 걸려요. 연등을 누르면 소원이 보여요.</p>
+    <ul id="wishList" class="wish-list"></ul>
+  </div>
+</div>
+
+<script type="module" src="main.js"></script>
+</body>
+</html>
