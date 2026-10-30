@@ -27,6 +27,7 @@
     <p class="lead">목탁 한 번, 숨 한 번.<br>잠시 마음을 내려놓고 쉬어 가세요.</p>
     <label for="nickInput">법명</label>
     <input id="nickInput" maxlength="8" placeholder="예: 고요" autocomplete="off">
+    <div id="gateLook" class="look-box"></div>
     <button id="enterBtn" type="button" class="primary">입장하기</button>
     <p class="hint">눌러 이동 · 끌어서 둘러보기 · 두 손가락으로 확대</p>
   </div>
@@ -38,6 +39,7 @@
   <div class="chip-group">
     <span class="chip plain" id="peopleChip">👤 <b id="peopleCount">1</b></span>
     <button id="chantBtn" class="chip" type="button">염불 듣기</button>
+    <button id="lookBtn" class="chip" type="button" aria-label="법복 꾸미기">👘</button>
     <button id="soundBtn" class="chip" type="button" aria-label="자연 소리 설정">🎐</button>
   </div>
 </div>
@@ -58,6 +60,15 @@
     <div class="panel-head"><h2>법당 고르기</h2><button class="close" data-close type="button" aria-label="닫기">✕</button></div>
     <p class="muted">어느 법당에서도 같은 절을 이용할 수 있어요. 숫자는 실제 접속자 수예요.</p>
     <div id="roomList" class="room-list"></div>
+  </div>
+</div>
+
+<!-- 법복 꾸미기 -->
+<div id="lookPanel" class="panel" hidden>
+  <div class="panel-card">
+    <div class="panel-head"><h2>법복 꾸미기</h2><button class="close" data-close type="button" aria-label="닫기">✕</button></div>
+    <p class="muted">고른 모습은 같은 법당 사람들에게도 그대로 보여요.</p>
+    <div id="lookBody" class="look-box"></div>
   </div>
 </div>
 

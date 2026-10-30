@@ -18,7 +18,7 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
 };
 const today = new Date().toDateString();
-const me = Object.assign({ day: today, nick: "", mok: 0, bow: 0, tap: 0, bead: 0, pray: 0, localWishes: [] }, store.get("sansa3d", {}));
+const me = Object.assign({ day: today, look: "0-0-0", nick: "", mok: 0, bow: 0, tap: 0, bead: 0, pray: 0, localWishes: [] }, store.get("sansa3d", {}));
 if (me.day !== today) { me.day = today; me.mok = 0; me.bow = 0; }
 const save = () => store.set("sansa3d", me);
 const myKey = store.get("sansa3d-key", null) || (() => { const k = "m" + Math.random().toString(36).slice(2, 10); store.set("sansa3d-key", k); return k; })();
@@ -232,13 +232,19 @@ const HALL = { x: 0, z: -19, w: 16, d: 10, h: 4.2 };
 const hallG = hall({ ...HALL, open: true, sign: "大雄殿" });
 block(-8.6, 8.6, -24.6, -23.6); block(-8.6, -7.6, -24.6, -14); block(7.6, 8.6, -24.6, -14);
 // 불상
-{ const g = new THREE.Group(); g.position.set(0, .55, -22.4); scene.add(g);
+{ const g = new THREE.Group(); g.position.set(0, .55, -22.4); g.scale.setScalar(.8); scene.add(g);
   box(5, 1, 1.6, mat.wood, 0, .5, 0, g);
   cyl(1.3, 1.5, .5, mat.gold, 0, 1.25, 0, 16, g);
-  const body = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 16), mat.gold); body.scale.set(1.15, 1.25, .8); body.position.y = 2.4; g.add(body);
-  const head = new THREE.Mesh(new THREE.SphereGeometry(.55, 20, 16), mat.gold); head.position.y = 3.95; g.add(head);
-  const top = new THREE.Mesh(new THREE.SphereGeometry(.22, 12, 8), mat.gold); top.position.y = 4.5; g.add(top);
-  const halo = new THREE.Mesh(new THREE.TorusGeometry(1.5, .08, 8, 40), mat.gold); halo.position.set(0, 3.7, -.5); g.add(halo);
+  // 가부좌한 다리, 몸, 어깨, 머리를 따로 만들어 앉은 모습이 보이게
+  const legs = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 12), mat.gold); legs.scale.set(1.75, .42, 1); legs.position.y = 1.75; g.add(legs);
+  const body = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 16), mat.gold); body.scale.set(.95, 1.05, .7); body.position.y = 2.55; g.add(body);
+  const shoulders = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 12), mat.gold); shoulders.scale.set(1.15, .4, .7); shoulders.position.y = 3.25; g.add(shoulders);
+  const hands = new THREE.Mesh(new THREE.SphereGeometry(.3, 12, 8), mat.gold); hands.scale.set(1.4, .6, 1); hands.position.set(0, 2.0, .62); g.add(hands);
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(.22, .26, .3, 12), mat.gold); neck.position.y = 3.62; g.add(neck);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(.5, 24, 18), mat.gold); head.scale.set(1, 1.12, 1); head.position.y = 4.15; g.add(head);
+  [-1, 1].forEach((sd) => { const ear = new THREE.Mesh(new THREE.CapsuleGeometry(.08, .35, 4, 8), mat.gold); ear.position.set(sd * .5, 4.0, 0); g.add(ear); });
+  const top = new THREE.Mesh(new THREE.SphereGeometry(.24, 12, 8), mat.gold); top.position.y = 4.72; g.add(top);
+  const halo = new THREE.Mesh(new THREE.TorusGeometry(.95, .07, 8, 40), mat.gold); halo.position.set(0, 4.2, -.5); g.add(halo);
   const halo2 = new THREE.Mesh(new THREE.TorusGeometry(2.4, .05, 8, 50), mat.gold); halo2.position.set(0, 2.9, -.55); g.add(halo2);
   block(-2.6, 2.6, -23.4, -21.5);
 }
@@ -287,10 +293,13 @@ const steam = []; for (let i = 0; i < 6; i++) { const s = new THREE.Mesh(new THR
 let teaUntil = 0;
 const kitchenLight = new THREE.PointLight("#ffb466", 6, 9, 2); kitchenLight.position.set(-15, 2.2, -3); scene.add(kitchenLight);
 
+/* 카메라 바로 앞을 가리는 나무는 잠깐 숨겨요 */
+const camHide = [];
+
 /* 산책길 (남쪽 숲) + 계곡 */
 for (let z = 12; z < 44; z += 2.4) for (const side of [-1, 1]) {
   const x = side * rand(4, 8) + Math.sin(z * .15) * 1.5;
-  const t = new THREE.Group(); t.position.set(x, 0, z + rand(-.6, .6)); scene.add(t);
+  const t = new THREE.Group(); t.position.set(x, 0, z + rand(-.6, .6)); scene.add(t); camHide.push(t);
   cyl(.18, .25, 2, mat.trunk, 0, 1, 0, 6, t);
   const c1 = new THREE.Mesh(new THREE.ConeGeometry(1.6, 3, 7), mat.leaf2); c1.position.y = 3; t.add(c1);
   const c2 = new THREE.Mesh(new THREE.ConeGeometry(1.2, 2.4, 7), mat.leaf); c2.position.y = 4.4; t.add(c2);
@@ -300,7 +309,7 @@ const stream = new THREE.Mesh(new THREE.PlaneGeometry(3, 40), mat.water); stream
 for (let i = 0; i < 18; i++) { const r = new THREE.Mesh(new THREE.DodecahedronGeometry(rand(.3, .7)), mat.stone); r.position.set(11 + rand(-2.2, 2.2), .1, rand(7, 45)); scene.add(r); }
 // 마당 둘레 나무와 석등
 [[-12, 6], [12, 6], [-10, -12], [10, -12], [-13, 1], [13, 1]].forEach(([x, z]) => {
-  const t = new THREE.Group(); t.position.set(x, 0, z); scene.add(t); cyl(.22, .3, 2.4, mat.trunk, 0, 1.2, 0, 6, t);
+  const t = new THREE.Group(); t.position.set(x, 0, z); scene.add(t); camHide.push(t); cyl(.22, .3, 2.4, mat.trunk, 0, 1.2, 0, 6, t);
   const c = new THREE.Mesh(new THREE.SphereGeometry(1.8, 10, 8), mat.leaf); c.position.y = 3.4; t.add(c); block(x - .4, x + .4, z - .4, z + .4); });
 [[-4, 4.5], [4, 4.5]].forEach(([x, z]) => { box(.5, 1, .5, mat.stone, x, .5, z); box(.7, .5, .7, mat.stone, x, 1.25, z); const l = new THREE.Mesh(new THREE.SphereGeometry(.15, 8, 6), mat.flame); l.position.set(x, 1.25, z + .36); scene.add(l); block(x - .4, x + .4, z - .4, z + .4); });
 // 범종각 (서남쪽)
@@ -344,23 +353,61 @@ function textSprite(text, { size = 40, color = "#ece6d8", bg = "rgba(16,21,29,.7
   const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true }));
   s.scale.set(w / 110, h / 110, 1); s.renderOrder = 10; return s;
 }
+/* ---------- 법복 꾸미기 ---------- */
+const LOOKS = {
+  robe: [["회색", "#c9ccd2"], ["먹색", "#4a4f5a"], ["연분홍", "#f0c9cf"], ["하늘", "#b9d3ea"], ["연두", "#cfe2b8"], ["미색", "#efe6d2"]],
+  sash: [["황금", "#d9b44a"], ["주황", "#e0874a"], ["자주", "#8e3b5c"], ["갈색", "#7a5233"], ["청록", "#3f8f7d"]],
+  acc: [["없음", ""], ["염주", "beads"], ["삿갓", "hat"], ["연꽃", "lotus"], ["털모자", "beanie"]]
+};
+const looksOk = (l) => typeof l === "string" && /^[0-9]-[0-9]-[0-9]$/.test(l);
+function lookParts(l) { const [r, s, a] = (looksOk(l) ? l : "0-0-0").split("-").map(Number); return { r: LOOKS.robe[r] ? r : 0, s: LOOKS.sash[s] ? s : 0, a: LOOKS.acc[a] ? a : 0 }; }
+function applyLook(m, l) {
+  if (!m || m.look === l) return; m.look = l;
+  const p = lookParts(l);
+  m.robeMat.color.set(LOOKS.robe[p.r][1]); m.sashMat.color.set(LOOKS.sash[p.s][1]);
+  if (m.acc) { m.head.remove(m.acc); m.body.remove(m.acc); m.acc = null; }
+  const kind = LOOKS.acc[p.a][1]; let g = null;
+  if (kind === "beads") {
+    g = new THREE.Group(); const n = 18;
+    for (let i = 0; i < n; i++) { const a = (i / n) * Math.PI * 2; const b = new THREE.Mesh(new THREE.SphereGeometry(.045, 8, 6), M(i === 0 ? "#3f8f7d" : "#6b3f22")); b.position.set(Math.cos(a) * .3, 0, Math.sin(a) * .27); g.add(b); }
+    g.position.set(0, .98, .03); g.rotation.x = .35; m.body.add(g);
+  } else if (kind === "hat") {
+    g = new THREE.Group();
+    const brim = new THREE.Mesh(new THREE.ConeGeometry(.78, .34, 24, 1, true), M("#c9a46a")); brim.material.side = THREE.DoubleSide; g.add(brim);
+    const knob = new THREE.Mesh(new THREE.SphereGeometry(.06, 8, 6), M("#8a6a3a")); knob.position.y = .18; g.add(knob);
+    g.position.y = .52; m.head.add(g);
+  } else if (kind === "lotus") {
+    g = new THREE.Group();
+    for (let i = 0; i < 7; i++) { const a = (i / 7) * Math.PI * 2; const pt = new THREE.Mesh(new THREE.SphereGeometry(.07, 8, 6), M("#f2a0b8")); pt.scale.set(.7, 1.5, .5); pt.position.set(Math.cos(a) * .07, .05, Math.sin(a) * .07); pt.rotation.set(Math.sin(a) * .6, 0, -Math.cos(a) * .6); g.add(pt); }
+    const c = new THREE.Mesh(new THREE.SphereGeometry(.05, 8, 6), M("#f2d05a")); c.position.y = .06; g.add(c);
+    g.position.set(.3, .38, .18); m.head.add(g);
+  } else if (kind === "beanie") {
+    g = new THREE.Group();
+    const cap = new THREE.Mesh(new THREE.SphereGeometry(.52, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2.2), M(LOOKS.sash[p.s][1])); g.add(cap);
+    const pom = new THREE.Mesh(new THREE.SphereGeometry(.12, 10, 8), M("#f3eee3")); pom.position.y = .52; g.add(pom);
+    g.position.y = .06; m.head.add(g);
+  }
+  m.acc = g;
+}
+
 function makeMonk(nick, isMe) {
   const root = new THREE.Group(); const body = new THREE.Group(); root.add(body);
+  const robeM = mat.robe.clone(), sashM = mat.sash.clone();
   // 몸통: 동글동글한 승복
-  const torso = new THREE.Mesh(new THREE.SphereGeometry(.42, 24, 18), mat.robe); torso.scale.set(1, 1.08, .92); torso.position.y = .62; body.add(torso);
-  const hem = new THREE.Mesh(new THREE.CylinderGeometry(.38, .44, .22, 20), mat.robe); hem.position.y = .34; body.add(hem);
+  const torso = new THREE.Mesh(new THREE.SphereGeometry(.42, 24, 18), robeM); torso.scale.set(1, 1.08, .92); torso.position.y = .62; body.add(torso);
+  const hem = new THREE.Mesh(new THREE.CylinderGeometry(.38, .44, .22, 20), robeM); hem.position.y = .34; body.add(hem);
   // 가사: 몸에 감기는 대각선 띠
-  const sash = new THREE.Mesh(new THREE.TorusGeometry(.415, .075, 8, 32), mat.sash);
+  const sash = new THREE.Mesh(new THREE.TorusGeometry(.415, .075, 8, 32), sashM);
   sash.position.y = .64; sash.scale.set(1, 1.08, .94); sash.rotation.set(0, Math.PI / 2, .8); body.add(sash);
   // 다리와 신발
   [-.15, .15].forEach((x) => {
-    const leg = new THREE.Mesh(new THREE.CapsuleGeometry(.1, .14, 4, 8), mat.robe); leg.position.set(x, .2, 0); body.add(leg);
+    const leg = new THREE.Mesh(new THREE.CapsuleGeometry(.1, .14, 4, 8), robeM); leg.position.set(x, .2, 0); body.add(leg);
     const shoe = new THREE.Mesh(new THREE.SphereGeometry(.11, 10, 8), M("#efe8d8")); shoe.scale.set(1, .6, 1.4); shoe.position.set(x, .05, .05); body.add(shoe);
   });
   // 팔 (어깨를 축으로 움직여요)
   const arm = (side) => {
     const g = new THREE.Group(); g.position.set(side * .36, .86, 0); body.add(g);
-    const sleeve = new THREE.Mesh(new THREE.CapsuleGeometry(.1, .2, 4, 8), mat.robe); sleeve.position.y = -.16; g.add(sleeve);
+    const sleeve = new THREE.Mesh(new THREE.CapsuleGeometry(.1, .2, 4, 8), robeM); sleeve.position.y = -.16; g.add(sleeve);
     const hand = new THREE.Mesh(new THREE.SphereGeometry(.085, 10, 8), mat.skin); hand.position.y = -.34; g.add(hand);
     g.rotation.z = side * .3; return g;
   };
@@ -376,7 +423,7 @@ function makeMonk(nick, isMe) {
   const mouth = new THREE.Mesh(new THREE.TorusGeometry(.05, .013, 6, 12, Math.PI), mat.eye); mouth.rotation.z = Math.PI; mouth.position.set(0, -.14, .47); head.add(mouth);
   const label = textSprite(nick || "스님", { size: 30, color: isMe ? "#f2a65a" : "#ece6d8", pad: 10 }); label.scale.multiplyScalar(.6); label.position.y = 2.25; root.add(label);
   scene.add(root);
-  return { root, body, head, armL, armR, label, nick, pos: new THREE.Vector3(), target: new THREE.Vector3(), yaw: 0, anim: null, animT: 0, moving: false, bubble: null, bubbleUntil: 0 };
+  return { root, body, head, armL, armR, label, nick, robeMat: robeM, sashMat: sashM, acc: null, look: null, pos: new THREE.Vector3(), target: new THREE.Vector3(), yaw: 0, anim: null, animT: 0, moving: false, bubble: null, bubbleUntil: 0 };
 }
 function setLabel(m, nick, isMe) { if (m.nick === nick) return; m.root.remove(m.label); m.label.material.map.dispose(); m.label = textSprite(nick || "스님", { size: 30, color: isMe ? "#f2a65a" : "#ece6d8", pad: 10 }); m.label.scale.multiplyScalar(.6); m.label.position.y = 2.25; m.root.add(m.label); m.nick = nick; }
 function bubble(m, text) { if (m.bubble) { m.root.remove(m.bubble); m.bubble.material.map.dispose(); } m.bubble = textSprite(text, { size: 30, color: "#2a1a0c", bg: "rgba(243,238,227,.95)", pad: 10 }); m.bubble.scale.multiplyScalar(.65); m.bubble.position.y = 2.65; m.root.add(m.bubble); m.bubbleUntil = performance.now() + 2200; }
@@ -432,7 +479,7 @@ const ZONES = {
   kitchen: { name: "공양간", intro: "오늘의 공양을 골라 보세요. 차도 한 잔 있어요." },
   walk: { name: "산책길", intro: "물소리 들리는 숲길이에요. 천천히 걸어 보세요." }
 };
-const GOTO = { hall: [0, -16.5], pagoda: [0, 3.2], shrine: [15, -2.6], kitchen: [-15, -1.2], walk: [0, 16], yard: [0, 8] };
+const GOTO = { hall: [0, -17.6], pagoda: [0, 3.2], shrine: [15, -2.6], kitchen: [-15, -1.2], walk: [0, 16], yard: [0, 8] };
 
 /* =========================================================
    카메라 조작
@@ -539,6 +586,25 @@ function greet(toKey) {
 function openPanel(id) { $(id).hidden = false; if (id === "soundPanel") renderStats(); }
 document.querySelectorAll("[data-close]").forEach((b) => b.addEventListener("click", () => { b.closest(".panel,.beads-screen").hidden = true; }));
 document.querySelectorAll(".panel").forEach((p) => p.addEventListener("click", (e) => { if (e.target === p) p.hidden = true; }));
+function renderLookPanel(boxId) {
+  const box = $(boxId); if (!box) return; box.innerHTML = "";
+  const cur = lookParts(me.look);
+  [["robe", "법복", "r"], ["sash", "가사", "s"], ["acc", "소품", "a"]].forEach(([k, title, key]) => {
+    const row = document.createElement("div"); row.className = "look-row";
+    const h = document.createElement("small"); h.textContent = title; row.appendChild(h);
+    const opts = document.createElement("div"); opts.className = "look-opts";
+    LOOKS[k].forEach(([name, val], i) => {
+      const b = document.createElement("button"); b.type = "button"; b.className = "look-opt" + (cur[key] === i ? " on" : "");
+      if (k !== "acc") { const sw = document.createElement("span"); sw.className = "sw"; sw.style.background = val; b.appendChild(sw); }
+      b.append(name);
+      b.onclick = () => { const p = lookParts(me.look); p[key] = i; me.look = `${p.r}-${p.s}-${p.a}`; save(); if (player) { applyLook(player, me.look); lastMoveTx = 0; lastTarget = { x: 1e9, z: 1e9 }; sendPresence(); trackMe(); } renderLookPanel(boxId); };
+      opts.appendChild(b);
+    });
+    row.appendChild(opts); box.appendChild(row);
+  });
+}
+renderLookPanel("gateLook");
+$("lookBtn").onclick = () => { renderLookPanel("lookBody"); openPanel("lookPanel"); };
 $("soundBtn").onclick = () => { ac(); noiseLoop("wind"); noiseLoop("water"); openPanel("soundPanel"); };
 function renderStats() { $("stats").innerHTML = ""; [["오늘 목탁", me.mok], ["오늘 108배", me.bow], ["탑돌이", me.tap]].forEach(([k, v]) => { const d = document.createElement("div"); d.innerHTML = `<small>${k}</small><b>${v}</b>`; $("stats").appendChild(d); }); }
 
@@ -592,7 +658,7 @@ const online = () => !!sb;
 /* 신호 아끼기: 접속 명단(presence)은 들어올 때와 30초마다 한 번만,
    걷기는 목적지가 바뀔 때만, 동작은 그때그때 짧은 메시지(broadcast)로 보내요. */
 let lastMoveTx = 0, lastTarget = { x: 1e9, z: 1e9 }, presence = {};
-const posPayload = () => ({ k: myKey, x: +player.pos.x.toFixed(2), z: +player.pos.z.toFixed(2), tx: +player.target.x.toFixed(2), tz: +player.target.z.toFixed(2) });
+const posPayload = () => ({ k: myKey, l: me.look, x: +player.pos.x.toFixed(2), z: +player.pos.z.toFixed(2), tx: +player.target.x.toFixed(2), tz: +player.target.z.toFixed(2) });
 function trackMe() { if (roomCh && player) roomCh.track({ nick: me.nick.slice(0, 8), ...posPayload(), at: Date.now() }).catch(() => {}); }
 setInterval(trackMe, 30000);
 function sendPresence(patch = {}) {
@@ -608,6 +674,7 @@ function ensureOther(key, p) {
   const nick = String(p.nick || o?.nick || "스님").slice(0, 8);
   if (!o) { o = { monk: makeMonk(nick, false), nick }; o.monk.pos.set(clamp(+p.x || 0, -40, 40), 0, clamp(+p.z || 0, -26, 46)); o.monk.target.copy(o.monk.pos); others.set(key, o); }
   if (p.nick) { setLabel(o.monk, nick, false); o.nick = nick; }
+  if (looksOk(p.l)) applyLook(o.monk, p.l);
   return o;
 }
 function applyMove(o, p) {
@@ -708,7 +775,7 @@ function enter() {
   me.nick = nick; save();
   $("gate").hidden = true; ac(); preloadRecs(); noiseLoop("wind"); noiseLoop("water");
   loadRec("nature").then((b) => { if (b) { natureRec = playRec("nature", .6 * Math.max(vol.wind, vol.water, .3), true); } });
-  player = makeMonk(nick, true); player.pos.set(SPAWN.x + rand(-3, 3), 0, SPAWN.z + rand(-1, 1.5)); player.target.copy(player.pos); player.yaw = Math.PI;
+  player = makeMonk(nick, true); applyLook(player, me.look); player.pos.set(SPAWN.x + rand(-3, 3), 0, SPAWN.z + rand(-1, 1.5)); player.target.copy(player.pos); player.yaw = Math.PI;
   zone = zoneOf(player.pos.x, player.pos.z); renderActions(); say(ZONES[zone].intro);
   connect();
 }
@@ -740,11 +807,21 @@ function tick() {
     animateMonk(player, dt, now);
     const z = zoneOf(player.pos.x, player.pos.z);
     if (z !== zone) { zone = z; renderActions(); say(ZONES[zone].intro); }
-    camTarget.lerp(new THREE.Vector3(player.pos.x, 1.2, player.pos.z), Math.min(1, dt * 6));
-    const indoor = zone === "hall" ? .7 : 1;
-    const dist = camDist * indoor;
-    camera.position.set(camTarget.x + Math.sin(camYaw) * Math.cos(camPitch) * dist, camTarget.y + Math.sin(camPitch) * dist, camTarget.z + Math.cos(camYaw) * Math.cos(camPitch) * dist);
+    // 대웅전 안에서는 동자승 뒤쪽 위에서 부처님을 함께 바라보는 구도로 바꿔요
+    if (zone === "hall") {
+      const want = new THREE.Vector3(player.pos.x * .5, 2.3, player.pos.z - 4.2);
+      camTarget.lerp(want, Math.min(1, dt * 4));
+      const back = 3.3, yaw = clamp(camYaw, -.6, .6);
+      const camWant = new THREE.Vector3(player.pos.x + Math.sin(yaw) * back, 4.1, Math.min(player.pos.z + Math.cos(yaw) * back, -14.4));
+      camera.position.lerp(camWant, Math.min(1, dt * 4));
+    } else {
+      camTarget.lerp(new THREE.Vector3(player.pos.x, 1.6, player.pos.z), Math.min(1, dt * 5));
+      camera.position.set(camTarget.x + Math.sin(camYaw) * Math.cos(camPitch) * camDist, camTarget.y + Math.sin(camPitch) * camDist, camTarget.z + Math.cos(camYaw) * Math.cos(camPitch) * camDist);
+    }
     camera.lookAt(camTarget);
+    for (const t of camHide) { const dx = t.position.x - camera.position.x, dz = t.position.z - camera.position.z; t.visible = dx * dx + dz * dz > 7; }
+    const fovWant = zone === "hall" ? 70 : 55;
+    if (Math.abs(camera.fov - fovWant) > .1) { camera.fov += (fovWant - camera.fov) * Math.min(1, dt * 4); camera.updateProjectionMatrix(); }
   } else {
     camera.position.set(Math.sin(t * .05) * 22, 9, Math.cos(t * .05) * 22 - 4); camera.lookAt(0, 2, -8);
   }

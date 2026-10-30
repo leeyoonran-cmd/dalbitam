@@ -15,7 +15,7 @@ button:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:2px so
 input{font:inherit;color:var(--ink);background:rgba(0,0,0,.3);border:1px solid var(--glass-line);border-radius:12px;padding:11px 13px;min-width:0}
 [hidden]{display:none!important}
 
-.gate{position:fixed;inset:0;z-index:50;display:grid;place-items:center;background:radial-gradient(circle at 50% 30%,rgba(242,166,90,.12),transparent 55%),rgba(10,13,19,.82);backdrop-filter:blur(6px);padding:24px var(--sr) 24px var(--sl)}
+.gate{position:fixed;inset:0;z-index:50;display:grid;place-items:center;overflow-y:auto;background:radial-gradient(circle at 50% 30%,rgba(242,166,90,.12),transparent 55%),rgba(10,13,19,.82);backdrop-filter:blur(6px);padding:24px var(--sr) 24px var(--sl)}
 .gate-card{width:min(360px,100%);display:flex;flex-direction:column;gap:10px;text-align:center}
 .eyebrow{margin:0;letter-spacing:.3em;font-size:.72rem;color:var(--lantern)}
 .gate h1{font-family:var(--display);font-size:2.6rem;margin:0;font-weight:700}
@@ -79,3 +79,11 @@ input[type=range]{padding:0;accent-color:var(--lantern);background:none;border:0
 .bead-count{position:absolute;left:calc(var(--sl) + 14px);bottom:calc(var(--sb) + 26px);font-size:.9rem;color:#6b5a48}
 .bead-count b{font-family:var(--display);font-size:3rem;color:#3a2a1c;line-height:1}
 @media (prefers-reduced-motion:reduce){.toast{animation:none}.bead{transition:none}}
+
+.look-box{display:flex;flex-direction:column;gap:10px;text-align:left}
+.look-row small{display:block;color:var(--mute);font-size:.78rem;margin-bottom:5px}
+.look-opts{display:flex;flex-wrap:wrap;gap:6px}
+.look-opt{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.06);border:1px solid var(--glass-line);border-radius:999px;padding:6px 11px;font-size:.84rem}
+.look-opt.on{border-color:var(--lantern);background:rgba(242,166,90,.18)}
+.look-opt .sw{width:14px;height:14px;border-radius:50%;border:1px solid rgba(0,0,0,.25)}
+.gate-card .look-box{margin:2px 0 6px}
