@@ -63,6 +63,8 @@
   <span class="hud-mission" id="hudMission">오늘의 수행 0/3</span>
 </button>
 <button id="chatBtn" class="chat-btn" type="button" aria-label="대화하기">💬</button>
+<button id="emoBtn" class="chat-btn emo-btn" type="button" aria-label="표정 짓기">😊</button>
+<div id="emoBar" class="emo-bar" hidden></div>
 <div id="chatPanel" class="chat-panel" hidden>
   <div class="chat-head"><b>월하당 대화</b><span><button id="chatMute" type="button" class="mini">말풍선 끄기</button><button id="chatClose" type="button" class="mini" aria-label="닫기">✕</button></span></div>
   <ul id="chatLog" class="chat-log"></ul>
@@ -85,6 +87,16 @@
     <div class="panel-head"><h2>법당 고르기</h2><button class="close" data-close type="button" aria-label="닫기">✕</button></div>
     <p class="muted">어느 법당에서도 같은 절을 이용할 수 있어요. 숫자는 실제 접속자 수예요.</p>
     <div id="roomList" class="room-list"></div>
+  </div>
+</div>
+
+<!-- 공양 고르기 -->
+<div id="menuPanel" class="panel" hidden>
+  <div class="panel-card">
+    <div class="panel-head"><h2>오늘의 공양</h2><button class="close" data-close type="button" aria-label="닫기">✕</button></div>
+    <p class="muted" id="menuCount">공양 도감 0 / 10</p>
+    <div id="menuList" class="menu-list"></div>
+    <p class="muted">처음 먹어 보는 공양은 도감에 담기고 공덕 +10이 쌓여요.</p>
   </div>
 </div>
 

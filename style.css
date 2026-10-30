@@ -123,3 +123,13 @@ body.rec .rec-exit{display:block;position:fixed;right:0;top:0;width:80px;height:
 .act{min-width:58px}
 .act{white-space:nowrap}
 .act{min-width:auto;padding:8px 9px 6px}
+
+.emo-btn{bottom:calc(var(--sb) + 206px)}
+.emo-bar{position:fixed;right:calc(var(--sr) + 56px);bottom:calc(var(--sb) + 200px);z-index:21;display:flex;gap:4px;background:rgba(28,34,45,.94);border:1px solid var(--glass-line);border-radius:18px;padding:6px;flex-wrap:wrap;max-width:calc(100vw - 90px)}
+.emo-opt{display:flex;flex-direction:column;align-items:center;background:transparent;border-radius:12px;padding:5px 7px;min-width:46px}
+.emo-opt span{font-size:1.4rem;line-height:1}.emo-opt small{font-size:.68rem;color:var(--mute)}
+.emo-opt:active{background:rgba(255,255,255,.08)}
+.menu-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.menu-item{display:flex;gap:8px;align-items:center;text-align:left;background:rgba(255,255,255,.05);border:1px solid var(--glass-line);border-radius:14px;padding:10px}
+.menu-item.ate{border-color:rgba(242,166,90,.5)}
+.mi-emo{font-size:1.6rem}.mi-txt{display:flex;flex-direction:column;min-width:0}.mi-txt b{font-size:.9rem}.mi-txt small{color:var(--mute);font-size:.72rem;line-height:1.3}

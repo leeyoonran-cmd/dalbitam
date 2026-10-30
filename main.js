@@ -498,7 +498,7 @@ function textSprite(text, { size = 40, color = "#ece6d8", bg = "rgba(16,21,29,.7
 const TITLES = [["동자", 0], ["행자", 100], ["수행자", 300], ["스님", 800], ["큰스님", 2000], ["도인", 5000]];
 const levelOf = (p) => { let l = 0; TITLES.forEach(([, need], i) => { if (p >= need) l = i; }); return l; };
 const labelText = (nick, lv) => `${TITLES[clamp(lv | 0, 0, TITLES.length - 1)][0]} ${nick || "스님"}`;
-const PTS = { mok: 1, bow: 3, incense: 3, bell: 2, tap: 10, pray: 3, candle: 3, meal: 3, tea: 2, greet: 2, wish: 5, bead: 1, chat: 1, visit: 0 };
+const PTS = { emo: 0, mok: 1, bow: 3, incense: 3, bell: 2, tap: 10, pray: 3, candle: 3, meal: 3, tea: 2, greet: 2, wish: 5, bead: 1, chat: 1, visit: 0 };
 const MISSION_POOL = [
   ["mok", 30, "목탁 30번 치기"], ["bow", 30, "절 30번 올리기"], ["tap", 1, "탑돌이 한 바퀴"], ["greet", 3, "합장 인사 3번"],
   ["incense", 1, "향 피우기"], ["tea", 1, "공양간에서 차 마시기"], ["wish", 1, "소원 연등 달기"], ["visit:walk", 1, "산책길 걷기"],
@@ -558,12 +558,14 @@ const LOOKS = {
   acc: [["없음", ""], ["염주", "beads"], ["털모자", "beanie"], ["삿갓", "hat"], ["연꽃", "lotus"]]
 };
 const ACC_LEVEL = [0, 0, 1, 2, 3]; // 소품을 쓰려면 필요한 등급 (털모자: 행자, 삿갓: 수행자, 연꽃: 스님)
-const looksOk = (l) => typeof l === "string" && /^[0-9]-[0-9]-[0-9]$/.test(l);
-function lookParts(l) { const [r, s, a] = (looksOk(l) ? l : "0-0-0").split("-").map(Number); return { r: LOOKS.robe[r] ? r : 0, s: LOOKS.sash[s] ? s : 0, a: LOOKS.acc[a] ? a : 0 }; }
+const looksOk = (l) => typeof l === "string" && /^[0-9]-[0-9]-[0-9](-[0-9])?$/.test(l);
+function lookParts(l) { const [r, s, a, f = 0] = (looksOk(l) ? l : "0-0-0").split("-").map(Number); return { r: LOOKS.robe[r] ? r : 0, s: LOOKS.sash[s] ? s : 0, a: LOOKS.acc[a] ? a : 0, f: FACES[f] ? f : 0 }; }
+const lookStr = (p) => `${p.r}-${p.s}-${p.a}-${p.f}`;
 function applyLook(m, l) {
   if (!m || m.look === l) return; m.look = l;
   const p = lookParts(l);
   m.robeMat.color.set(LOOKS.robe[p.r][1]); m.sashMat.color.set(LOOKS.sash[p.s][1]);
+  buildFace(m, FACES[p.f][1]);
   if (m.acc) { m.head.remove(m.acc); m.body.remove(m.acc); m.acc = null; }
   const kind = LOOKS.acc[p.a][1]; let g = null;
   if (kind === "beads") {
@@ -615,14 +617,47 @@ function makeMonk(nick, isMe) {
   const head = new THREE.Group(); head.position.y = 1.42; body.add(head);
   const skull = new THREE.Mesh(new THREE.SphereGeometry(.5, 28, 20), mat.skin); skull.scale.set(1, .96, .96); head.add(skull);
   [-.16, .16].forEach((x) => {
-    const e = new THREE.Mesh(new THREE.TorusGeometry(.06, .016, 6, 12, Math.PI), mat.eye); e.position.set(x, .02, .465); head.add(e);
     const ch = new THREE.Mesh(new THREE.CircleGeometry(.065, 14), new THREE.MeshBasicMaterial({ color: "#e0866a", transparent: true, opacity: .55 })); ch.position.set(x * 1.45, -.1, .462); ch.rotation.y = x * .9; head.add(ch);
     const ear = new THREE.Mesh(new THREE.SphereGeometry(.08, 8, 6), mat.skin); ear.scale.set(.6, 1, 1); ear.position.set(x * 3.1, -.02, 0); head.add(ear);
   });
-  const mouth = new THREE.Mesh(new THREE.TorusGeometry(.05, .013, 6, 12, Math.PI), mat.eye); mouth.rotation.z = Math.PI; mouth.position.set(0, -.14, .47); head.add(mouth);
   const label = textSprite(nick || "스님", { size: 30, color: isMe ? "#f2a65a" : "#ece6d8", pad: 10 }); label.scale.multiplyScalar(.6); label.position.y = 2.25; root.add(label);
   scene.add(root);
-  return { root, body, head, armL, armR, legs, sitting: false, label, nick, robeMat: robeM, sashMat: sashM, acc: null, look: null, pos: new THREE.Vector3(), target: new THREE.Vector3(), yaw: 0, anim: null, animT: 0, moving: false, bubble: null, bubbleUntil: 0 };
+  const mm = { root, body, head, armL, armR, legs, sitting: false, label, nick, robeMat: robeM, sashMat: sashM, acc: null, look: null, pos: new THREE.Vector3(), target: new THREE.Vector3(), yaw: 0, anim: null, animT: 0, moving: false, bubble: null, bubbleUntil: 0 };
+  buildFace(mm, "smile"); return mm;
+}
+
+/* ---------- 표정 ---------- */
+let frontUntil = 0; const showFront = (ms = 3500) => { frontUntil = performance.now() + ms; };
+const FACES = [["미소", "smile"], ["평온", "calm"], ["똘망", "round"], ["활짝", "bright"], ["윙크", "wink"], ["졸림", "sleepy"]];
+const EMOTES = [["😊", "웃기", "bright"], ["😮", "놀람", "surprised"], ["🥹", "감동", "cry"], ["😴", "꾸벅", "sleepy"], ["😍", "좋아요", "love"], ["😌", "평온", "calm"]];
+const MOUTH_RED = new THREE.MeshBasicMaterial({ color: "#5a1e1a" }), TONGUE = new THREE.MeshBasicMaterial({ color: "#e0767a" }), WHITE = new THREE.MeshBasicMaterial({ color: "#ffffff" }), TEAR = new THREE.MeshBasicMaterial({ color: "#8fd0ff", transparent: true, opacity: .9 });
+function buildFace(m, kind) {
+  if (m.faceG) m.head.remove(m.faceG);
+  const g = new THREE.Group(); m.faceG = g; m.head.add(g); m.faceKind = kind;
+  const E = mat.eye, Z = .462;
+  const arcEye = (x, flip) => { const e = new THREE.Mesh(new THREE.TorusGeometry(.06, .016, 6, 12, Math.PI), E); if (flip) e.rotation.z = Math.PI; e.position.set(x, flip ? .05 : .02, Z); g.add(e); };
+  const lineEye = (x, tilt = 0) => { const e = new THREE.Mesh(new THREE.CapsuleGeometry(.014, .09, 4, 6), E); e.rotation.z = Math.PI / 2 + tilt; e.position.set(x, .0, Z); g.add(e); };
+  const dotEye = (x, big) => { const e = new THREE.Mesh(new THREE.SphereGeometry(big ? .068 : .055, 14, 10), E); e.scale.set(1, 1.15, .45); e.position.set(x, .03, Z - .005); g.add(e); const hl = new THREE.Mesh(new THREE.SphereGeometry(.018, 8, 6), WHITE); hl.position.set(x + .02, .065, Z + .02); g.add(hl); };
+  const smile = (w = .05, frown) => { const mo = new THREE.Mesh(new THREE.TorusGeometry(w, .013, 6, 12, Math.PI), E); if (!frown) mo.rotation.z = Math.PI; mo.position.set(0, frown ? -.17 : -.14, .47); g.add(mo); };
+  const openMouth = () => { const mo = new THREE.Mesh(new THREE.CircleGeometry(.075, 18, Math.PI, Math.PI), MOUTH_RED); mo.position.set(0, -.11, .474); g.add(mo); const t = new THREE.Mesh(new THREE.CircleGeometry(.042, 12, Math.PI, Math.PI), TONGUE); t.position.set(0, -.155, .476); g.add(t); };
+  const oMouth = (r = .035) => { const mo = new THREE.Mesh(new THREE.CircleGeometry(r, 16), MOUTH_RED); mo.scale.y = 1.25; mo.position.set(0, -.15, .474); g.add(mo); };
+  if (kind === "smile") { arcEye(-.16); arcEye(.16); smile(); }
+  else if (kind === "calm") { lineEye(-.16); lineEye(.16); smile(.035); }
+  else if (kind === "round") { dotEye(-.16); dotEye(.16); smile(); }
+  else if (kind === "bright") { arcEye(-.16); arcEye(.16); openMouth(); }
+  else if (kind === "wink") { dotEye(-.16); arcEye(.16); smile(.045); const t = new THREE.Mesh(new THREE.CircleGeometry(.025, 10, Math.PI, Math.PI), TONGUE); t.position.set(.02, -.155, .477); g.add(t); }
+  else if (kind === "sleepy") { lineEye(-.16, .15); lineEye(.16, -.15); oMouth(.022); }
+  else if (kind === "surprised") { dotEye(-.16, true); dotEye(.16, true); oMouth(.045); }
+  else if (kind === "cry") { lineEye(-.16, -.3); lineEye(.16, .3); smile(.04, true); [-.18, .18].forEach((x) => { const d = new THREE.Mesh(new THREE.SphereGeometry(.03, 8, 6), TEAR); d.scale.y = 1.6; d.position.set(x, -.08, .45); g.add(d); }); }
+  else if (kind === "love") { arcEye(-.16); arcEye(.16); openMouth(); }
+}
+function emote(m, i, mine) {
+  const em = EMOTES[i]; if (!em || !m) return;
+  buildFace(m, em[2]); bubble(m, em[0]); clearTimeout(m.emoT);
+  if (em[2] === "sleepy") playAnim(m, "nod");
+  if (em[2] === "love") { const h = textSprite("💗", { size: 60, bg: "rgba(0,0,0,0)", pad: 4 }); h.position.y = 2.3; m.root.add(h); let t0 = performance.now(); const up = () => { const k = (performance.now() - t0) / 2200; h.position.y = 2.3 + k * 1.2; h.material.opacity = 1 - k; if (k < 1) requestAnimationFrame(up); else m.root.remove(h); }; up(); }
+  m.emoT = setTimeout(() => buildFace(m, FACES[lookParts(m.look || "0-0-0").f][1]), 3500);
+  if (mine) { act("emo", { what: String(i) }); gain("emo"); showFront(); }
 }
 function setLabel(m, nick, isMe) { if (m.nick === nick) return; m.root.remove(m.label); m.label.material.map.dispose(); m.label = textSprite(nick || "스님", { size: 30, color: isMe ? "#f2a65a" : "#ece6d8", pad: 10 }); m.label.scale.multiplyScalar(.6); m.label.position.y = 2.25; m.root.add(m.label); m.nick = nick; }
 function bubble(m, text) { if (m.bubble) { m.root.remove(m.bubble); m.bubble.material.map.dispose(); } m.bubble = textSprite(text, { size: 30, color: "#2a1a0c", bg: "rgba(243,238,227,.95)", pad: 10 }); m.bubble.scale.multiplyScalar(.65); m.bubble.position.y = 2.65; m.root.add(m.bubble); m.bubbleUntil = performance.now() + 2200; }
@@ -650,6 +685,8 @@ function animateMonk(m, dt, now) {
   const sw = m.moving && !m.anim ? Math.sin(now * .012) * .5 : 0;
   m.armL.rotation.set(-1.25 * handsUp + sw, 0, -.3 + handsUp * .95);
   m.armR.rotation.set(-1.25 * handsUp - sw, 0, .3 - handsUp * .95);
+  if (m.anim === "eat") { const k = (Math.sin(m.animT * 5) + 1) / 2; m.armR.rotation.set(-1.3 - k * 1.0, 0, .55 - k * .25); m.armL.rotation.set(-1.1, 0, -.5); m.head.rotation.x = .1 * k; if (m.animT > 6) { m.anim = null; m.head.rotation.x = 0; const f = m.onEatDone; m.onEatDone = null; f && f(); } }
+  if (m.anim === "nod") { m.head.rotation.x = Math.max(0, Math.sin(m.animT * 3)) * .35; if (m.animT > 3) { m.anim = null; m.head.rotation.x = 0; } }
   if (m.bubble && now > m.bubbleUntil) { m.root.remove(m.bubble); m.bubble.material.map.dispose(); m.bubble = null; }
 }
 
@@ -730,15 +767,27 @@ function tap(cx, cy) {
    ========================================================= */
 let autoPath = null; // [{x,z}] 자동 걷기 (탑돌이 등)
 let zone = "yard";
-const MEALS = [["비빔밥", "#c98a3a"], ["산채나물", "#6f8f4a"], ["연근조림", "#8a5a3a"], ["두부조림", "#e8dcc0"]];
-let mealIdx = 0;
+const MENU = [
+  ["비빔밥", "🍚", "#c98a3a", "나물 다섯 가지에 고추장 한 숟갈", ["#6f8f4a", "#d9534f", "#f2d05a", "#8a5a3a"]],
+  ["연잎밥", "🍃", "#c8b48a", "연잎에 싸서 찐 찹쌀밥, 은은한 향", ["#5f8a4a", "#8a5a3a", "#e8dcc0"]],
+  ["산채나물밥", "🌿", "#efe6d2", "고사리 · 도라지 · 취나물", ["#6f8f4a", "#a8864a", "#3f6a3a"]],
+  ["미역국 한 상", "🥣", "#3d4a2c", "들기름에 볶은 미역국과 흰밥", ["#2f3a22", "#efe6d2"]],
+  ["두부조림", "🧈", "#c9823e", "간장에 졸인 노릇한 두부", ["#e8d8b0", "#6f8f4a"]],
+  ["연근조림", "🪷", "#7a4a2a", "아삭하고 달큰한 연근", ["#a8743a", "#efe6d2"]],
+  ["버섯들깨탕", "🍄", "#d8c8a8", "표고와 느타리, 고소한 들깨", ["#7a5a3a", "#5a4030"]],
+  ["새알 팥죽", "🫘", "#6e2a26", "동짓날 먹는 동글동글 새알심", ["#f3eee3", "#f3eee3"]],
+  ["감자전", "🥔", "#e2b85a", "바삭하게 부친 감자전", ["#c9922a", "#6f8f4a"]],
+  ["약과와 식혜", "🍯", "#a8642a", "후식으로 달콤하게", ["#8a4a1a", "#e8dcc0"]]
+];
+if (!Array.isArray(me.ate)) me.ate = [];
+let pendingMeal = null, eating = null;
 const A = (icon, label, fn, hot) => ({ icon, label, fn, hot });
 function actionsFor(z) {
   const greetA = A("🙏", "합장", () => greet(null)), beadA = A("📿", "염주", openBeads), wishA = A("🏮", "소원 연등", () => openPanel("wishPanel"));
   if (z === "hall") return [A(player?.sitting ? "🧍" : "🧘", player?.sitting ? "일어나기" : "방석 앉기", doSit, !player?.sitting), A(autoBow ? "⏸️" : "🙇", autoBow ? "멈추기" : "계속 절하기", toggleAutoBow, true), A("🪵", "목탁", doMok), A("🕯️", "향", doIncense), greetA, beadA];
   if (z === "pagoda") return [A("🗼", "탑돌이", doTapdori, true), wishA, greetA, beadA];
   if (z === "shrine") return [A("⛰️", "산신 기도", () => doPray("산신"), true), A("✨", "칠성 기도", () => doPray("칠성"), true), A("🕯️", "초 켜기", doCandle), greetA];
-  if (z === "kitchen") return [A("🍚", "공양하기", doMeal, true), A("🍵", "차 마시기", doTea, true), greetA, beadA];
+  if (z === "kitchen") return [A("🍚", "공양 고르기", () => { renderMenu(); openPanel("menuPanel"); }, true), A("🍵", "차 마시기", doTea, true), greetA, beadA];
   if (z === "walk") return [A("🌊", "계곡 소리", doNature, true), greetA, beadA, wishA];
   return [A("🔔", "범종 치기", doBell), greetA, wishA, beadA];
 }
@@ -799,7 +848,31 @@ function doPray(kind) { playAnim(player, "pray"); me.pray++; save(); sfx.soft();
   say(kind === "산신" ? "산의 기운이 가족을 지켜 주길 빌었어요." : "별빛 아래 모두 건강하고 오래오래 행복하길 빌었어요.");
   if (kind === "칠성") { sevenStars.userData.glowUntil = Date.now() + 6000; } }
 function doCandle() { candleUntil = Date.now() + 120000; act("candle"); bubble(player, "초를 밝혔어요"); }
-function doMeal() { const [name, color] = MEALS[mealIdx++ % MEALS.length]; bowl.visible = true; bowl.userData.food.material.color.set(color); bubble(player, name); act("meal", { what: name }); say("공양은 감사한 마음으로, 천천히 남김없이."); }
+function renderMenu() {
+  $("menuCount").textContent = `공양 도감 ${me.ate.length} / ${MENU.length}`;
+  const box = $("menuList"); box.innerHTML = "";
+  MENU.forEach(([name, emo, , desc], i) => {
+    const b = document.createElement("button"); b.type = "button"; b.className = "menu-item" + (me.ate.includes(i) ? " ate" : "");
+    b.innerHTML = `<span class="mi-emo">${emo}</span><span class="mi-txt"><b></b><small></small></span>`;
+    b.querySelector("b").textContent = name + (me.ate.includes(i) ? " ✓" : ""); b.querySelector("small").textContent = desc;
+    b.onclick = () => { $("menuPanel").hidden = true; orderMeal(i); }; box.appendChild(b);
+  });
+}
+function setBowl(i) {
+  const [, , color, , tops] = MENU[i]; bowl.visible = true; const food = bowl.userData.food; food.material.color.set(color); food.scale.setScalar(1);
+  if (bowl.userData.top) bowl.remove(bowl.userData.top); const tg = new THREE.Group(); bowl.userData.top = tg; bowl.add(tg);
+  for (let k = 0; k < 14; k++) { const a = Math.random() * Math.PI * 2, r = Math.random() * .18; const t = new THREE.Mesh(new THREE.SphereGeometry(.035, 6, 5), M(tops[k % tops.length])); t.scale.y = .5; t.position.set(Math.cos(a) * r, .285, Math.sin(a) * r); tg.add(t); }
+}
+function orderMeal(i) { standUp(); stopAutoBow(); pendingMeal = i; pendingSeat = null; autoPath = null; player.target.set(-15.6, 0, -1.65); say(`${MENU[i][0]}을(를) 받으러 가요.`); }
+function startEat(i) {
+  setBowl(i); player.yaw = Math.PI; playAnim(player, "eat"); eating = { i, t0: performance.now() };
+  bubble(player, `${MENU[i][1]} 잘 먹겠습니다`); act("meal", { what: String(i) });
+  say("공양은 먹을 만큼만, 감사한 마음으로 남김없이.");
+  player.onEatDone = () => {
+    eating = null; bubble(player, "잘 먹었습니다 🙏"); bowl.userData.food.scale.setScalar(.01); if (bowl.userData.top) bowl.userData.top.visible = false;
+    if (!me.ate.includes(i)) { me.ate.push(i); me.pts += 10; save(); updateHud(); toast(`📖 공양 도감에 ${MENU[i][0]} 추가! (${me.ate.length}/${MENU.length}, +10 공덕)`); if (me.ate.length === MENU.length) toast("🎉 공양 도감을 모두 채웠어요!"); }
+  };
+}
 function doTea() { tea.visible = true; teaUntil = Date.now() + 60000; act("tea"); say("따뜻한 차 한 모금에 숨을 골라 보세요."); bubble(player, "후―"); }
 function doNature() { vol.water = .7; vol.bird = .6; vol.wind = .35; $("vWater").value = 70; $("vBird").value = 60; $("vWind").value = 35; noiseLoop("water"); noiseLoop("wind"); say("물소리와 새소리를 들으며 천천히 걸어 보세요."); }
 function greet(toKey) {
@@ -816,17 +889,17 @@ document.querySelectorAll(".panel").forEach((p) => p.addEventListener("click", (
 function renderLookPanel(boxId) {
   const box = $(boxId); if (!box) return; box.innerHTML = "";
   const cur = lookParts(me.look);
-  [["robe", "법복", "r"], ["sash", "가사", "s"], ["acc", "소품", "a"]].forEach(([k, title, key]) => {
+  [["face", "표정", "f"], ["robe", "법복", "r"], ["sash", "가사", "s"], ["acc", "소품", "a"]].forEach(([k, title, key]) => {
     const row = document.createElement("div"); row.className = "look-row";
     const h = document.createElement("small"); h.textContent = title; row.appendChild(h);
     const opts = document.createElement("div"); opts.className = "look-opts";
-    LOOKS[k].forEach(([name, val], i) => {
+    (k === "face" ? FACES : LOOKS[k]).forEach(([name, val], i) => {
       const b = document.createElement("button"); b.type = "button"; b.className = "look-opt" + (cur[key] === i ? " on" : "");
-      if (k !== "acc") { const sw = document.createElement("span"); sw.className = "sw"; sw.style.background = val; b.appendChild(sw); }
+      if (k !== "acc" && k !== "face") { const sw = document.createElement("span"); sw.className = "sw"; sw.style.background = val; b.appendChild(sw); }
       const locked = k === "acc" && levelOf(me.pts) < ACC_LEVEL[i];
       b.append(locked ? `🔒 ${name}` : name);
       if (locked) { b.classList.add("locked"); b.title = `${TITLES[ACC_LEVEL[i]][0]}부터 쓸 수 있어요`; b.onclick = () => toast(`${name}은(는) ${TITLES[ACC_LEVEL[i]][0]} 등급부터 쓸 수 있어요`); opts.appendChild(b); return; }
-      b.onclick = () => { const p = lookParts(me.look); p[key] = i; me.look = `${p.r}-${p.s}-${p.a}`; save(); if (player) { applyLook(player, me.look); lastMoveTx = 0; lastTarget = { x: 1e9, z: 1e9 }; sendPresence(); trackMe(); } renderLookPanel(boxId); };
+      b.onclick = () => { const p = lookParts(me.look); p[key] = i; me.look = lookStr(p); save(); if (player) { showFront(); applyLook(player, me.look); lastMoveTx = 0; lastTarget = { x: 1e9, z: 1e9 }; sendPresence(); trackMe(); } renderLookPanel(boxId); };
       opts.appendChild(b);
     });
     row.appendChild(opts); box.appendChild(row);
@@ -843,6 +916,8 @@ $("nickDice").onclick = () => { $("nickInput").value = poeticNick(); sfx.bead?.(
 /* ---------- 촬영 모드: 화면 글자를 숨겨 영상 찍기 좋게 ---------- */
 $("recBtn").onclick = () => { document.body.classList.add("rec"); document.querySelectorAll(".panel").forEach((p) => (p.hidden = true)); $("chatPanel").hidden = true; toast("촬영 모드예요. 오른쪽 위 모서리를 두 번 톡톡 누르면 돌아와요"); };
 let recTap = 0; $("recExit").onclick = () => { const t = Date.now(); if (t - recTap < 450) document.body.classList.remove("rec"); recTap = t; };
+EMOTES.forEach(([e, name], i) => { const b = document.createElement("button"); b.type = "button"; b.className = "emo-opt"; b.innerHTML = `<span>${e}</span><small>${name}</small>`; b.onclick = () => { $("emoBar").hidden = true; emote(player, i, true); }; $("emoBar").appendChild(b); });
+$("emoBtn").onclick = () => { $("emoBar").hidden = !$("emoBar").hidden; };
 $("hud").onclick = () => { renderMissionPanel(); openPanel("missionPanel"); };
 $("chatBtn").onclick = () => { $("chatPanel").hidden = !$("chatPanel").hidden; if (!$("chatPanel").hidden) setTimeout(() => $("chatInput").focus(), 50); };
 const QUICK = ["안녕하세요 🙏", "성불하세요", "좋은 밤 되세요 🌙", "같이 108배 해요", "고마워요", "힘내요"];
@@ -916,7 +991,7 @@ $("wishInput").addEventListener("keydown", (e) => { if (e.key === "Enter") $("wi
 let sb = null, lobby = null, roomCh = null, roomNo = 1, roomJoinedAt = 0;
 const others = new Map(); // key -> {monk, nick, seenAt}
 const roomCounts = {};
-const ACT = { sit: "방석에 앉았어요", stand: "일어났어요", mok: "목탁을 쳤어요", greet: "합장했어요", bow: "절을 올렸어요", incense: "향을 피웠어요", candle: "초를 밝혔어요", pray: "기도를 올렸어요", tap: "탑을 한 바퀴 돌았어요", meal: "공양을 해요", tea: "차를 마셔요", bell: "범종을 울렸어요" };
+const ACT = { emo: "", sit: "방석에 앉았어요", stand: "일어났어요", mok: "목탁을 쳤어요", greet: "합장했어요", bow: "절을 올렸어요", incense: "향을 피웠어요", candle: "초를 밝혔어요", pray: "기도를 올렸어요", tap: "탑을 한 바퀴 돌았어요", meal: "공양을 해요", tea: "차를 마셔요", bell: "범종을 울렸어요" };
 const online = () => !!sb;
 
 /* 신호 아끼기: 접속 명단(presence)은 들어올 때와 30초마다 한 번만,
@@ -997,12 +1072,14 @@ function onAct({ payload: p }) {
   if (p.act === "stand") o.monk.sitting = false;
   if (p.act === "greet") { playAnim(o.monk, "greet"); bubble(o.monk, "🙏"); }
   if (p.act === "pray") playAnim(o.monk, "pray");
+  if (p.act === "emo") emote(o.monk, +p.what, false);
+  if (p.act === "meal") { const mi = MENU[+p.what]; if (mi) { o.monk.yaw = Math.PI; playAnim(o.monk, "eat"); bubble(o.monk, `${mi[1]} ${mi[0]}`); } }
   if (p.act === "incense") incenseUntil = Math.max(incenseUntil, Date.now() + 60000);
   if (p.act === "candle") candleUntil = Math.max(candleUntil, Date.now() + 90000);
   const near = player && o.monk.pos.distanceTo(player.pos) < 14;
   if (p.act === "greet" && p.to === myKey) toast(`${nick}님이 나에게 합장했어요 🙏`, { label: "맞합장", fn: () => greet(key) });
   else if (near && p.act === "greet") toast(`${nick}님이 합장했어요`, { label: "맞합장", fn: () => greet(key) });
-  else if (near && !["bow", "mok", "sit", "stand"].includes(p.act)) toast(`${nick}님이 ${ACT[p.act]}`);
+  else if (near && !["bow", "mok", "sit", "stand", "emo"].includes(p.act)) toast(`${nick}님이 ${ACT[p.act]}`);
 }
 
 async function joinRoom(n) {
@@ -1076,7 +1153,7 @@ function enter() {
   me.nick = nick; save();
   $("gate").hidden = true; ac(); preloadRecs(); noiseLoop("wind"); noiseLoop("water");
   loadRec("nature").then((b) => { if (b) { natureRec = playRec("nature", .6 * Math.max(vol.wind, vol.water, .3), true); } });
-  { const lp = lookParts(me.look); if (levelOf(me.pts) < ACC_LEVEL[lp.a]) { me.look = `${lp.r}-${lp.s}-0`; save(); } }
+  { const lp = lookParts(me.look); if (levelOf(me.pts) < ACC_LEVEL[lp.a]) { lp.a = 0; me.look = lookStr(lp); save(); } }
   player = makeMonk(nick, true); applyLook(player, me.look); setLabel(player, labelText(nick, levelOf(me.pts)), true); updateHud(); player.pos.set(SPAWN.x + rand(-3, 3), 0, SPAWN.z + rand(-1, 1.5)); player.target.copy(player.pos); player.yaw = Math.PI;
   zone = zoneOf(player.pos.x, player.pos.z); renderActions(); say(ZONES[zone].intro);
   connect();
@@ -1105,6 +1182,8 @@ function tick() {
       if (Math.hypot(p.x - player.pos.x, p.z - player.pos.z) < .3) { autoPath.i++; if (autoPath.i >= autoPath.pts.length) { const a = autoPath; autoPath = null; a.done(); } }
     }
     const moved = moveMonk(player, dt, autoPath ? 2 : 3.4);
+    if (pendingMeal !== null && !moved && Math.hypot(player.pos.x + 15.6, player.pos.z + 1.65) < .35) { const i = pendingMeal; pendingMeal = null; startEat(i); }
+    if (eating) { const k = Math.min(1, (performance.now() - eating.t0) / 6000); bowl.userData.food.scale.setScalar(Math.max(.05, 1 - k * .9)); if (bowl.userData.top) bowl.userData.top.scale.setScalar(1 - k * .9); }
     if (pendingSeat && !moved && Math.hypot(player.pos.x - pendingSeat.x, player.pos.z - pendingSeat.z) < .3) { pendingSeat = null; sitDown(); }
     if (moved && now - lastMoveSent > 250) { lastMoveSent = now; sendPresence(); }
     animateMonk(player, dt, now);
@@ -1120,7 +1199,9 @@ function tick() {
       camera.position.lerp(camWant, Math.min(1, dt * 4));
     } else {
       camTarget.lerp(new THREE.Vector3(player.pos.x, 1.6, player.pos.z), Math.min(1, dt * 5));
-      camera.position.set(camTarget.x + Math.sin(camYaw) * Math.cos(camPitch) * camDist, camTarget.y + Math.sin(camPitch) * camDist, camTarget.z + Math.cos(camYaw) * Math.cos(camPitch) * camDist);
+      const front = performance.now() < frontUntil, cy = front ? player.root.rotation.y : camYaw, cd = front ? 4.2 : camDist, cp = front ? .22 : camPitch;
+      const cw = new THREE.Vector3(camTarget.x + Math.sin(cy) * Math.cos(cp) * cd, camTarget.y + Math.sin(cp) * cd, camTarget.z + Math.cos(cy) * Math.cos(cp) * cd);
+      if (front || camera.userData.lerp) { camera.position.lerp(cw, Math.min(1, dt * 5)); camera.userData.lerp = front || camera.position.distanceTo(cw) > .05; } else camera.position.copy(cw);
     }
     camera.lookAt(camTarget);
     for (const t of camHide) { const dx = t.position.x - camera.position.x, dz = t.position.z - camera.position.z; t.visible = dx * dx + dz * dz > 7; }
