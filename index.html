@@ -60,7 +60,7 @@
 <button id="hud" class="hud" type="button" aria-label="수행 등급과 오늘의 수행">
   <span class="hud-top"><b id="hudTitle">동자</b> · 공덕 <span id="hudPts">0</span></span>
   <span class="hud-bar"><i id="hudBar"></i></span>
-  <span class="hud-mission" id="hudMission">오늘의 수행 0/3</span>
+  <span class="hud-mission"><span id="hudMission">오늘의 수행 0/3</span> · 🪙<span id="hudCoin">0</span></span>
 </button>
 <button id="chatBtn" class="chat-btn" type="button" aria-label="대화하기">💬</button>
 <button id="emoBtn" class="chat-btn emo-btn" type="button" aria-label="표정 짓기">😊</button>
@@ -90,6 +90,20 @@
   </div>
 </div>
 
+<!-- 기념품 가게 -->
+<div id="shopPanel" class="panel" hidden>
+  <div class="panel-card">
+    <div class="panel-head"><h2>기념품 가게</h2><button class="close" data-close type="button" aria-label="닫기">✕</button></div>
+    <p class="muted" id="shopCoin">내 복전 🪙 0</p>
+    <p class="muted">복전은 수행할 때마다 쌓이고, 108배를 마치면 108닢을 한꺼번에 받아요.</p>
+    <div id="shopList" class="menu-list one"></div>
+    <h3 class="sub-h">진짜 굿즈</h3>
+    <div id="goodsList" class="menu-list one"></div>
+    <div id="couponBox" class="coupon" hidden><small>108배 인증 할인 쿠폰</small><b id="couponCode"></b></div>
+    <a id="goodsLink" class="primary goods-link" target="_blank" rel="noopener">진짜 굿즈는 준비 중이에요</a>
+  </div>
+</div>
+
 <!-- 공양 고르기 -->
 <div id="menuPanel" class="panel" hidden>
   <div class="panel-card">
@@ -109,7 +123,7 @@
     <p class="muted">미션 하나에 공덕 +30, 세 개 모두 마치면 +50. 미션은 매일 자정에 바뀌어요.</p>
     <h3 class="sub-h">수행 등급</h3>
     <ul id="titleList" class="title-list"></ul>
-    <p class="muted">등급이 오르면 털모자 · 삿갓 · 연꽃 소품이 열리고, 이름 앞에 등급이 보여요.</p>
+    <p class="muted">등급이 오르면 이름 앞에 등급이 붙고 털모자 · 삿갓 · 연꽃 소품이 열려요. 스님부터는 머리 뒤에 후광이 생기고, 큰스님 · 도인이 되면 더 밝게 빛나요.</p>
   </div>
 </div>
 

@@ -20,7 +20,9 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
 };
 const today = new Date().toDateString();
-const me = Object.assign({ day: today, look: "0-0-0", pts: 0, daily: null, nick: "", mok: 0, bow: 0, tap: 0, bead: 0, pray: 0, localWishes: [] }, store.get("sansa3d", {}));
+const me = Object.assign({ day: today, look: "0-0-0", pts: 0, coin: null, owned: [], daily: null, nick: "", mok: 0, bow: 0, tap: 0, bead: 0, pray: 0, localWishes: [] }, store.get("sansa3d", {}));
+if (me.coin === null || me.coin === undefined) me.coin = me.pts || 0;
+if (!Array.isArray(me.owned)) me.owned = [];
 if (me.day !== today) { me.day = today; me.mok = 0; me.bow = 0; }
 const save = () => store.set("sansa3d", me);
 const myKey = store.get("sansa3d-key", null) || (() => { const k = "m" + Math.random().toString(36).slice(2, 10); store.set("sansa3d-key", k); return k; })();
@@ -83,7 +85,46 @@ function playRec(name, v = 1, loop = false) {
   const c = ac(), s = c.createBufferSource(), g = c.createGain(); s.buffer = buf; s.loop = loop; g.gain.value = v;
   s.connect(g).connect(master); s.start(); return { s, g };
 }
-function preloadRecs() { ["moktak", "bell", "chant", "nature"].forEach(loadRec); }
+function preloadRecs() { ["moktak", "bell"].forEach(loadRec); ["chant", "nature"].forEach(findSound); }
+
+/* ---------- 휴대폰 소리 문제 해결 ----------
+   아이폰은 무음 모드일 때 웹에서 만든 소리를 꺼 버려요.
+   입장 버튼을 누를 때 '음악 재생' 모드로 바꾸고, 긴 염불·자연 소리는 <audio>로 틀어서
+   무음 스위치와 메모리 문제를 피해요. */
+const soundUrl = {};
+function findSound(name) {
+  if (name in soundUrl) return Promise.resolve(soundUrl[name]);
+  return (async () => {
+    for (const path of [`sounds/${name}.mp3`, `${name}.mp3`]) {
+      try { const r = await fetch(path, { method: "HEAD" }); const ct = r.headers.get("content-type") || ""; if (r.ok && /audio|mpeg|octet/.test(ct)) { soundUrl[name] = path; return path; } } catch {}
+    }
+    soundUrl[name] = null; return null;
+  })();
+}
+const loopEls = {};
+function loopAudio(name, v) {
+  const url = soundUrl[name]; if (!url) return null;
+  let el = loopEls[name];
+  if (!el) { el = new Audio(url); el.loop = true; el.preload = "auto"; el.setAttribute("playsinline", ""); loopEls[name] = el; }
+  el.volume = clamp(v, 0, 1); el.play().catch(() => toast("소리가 나지 않으면 무음 모드를 끄고 음량을 올려 주세요"));
+  return el;
+}
+function silentWavUrl() {
+  const n = 4410, b = new ArrayBuffer(44 + n * 2), d = new DataView(b), w = (o, t) => [...t].forEach((c, i) => d.setUint8(o + i, c.charCodeAt(0)));
+  w(0, "RIFF"); d.setUint32(4, 36 + n * 2, true); w(8, "WAVEfmt "); d.setUint32(16, 16, true); d.setUint16(20, 1, true); d.setUint16(22, 1, true);
+  d.setUint32(24, 44100, true); d.setUint32(28, 88200, true); d.setUint16(32, 2, true); d.setUint16(34, 16, true); w(36, "data"); d.setUint32(40, n * 2, true);
+  return URL.createObjectURL(new Blob([b], { type: "audio/wav" }));
+}
+let unlocked = false;
+function unlockAudio() {
+  if (unlocked) return; unlocked = true;
+  try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch {}
+  try { const el = new Audio(silentWavUrl()); el.loop = true; el.volume = .01; el.setAttribute("playsinline", ""); el.play().catch(() => {}); } catch {}
+  ac();
+}
+document.addEventListener("touchend", unlockAudio, { once: true, passive: true });
+document.addEventListener("click", unlockAudio, { once: true });
+findSound("chant"); findSound("nature");
 
 const sfx = {
   mok() {
@@ -131,7 +172,7 @@ function noiseLoop(kind) {
   loops[kind].gain.setTargetAtTime(vol[kind] * (kind === "wind" ? .45 : .2), c.currentTime, .4);
 }
 [["vWind", "wind"], ["vWater", "water"], ["vBird", "bird"], ["vChime", "chime"], ["vFx", "fx"]].forEach(([id, k]) => {
-  $(id).addEventListener("input", (e) => { vol[k] = e.target.value / 100; if (ctx && (k === "wind" || k === "water")) { noiseLoop(k); if (natureRec) natureRec.g.gain.setTargetAtTime(.6 * Math.max(vol.wind, vol.water), ctx.currentTime, .3); } });
+  $(id).addEventListener("input", (e) => { vol[k] = e.target.value / 100; if (ctx && (k === "wind" || k === "water")) { noiseLoop(k); if (natureRec) natureRec.volume = clamp(.6 * Math.max(vol.wind, vol.water), 0, 1); } });
 });
 setInterval(() => {
   if (!ctx || !player) return;
@@ -143,16 +184,15 @@ setInterval(() => {
 let chantTimer = null, chantRec = null, natureRec = null;
 function stopChant() {
   if (chantTimer) { clearInterval(chantTimer); chantTimer = null; }
-  if (chantRec) { const { s: src, g } = chantRec; g.gain.setTargetAtTime(0, ctx.currentTime, .4); setTimeout(() => { try { src.stop(); } catch {} }, 1500); chantRec = null; }
+  if (chantRec) { const el = chantRec; let v = el.volume; const fade = setInterval(() => { v -= .08; if (v <= 0) { clearInterval(fade); el.pause(); } else el.volume = v; }, 60); chantRec = null; }
   $("chantBtn").textContent = "염불"; $("chantBtn").classList.remove("on");
 }
-$("chantBtn").addEventListener("click", async () => {
-  ac();
+$("chantBtn").addEventListener("click", () => {
+  unlockAudio(); ac();
   if (chantTimer || chantRec) { stopChant(); return; }
   $("chantBtn").textContent = "염불 끄기"; $("chantBtn").classList.add("on");
-  await loadRec("chant");
-  if (!$("chantBtn").classList.contains("on")) return;
-  if (rec.chant) { chantRec = playRec("chant", .9 * vol.fx, true); return; }
+  // 버튼을 누른 그 순간에 바로 틀어야 휴대폰이 막지 않아요 (파일 주소는 입장할 때 미리 찾아 둬요)
+  if (soundUrl.chant) { chantRec = loopAudio("chant", .9 * vol.fx); if (chantRec) return; }
   // 녹음 파일이 없을 때: 염불할 때 치는 목탁 박자만 들려줘요
   let i = 0; const beat = () => { sfx.mok(); i++; };
   beat(); chantTimer = setInterval(beat, 820);
@@ -460,6 +500,24 @@ for (let i = 0; i < 18; i++) { const r = new THREE.Mesh(new THREE.DodecahedronGe
   const bell = new THREE.Mesh(new THREE.CylinderGeometry(.55, .8, 1.5, 16), M("#5a5a4a", { metalness: .7, roughness: .4 })); bell.position.y = 2.2; g.add(bell);
   block(-10.6, -7.4, 5.4, 8.6); }
 
+/* 기념품 가게 (마당 동쪽) */
+{
+  const g = new THREE.Group(); g.position.set(9.5, 0, 3.4); scene.add(g);
+  box(3.4, .9, .9, mat.wood, 0, .45, .7, g);
+  box(3.6, .08, 1.0, mat.wood, 0, .93, .7, g);
+  box(3.4, 2.4, .15, mat.wall, 0, 1.2, -.3, g);
+  [[-1.7, 1.1], [1.7, 1.1], [-1.7, -.3], [1.7, -.3]].forEach(([x, z]) => cyl(.07, .08, 2.6, mat.pillar, x, 1.3, z, 8, g));
+  const stripe = canvasTex(256, 64, (x, w, h) => { for (let i = 0; i < 8; i++) { x.fillStyle = i % 2 ? "#f3eee3" : "#c23a2c"; x.fillRect(i * 32, 0, 32, h); } x.fillStyle = "#c23a2c"; for (let i = 0; i < 8; i++) { x.beginPath(); x.arc(i * 32 + 16, h, 16, Math.PI, 0); x.fill(); } });
+  const awn = new THREE.Mesh(new THREE.PlaneGeometry(3.8, 1.5), new THREE.MeshStandardMaterial({ map: stripe, side: THREE.DoubleSide, roughness: .8 }));
+  awn.position.set(0, 2.55, .55); awn.rotation.x = -1.0; g.add(awn);
+  box(3.2, .06, .35, mat.wood, 0, 1.55, -.15, g); box(3.2, .06, .35, mat.wood, 0, 2.05, -.15, g);
+  for (let i = 0; i < 7; i++) { const mk = new THREE.Mesh(new THREE.SphereGeometry(.11, 12, 8), M("#8a4f22", { roughness: .45 })); mk.scale.set(1.15, .85, 1); mk.position.set(-1.35 + i * .45, 1.68, -.12); g.add(mk); }
+  ["#f2a65a", "#e86a5a", "#f2d05a", "#7fc7a0", "#d98ac9", "#7fb0e6"].forEach((c, i) => { const l = new THREE.Mesh(new THREE.SphereGeometry(.12, 10, 8), new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: .6 })); l.scale.y = 1.2; l.position.set(-1.2 + i * .48, 2.2, -.1); g.add(l); });
+  for (let i = 0; i < 6; i++) { const b = new THREE.Mesh(new THREE.TorusGeometry(.12, .035, 6, 16), M("#a8643a")); b.rotation.x = Math.PI / 2; b.position.set(-1.2 + i * .48, 1.0, .5); g.add(b); }
+  const sign = textSprite("기념품 가게", { size: 40, color: "#f3e6c4", bg: "#5a2a1a", pad: 16 }); sign.material.depthTest = true; sign.position.set(0, 3.1, .9); sign.scale.multiplyScalar(.8); g.add(sign);
+  block(7.7, 11.3, 3.0, 4.75);
+}
+
 /* 연등 줄 (소원) */
 const lanternGroup = new THREE.Group(); scene.add(lanternGroup);
 const lanternSlots = [];
@@ -498,7 +556,7 @@ function textSprite(text, { size = 40, color = "#ece6d8", bg = "rgba(16,21,29,.7
 const TITLES = [["동자", 0], ["행자", 100], ["수행자", 300], ["스님", 800], ["큰스님", 2000], ["도인", 5000]];
 const levelOf = (p) => { let l = 0; TITLES.forEach(([, need], i) => { if (p >= need) l = i; }); return l; };
 const labelText = (nick, lv) => `${TITLES[clamp(lv | 0, 0, TITLES.length - 1)][0]} ${nick || "스님"}`;
-const PTS = { emo: 0, mok: 1, bow: 3, incense: 3, bell: 2, tap: 10, pray: 3, candle: 3, meal: 3, tea: 2, greet: 2, wish: 5, bead: 1, chat: 1, visit: 0 };
+const PTS = { emo: 0, mok: 1, bow: 3, incense: 3, bell: 2, tap: 10, pray: 5, candle: 3, meal: 3, tea: 2, greet: 2, wish: 5, bead: 1, chat: 1, visit: 0 };
 const MISSION_POOL = [
   ["mok", 30, "목탁 30번 치기"], ["bow", 30, "절 30번 올리기"], ["tap", 1, "탑돌이 한 바퀴"], ["greet", 3, "합장 인사 3번"],
   ["incense", 1, "향 피우기"], ["tea", 1, "공양간에서 차 마시기"], ["wish", 1, "소원 연등 달기"], ["visit:walk", 1, "산책길 걷기"],
@@ -515,17 +573,17 @@ const MISSIONS = todayMissions();
 let lastLevel = levelOf(me.pts);
 function gain(kind, n = 1) {
   const key = kind; me.daily.c[key] = (me.daily.c[key] || 0) + n;
-  me.pts += (PTS[kind.split(":")[0]] ?? 0) * n;
+  const pv = (PTS[kind.split(":")[0]] ?? 0) * n; me.pts += pv; me.coin += pv;
   MISSIONS.forEach(([k, goal, title]) => {
     if (k === key && !me.daily.done.includes(k) && me.daily.c[k] >= goal) {
-      me.daily.done.push(k); me.pts += 30; toast(`✅ 오늘의 수행 완료: ${title} (+30 공덕)`); sfx.soft();
-      if (me.daily.done.length === MISSIONS.length) setTimeout(() => { toast("🌕 오늘의 수행을 모두 마쳤어요! (+50 공덕)"); me.pts += 50; save(); updateHud(); }, 1200);
+      me.daily.done.push(k); me.pts += 30; me.coin += 30; toast(`✅ 오늘의 수행 완료: ${title} (+30 공덕 · 🪙30)`); sfx.soft();
+      if (me.daily.done.length === MISSIONS.length) setTimeout(() => { toast("🌕 오늘의 수행을 모두 마쳤어요! (+50 공덕 · 🪙50)"); me.pts += 50; me.coin += 50; save(); updateHud(); }, 1200);
     }
   });
   const lv = levelOf(me.pts);
   if (lv > lastLevel) {
     lastLevel = lv; toast(`🎉 ${TITLES[lv][0]}(으)로 올라갔어요!`); sfx.bell();
-    if (player) { setLabel(player, labelText(me.nick, lv), true); bubble(player, `${TITLES[lv][0]} 승급!`); trackMe(); }
+    if (player) { setLabel(player, labelText(me.nick, lv), true); applyAura(player, lv); bubble(player, `${TITLES[lv][0]} 승급!`); showFront(); trackMe(); }
     renderLookPanel("lookBody");
   }
   save(); updateHud();
@@ -533,7 +591,7 @@ function gain(kind, n = 1) {
 function updateHud() {
   const lv = levelOf(me.pts), next = TITLES[lv + 1];
   $("hudTitle").textContent = TITLES[lv][0];
-  $("hudPts").textContent = me.pts.toLocaleString();
+  $("hudPts").textContent = me.pts.toLocaleString(); $("hudCoin").textContent = me.coin.toLocaleString();
   const base = TITLES[lv][1], pct = next ? Math.min(100, ((me.pts - base) / (next[1] - base)) * 100) : 100;
   $("hudBar").style.width = pct + "%";
   $("hudMission").textContent = `오늘의 수행 ${me.daily.done.length}/3`;
@@ -555,9 +613,14 @@ function renderMissionPanel() {
 const LOOKS = {
   robe: [["회색", "#c9ccd2"], ["먹색", "#4a4f5a"], ["연분홍", "#f0c9cf"], ["하늘", "#b9d3ea"], ["연두", "#cfe2b8"], ["미색", "#efe6d2"]],
   sash: [["황금", "#d9b44a"], ["주황", "#e0874a"], ["자주", "#8e3b5c"], ["갈색", "#7a5233"], ["청록", "#3f8f7d"]],
-  acc: [["없음", ""], ["염주", "beads"], ["털모자", "beanie"], ["삿갓", "hat"], ["연꽃", "lotus"]]
+  acc: [["없음", ""], ["염주", "beads"], ["털모자", "beanie"], ["삿갓", "hat"], ["연꽃", "lotus"], ["미니 목탁", "moktak"], ["연등", "lantern"], ["꽃 화관", "crown"], ["선글라스", "shades"]]
 };
-const ACC_LEVEL = [0, 0, 1, 2, 3]; // 소품을 쓰려면 필요한 등급 (털모자: 행자, 삿갓: 수행자, 연꽃: 스님)
+const ACC_LEVEL = [0, 0, 1, 2, 3, 0, 0, 0, 0];
+const SHOP = [ // 기념품 가게에서 복전으로 사는 소품 (acc 번호, 값, 설명)
+  [5, 150, "🪵", "허리춤에 차는 미니 목탁"], [6, 220, "🏮", "손에 드는 작은 연등"], [7, 300, "🌼", "머리에 쓰는 들꽃 화관"], [8, 500, "😎", "깨달음의 선글라스"]
+];
+const shopPrice = (i) => (SHOP.find((x) => x[0] === i) || [])[1];
+const ownedAcc = (i) => !shopPrice(i) || me.owned.includes(i); // 소품을 쓰려면 필요한 등급 (털모자: 행자, 삿갓: 수행자, 연꽃: 스님)
 const looksOk = (l) => typeof l === "string" && /^[0-9]-[0-9]-[0-9](-[0-9])?$/.test(l);
 function lookParts(l) { const [r, s, a, f = 0] = (looksOk(l) ? l : "0-0-0").split("-").map(Number); return { r: LOOKS.robe[r] ? r : 0, s: LOOKS.sash[s] ? s : 0, a: LOOKS.acc[a] ? a : 0, f: FACES[f] ? f : 0 }; }
 const lookStr = (p) => `${p.r}-${p.s}-${p.a}-${p.f}`;
@@ -587,6 +650,27 @@ function applyLook(m, l) {
     const cap = new THREE.Mesh(new THREE.SphereGeometry(.52, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2.2), M(LOOKS.sash[p.s][1])); g.add(cap);
     const pom = new THREE.Mesh(new THREE.SphereGeometry(.12, 10, 8), M("#f3eee3")); pom.position.y = .52; g.add(pom);
     g.position.y = .06; m.head.add(g);
+  } else if (kind === "moktak") {
+    g = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.SphereGeometry(.13, 16, 12), M("#8a4f22", { roughness: .45 })); body.scale.set(1.15, .85, 1); g.add(body);
+    const slit = new THREE.Mesh(new THREE.TorusGeometry(.09, .012, 6, 16, Math.PI), M("#2a1608")); slit.rotation.set(0, 0, Math.PI); slit.position.set(0, 0, .11); g.add(slit);
+    const cord = new THREE.Mesh(new THREE.CylinderGeometry(.008, .008, .16, 6), M("#c23a2c")); cord.position.y = .15; g.add(cord);
+    g.position.set(.3, .5, .26); m.body.add(g);
+  } else if (kind === "lantern") {
+    g = new THREE.Group();
+    const stick = new THREE.Mesh(new THREE.CylinderGeometry(.012, .012, .7, 6), M("#6b4a32")); stick.position.y = .35; g.add(stick);
+    const lamp = new THREE.Mesh(new THREE.SphereGeometry(.14, 14, 10), new THREE.MeshStandardMaterial({ color: "#f2a65a", emissive: "#f28a3a", emissiveIntensity: 1.3 })); lamp.scale.y = 1.25; lamp.position.y = .85; g.add(lamp);
+    const glow = new THREE.PointLight("#ffb466", 1.2, 2.5, 2); glow.position.y = .85; g.add(glow);
+    g.position.set(.5, .45, .18); g.rotation.z = -.15; m.body.add(g);
+  } else if (kind === "crown") {
+    g = new THREE.Group(); const cols = ["#f2d05a", "#f3eee3", "#f2a0b8", "#b9d3ea"];
+    for (let i = 0; i < 14; i++) { const a = i / 14 * Math.PI * 2; const f = new THREE.Mesh(new THREE.SphereGeometry(.055, 8, 6), M(cols[i % 4])); f.position.set(Math.cos(a) * .4, 0, Math.sin(a) * .4); g.add(f); const l = new THREE.Mesh(new THREE.SphereGeometry(.04, 6, 4), M("#5f8a4a")); l.scale.set(1.4, .5, .8); l.position.set(Math.cos(a + .2) * .41, -.03, Math.sin(a + .2) * .41); g.add(l); }
+    g.position.y = .3; g.rotation.x = -.12; m.head.add(g);
+  } else if (kind === "shades") {
+    g = new THREE.Group(); const dark = new THREE.MeshStandardMaterial({ color: "#111318", metalness: .6, roughness: .2 });
+    [-.16, .16].forEach((x) => { const lens = new THREE.Mesh(new THREE.CircleGeometry(.1, 20), dark); lens.scale.y = .78; lens.position.set(x, .03, .485); g.add(lens); });
+    const bridge = new THREE.Mesh(new THREE.BoxGeometry(.1, .02, .02), dark); bridge.position.set(0, .06, .488); g.add(bridge);
+    m.head.add(g);
   }
   m.acc = g;
 }
@@ -624,6 +708,18 @@ function makeMonk(nick, isMe) {
   scene.add(root);
   const mm = { root, body, head, armL, armR, legs, sitting: false, label, nick, robeMat: robeM, sashMat: sashM, acc: null, look: null, pos: new THREE.Vector3(), target: new THREE.Vector3(), yaw: 0, anim: null, animT: 0, moving: false, bubble: null, bubbleUntil: 0 };
   buildFace(mm, "smile"); return mm;
+}
+
+/* ---------- 등급 후광: 스님부터 머리 뒤에 빛이 생겨요 ---------- */
+function applyAura(m, lv) {
+  if (!m || m.auraLv === lv) return; m.auraLv = lv;
+  if (m.aura) { m.head.remove(m.aura); m.aura = null; }
+  if (lv < 3) return;
+  const g = new THREE.Group(); const c = lv >= 5 ? "#ffe9a8" : lv >= 4 ? "#f2c66a" : "#d9b44a";
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(.62, lv >= 4 ? .035 : .022, 8, 40), new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: .9 })); g.add(ring);
+  if (lv >= 4) { const disc = new THREE.Mesh(new THREE.CircleGeometry(.6, 32), new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: .18 })); g.add(disc); }
+  if (lv >= 5) { const outer = new THREE.Mesh(new THREE.TorusGeometry(.78, .02, 8, 48), new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: .6 })); g.add(outer); const l = new THREE.PointLight("#ffd98a", 1.5, 3, 2); g.add(l); }
+  g.position.set(0, .05, -.35); m.head.add(g); m.aura = g;
 }
 
 /* ---------- 표정 ---------- */
@@ -706,6 +802,7 @@ function zoneOf(x, z) {
   if (x > 10.5 && z < -1) return "shrine";
   if (x < -10.5 && z < -1) return "kitchen";
   if (z > 11) return "walk";
+  if (Math.hypot(x - 9.5, z - 5.6) < 2.6) return "shop";
   if (Math.hypot(x - PAGODA.x, z - PAGODA.z) < 6) return "pagoda";
   return "yard";
 }
@@ -715,9 +812,10 @@ const ZONES = {
   pagoda: { name: "석탑", intro: "석탑을 천천히 돌며 소원을 떠올려 보세요." },
   shrine: { name: "산신각·칠성각", intro: "산신께는 산의 기운을, 칠성께는 별의 기운을 빌어요." },
   kitchen: { name: "공양간", intro: "오늘의 공양을 골라 보세요. 차도 한 잔 있어요." },
-  walk: { name: "산책길", intro: "물소리 들리는 숲길이에요. 천천히 걸어 보세요." }
+  walk: { name: "산책길", intro: "물소리 들리는 숲길이에요. 천천히 걸어 보세요." },
+  shop: { name: "기념품 가게", intro: "수행하며 모은 복전으로 기념품을 골라 보세요." }
 };
-const GOTO = { hall: [0, -17.6], pagoda: [0, 3.2], shrine: [15, -2.6], kitchen: [-15, -1.2], walk: [0, 16], yard: [0, 8] };
+const GOTO = { shop: [9.5, 6.2], hall: [0, -17.6], pagoda: [0, 3.2], shrine: [15, -2.6], kitchen: [-15, -1.2], walk: [0, 16], yard: [0, 8] };
 
 /* =========================================================
    카메라 조작
@@ -788,6 +886,7 @@ function actionsFor(z) {
   if (z === "pagoda") return [A("🗼", "탑돌이", doTapdori, true), wishA, greetA, beadA];
   if (z === "shrine") return [A("⛰️", "산신 기도", () => doPray("산신"), true), A("✨", "칠성 기도", () => doPray("칠성"), true), A("🕯️", "초 켜기", doCandle), greetA];
   if (z === "kitchen") return [A("🍚", "공양 고르기", () => { renderMenu(); openPanel("menuPanel"); }, true), A("🍵", "차 마시기", doTea, true), greetA, beadA];
+  if (z === "shop") return [A("🛍️", "가게 둘러보기", openShop, true), greetA, beadA];
   if (z === "walk") return [A("🌊", "계곡 소리", doNature, true), greetA, beadA, wishA];
   return [A("🔔", "범종 치기", doBell), greetA, wishA, beadA];
 }
@@ -797,7 +896,7 @@ function renderActions() {
   $("placeTag").textContent = ZONES[zone].name;
   document.querySelectorAll("#places button").forEach((b) => b.classList.toggle("here", b.dataset.z === zone));
 }
-const placeNames = { hall: "대웅전", pagoda: "석탑", shrine: "산신각", kitchen: "공양간", walk: "산책길" };
+const placeNames = { hall: "대웅전", pagoda: "석탑", shrine: "산신각", kitchen: "공양간", walk: "산책길", shop: "기념품" };
 for (const [z, n] of Object.entries(placeNames)) {
   const b = document.createElement("button"); b.type = "button"; b.dataset.z = z; b.textContent = n;
   b.onclick = () => { standUp(); pendingSeat = null; const [x, zz] = GOTO[z]; player.pos.set(x, 0, zz); player.target.set(x, 0, zz); autoPath = null; camYaw = z === "walk" ? Math.PI : 0; lastMoveTx = 0; sendPresence(); };
@@ -810,7 +909,7 @@ function doBow() {
   if (player.anim === "bow") return;
   sfx.soft(); playAnim(player, "bow"); me.bow++; save(); act("bow");
   bubble(player, `${me.bow}배`);
-  if (me.bow === 108) { say("오늘 108배를 모두 마쳤어요. 정말 수고했어요."); sfx.bell(); } else if (me.bow % 12 === 0) say();
+  if (me.bow === 108) { say("오늘 108배를 모두 마쳤어요. 정말 수고했어요."); sfx.bell(); me.coin += 108; save(); updateHud(); toast("🪙 108배 완료! 복전 108닢을 받았어요. 기념품 가게에 들러 보세요"); } else if (me.bow % 12 === 0) say();
 }
 /* ---------- 방석에 앉기 · 계속 절하기 ---------- */
 let pendingSeat = null, autoBow = null;
@@ -848,6 +947,38 @@ function doPray(kind) { playAnim(player, "pray"); me.pray++; save(); sfx.soft();
   say(kind === "산신" ? "산의 기운이 가족을 지켜 주길 빌었어요." : "별빛 아래 모두 건강하고 오래오래 행복하길 빌었어요.");
   if (kind === "칠성") { sevenStars.userData.glowUntil = Date.now() + 6000; } }
 function doCandle() { candleUntil = Date.now() + 120000; act("candle"); bubble(player, "초를 밝혔어요"); }
+/* ---------- 기념품 가게 ---------- */
+function openShop() { renderShop(); openPanel("shopPanel"); }
+function renderShop() {
+  $("shopCoin").textContent = `내 복전 🪙 ${me.coin.toLocaleString()}`;
+  const box = $("shopList"); box.innerHTML = "";
+  SHOP.forEach(([ai, price, emo, desc]) => {
+    const name = LOOKS.acc[ai][0], own = me.owned.includes(ai), wearing = lookParts(me.look).a === ai;
+    const card = document.createElement("div"); card.className = "shop-item";
+    card.innerHTML = `<span class="mi-emo">${emo}</span><span class="mi-txt"><b></b><small></small></span>`;
+    card.querySelector("b").textContent = name; card.querySelector("small").textContent = desc;
+    const btn = document.createElement("button"); btn.type = "button"; btn.className = own ? "ghost-btn mini-btn" : "primary mini-btn";
+    btn.textContent = own ? (wearing ? "착용 중" : "착용하기") : `🪙 ${price}`;
+    btn.onclick = () => {
+      if (!own) {
+        if (me.coin < price) { toast(`복전이 ${price - me.coin}닢 모자라요. 108배를 마치면 108닢을 받아요`); return; }
+        me.coin -= price; me.owned.push(ai); sfx.bell(); toast(`🛍️ ${name}을(를) 샀어요!`);
+      }
+      const p = lookParts(me.look); p.a = ai; me.look = lookStr(p); save();
+      if (player) { applyLook(player, me.look); showFront(); lastMoveTx = 0; lastTarget = { x: 1e9, z: 1e9 }; sendPresence(); trackMe(); }
+      updateHud(); renderShop(); renderLookPanel("lookBody");
+    };
+    card.appendChild(btn); box.appendChild(card);
+  });
+  // 진짜 굿즈
+  const real = $("goodsList"); real.innerHTML = "";
+  (CONFIG.goods || []).forEach(([emo, name, desc]) => { const d = document.createElement("div"); d.className = "shop-item"; d.innerHTML = `<span class="mi-emo">${emo}</span><span class="mi-txt"><b></b><small></small></span>`; d.querySelector("b").textContent = name; d.querySelector("small").textContent = desc; real.appendChild(d); });
+  const link = $("goodsLink");
+  if (CONFIG.shopUrl) { link.href = CONFIG.shopUrl; link.textContent = "🛒 진짜 굿즈 보러 가기"; link.classList.remove("disabled"); } else { link.removeAttribute("href"); link.textContent = "진짜 굿즈는 준비 중이에요"; link.classList.add("disabled"); }
+  const cp = $("couponBox");
+  if (me.bow >= 108 && CONFIG.couponCode) { cp.hidden = false; $("couponCode").textContent = CONFIG.couponCode; } else if (CONFIG.couponCode) { cp.hidden = false; $("couponCode").textContent = `오늘 108배를 마치면 열려요 (${Math.min(me.bow, 108)}/108)`; } else cp.hidden = true;
+}
+
 function renderMenu() {
   $("menuCount").textContent = `공양 도감 ${me.ate.length} / ${MENU.length}`;
   const box = $("menuList"); box.innerHTML = "";
@@ -896,6 +1027,7 @@ function renderLookPanel(boxId) {
     (k === "face" ? FACES : LOOKS[k]).forEach(([name, val], i) => {
       const b = document.createElement("button"); b.type = "button"; b.className = "look-opt" + (cur[key] === i ? " on" : "");
       if (k !== "acc" && k !== "face") { const sw = document.createElement("span"); sw.className = "sw"; sw.style.background = val; b.appendChild(sw); }
+      if (k === "acc" && !ownedAcc(i)) { b.classList.add("locked"); b.append(`🛍️ ${name}`); b.title = "기념품 가게에서 살 수 있어요"; b.onclick = () => toast(`${name}은(는) 기념품 가게에서 🪙${shopPrice(i)}에 살 수 있어요`); opts.appendChild(b); return; }
       const locked = k === "acc" && levelOf(me.pts) < ACC_LEVEL[i];
       b.append(locked ? `🔒 ${name}` : name);
       if (locked) { b.classList.add("locked"); b.title = `${TITLES[ACC_LEVEL[i]][0]}부터 쓸 수 있어요`; b.onclick = () => toast(`${name}은(는) ${TITLES[ACC_LEVEL[i]][0]} 등급부터 쓸 수 있어요`); opts.appendChild(b); return; }
@@ -1019,7 +1151,7 @@ function ensureOther(key, p) {
   const nick = String(p.nick || o?.nick || "스님").slice(0, 8);
   if (!o) { o = { monk: makeMonk(nick, false), nick }; o.monk.pos.set(clamp(+p.x || 0, -40, 40), 0, clamp(+p.z || 0, -26, 46)); o.monk.target.copy(o.monk.pos); others.set(key, o); }
   if (p.nick) o.nick = nick;
-  setLabel(o.monk, labelText(o.nick, Number.isFinite(+p.lv) ? +p.lv : (o.lv ?? 0)), false); if (Number.isFinite(+p.lv)) o.lv = +p.lv;
+  setLabel(o.monk, labelText(o.nick, Number.isFinite(+p.lv) ? +p.lv : (o.lv ?? 0)), false); if (Number.isFinite(+p.lv)) { o.lv = clamp(+p.lv | 0, 0, 5); applyAura(o.monk, o.lv); }
   if (looksOk(p.l)) applyLook(o.monk, p.l);
   if (p.s !== undefined) { o.monk.sitting = !!p.s; if (o.monk.sitting) o.monk.yaw = Math.PI; }
   return o;
@@ -1151,10 +1283,13 @@ $("nickInput").addEventListener("keydown", (e) => { if (e.key === "Enter") enter
 function enter() {
   const nick = $("nickInput").value.trim().slice(0, 8) || $("nickInput").placeholder.replace(/^예: /, "").slice(0, 8);
   me.nick = nick; save();
-  $("gate").hidden = true; ac(); preloadRecs(); noiseLoop("wind"); noiseLoop("water");
-  loadRec("nature").then((b) => { if (b) { natureRec = playRec("nature", .6 * Math.max(vol.wind, vol.water, .3), true); } });
+  $("gate").hidden = true; unlockAudio(); ac(); preloadRecs(); noiseLoop("wind"); noiseLoop("water");
+  // 입장 버튼을 누른 순간에 소리 파일을 깨워 둬야 아이폰에서도 나중에 재생돼요
+  if (soundUrl.nature) natureRec = loopAudio("nature", .6 * Math.max(vol.wind, vol.water, .3));
+  else findSound("nature").then((u) => { if (u) natureRec = loopAudio("nature", .6 * Math.max(vol.wind, vol.water, .3)); });
+  if (soundUrl.chant && !loopEls.chant) { const el = new Audio(soundUrl.chant); el.loop = true; el.setAttribute("playsinline", ""); el.muted = true; loopEls.chant = el; el.play().then(() => { el.pause(); el.muted = false; }).catch(() => { el.muted = false; }); }
   { const lp = lookParts(me.look); if (levelOf(me.pts) < ACC_LEVEL[lp.a]) { lp.a = 0; me.look = lookStr(lp); save(); } }
-  player = makeMonk(nick, true); applyLook(player, me.look); setLabel(player, labelText(nick, levelOf(me.pts)), true); updateHud(); player.pos.set(SPAWN.x + rand(-3, 3), 0, SPAWN.z + rand(-1, 1.5)); player.target.copy(player.pos); player.yaw = Math.PI;
+  player = makeMonk(nick, true); applyLook(player, me.look); setLabel(player, labelText(nick, levelOf(me.pts)), true); applyAura(player, levelOf(me.pts)); updateHud(); player.pos.set(SPAWN.x + rand(-3, 3), 0, SPAWN.z + rand(-1, 1.5)); player.target.copy(player.pos); player.yaw = Math.PI;
   zone = zoneOf(player.pos.x, player.pos.z); renderActions(); say(ZONES[zone].intro);
   connect();
 }
