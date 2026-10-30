@@ -18,7 +18,7 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
 };
 const today = new Date().toDateString();
-const me = Object.assign({ day: today, look: "0-0-0", nick: "", mok: 0, bow: 0, tap: 0, bead: 0, pray: 0, localWishes: [] }, store.get("sansa3d", {}));
+const me = Object.assign({ day: today, look: "0-0-0", pts: 0, daily: null, nick: "", mok: 0, bow: 0, tap: 0, bead: 0, pray: 0, localWishes: [] }, store.get("sansa3d", {}));
 if (me.day !== today) { me.day = today; me.mok = 0; me.bow = 0; }
 const save = () => store.set("sansa3d", me);
 const myKey = store.get("sansa3d-key", null) || (() => { const k = "m" + Math.random().toString(36).slice(2, 10); store.set("sansa3d-key", k); return k; })();
@@ -142,12 +142,12 @@ let chantTimer = null, chantRec = null, natureRec = null;
 function stopChant() {
   if (chantTimer) { clearInterval(chantTimer); chantTimer = null; }
   if (chantRec) { const { s: src, g } = chantRec; g.gain.setTargetAtTime(0, ctx.currentTime, .4); setTimeout(() => { try { src.stop(); } catch {} }, 1500); chantRec = null; }
-  $("chantBtn").textContent = "염불 듣기"; $("chantBtn").classList.remove("on");
+  $("chantBtn").textContent = "염불"; $("chantBtn").classList.remove("on");
 }
 $("chantBtn").addEventListener("click", async () => {
   ac();
   if (chantTimer || chantRec) { stopChant(); return; }
-  $("chantBtn").textContent = "염불 멈추기"; $("chantBtn").classList.add("on");
+  $("chantBtn").textContent = "염불 끄기"; $("chantBtn").classList.add("on");
   await loadRec("chant");
   if (!$("chantBtn").classList.contains("on")) return;
   if (rec.chant) { chantRec = playRec("chant", .9 * vol.fx, true); return; }
@@ -353,12 +353,70 @@ function textSprite(text, { size = 40, color = "#ece6d8", bg = "rgba(16,21,29,.7
   const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true }));
   s.scale.set(w / 110, h / 110, 1); s.renderOrder = 10; return s;
 }
+/* ---------- 수행 등급 · 공덕 · 매일 미션 ---------- */
+const TITLES = [["동자", 0], ["행자", 100], ["수행자", 300], ["스님", 800], ["큰스님", 2000], ["도인", 5000]];
+const levelOf = (p) => { let l = 0; TITLES.forEach(([, need], i) => { if (p >= need) l = i; }); return l; };
+const labelText = (nick, lv) => `${TITLES[clamp(lv | 0, 0, TITLES.length - 1)][0]} ${nick || "스님"}`;
+const PTS = { mok: 1, bow: 3, incense: 3, bell: 2, tap: 10, pray: 3, candle: 3, meal: 3, tea: 2, greet: 2, wish: 5, bead: 1, chat: 1, visit: 0 };
+const MISSION_POOL = [
+  ["mok", 30, "목탁 30번 치기"], ["bow", 30, "절 30번 올리기"], ["tap", 1, "탑돌이 한 바퀴"], ["greet", 3, "합장 인사 3번"],
+  ["incense", 1, "향 피우기"], ["tea", 1, "공양간에서 차 마시기"], ["wish", 1, "소원 연등 달기"], ["visit:walk", 1, "산책길 걷기"],
+  ["chat", 1, "누군가에게 말 걸기"], ["bead", 108, "염주 한 바퀴 돌리기"], ["pray", 1, "산신각에서 기도하기"], ["bell", 3, "범종 3번 치기"]
+];
+function todayMissions() {
+  let h = 0; for (const ch of today) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  const pool = MISSION_POOL.slice(), out = [];
+  while (out.length < 3) { h = (h * 1103515245 + 12345) >>> 0; out.push(pool.splice(h % pool.length, 1)[0]); }
+  return out;
+}
+if (!me.daily || me.daily.day !== today) me.daily = { day: today, c: {}, done: [] };
+const MISSIONS = todayMissions();
+let lastLevel = levelOf(me.pts);
+function gain(kind, n = 1) {
+  const key = kind; me.daily.c[key] = (me.daily.c[key] || 0) + n;
+  me.pts += (PTS[kind.split(":")[0]] ?? 0) * n;
+  MISSIONS.forEach(([k, goal, title]) => {
+    if (k === key && !me.daily.done.includes(k) && me.daily.c[k] >= goal) {
+      me.daily.done.push(k); me.pts += 30; toast(`✅ 오늘의 수행 완료: ${title} (+30 공덕)`); sfx.soft();
+      if (me.daily.done.length === MISSIONS.length) setTimeout(() => { toast("🌕 오늘의 수행을 모두 마쳤어요! (+50 공덕)"); me.pts += 50; save(); updateHud(); }, 1200);
+    }
+  });
+  const lv = levelOf(me.pts);
+  if (lv > lastLevel) {
+    lastLevel = lv; toast(`🎉 ${TITLES[lv][0]}(으)로 올라갔어요!`); sfx.bell();
+    if (player) { setLabel(player, labelText(me.nick, lv), true); bubble(player, `${TITLES[lv][0]} 승급!`); trackMe(); }
+    renderLookPanel("lookBody");
+  }
+  save(); updateHud();
+}
+function updateHud() {
+  const lv = levelOf(me.pts), next = TITLES[lv + 1];
+  $("hudTitle").textContent = TITLES[lv][0];
+  $("hudPts").textContent = me.pts.toLocaleString();
+  const base = TITLES[lv][1], pct = next ? Math.min(100, ((me.pts - base) / (next[1] - base)) * 100) : 100;
+  $("hudBar").style.width = pct + "%";
+  $("hudMission").textContent = `오늘의 수행 ${me.daily.done.length}/3`;
+}
+function renderMissionPanel() {
+  const lv = levelOf(me.pts), next = TITLES[lv + 1];
+  $("missionLevel").textContent = next ? `${TITLES[lv][0]} · 공덕 ${me.pts.toLocaleString()} · ${next[0]}까지 ${(next[1] - me.pts).toLocaleString()}` : `${TITLES[lv][0]} · 공덕 ${me.pts.toLocaleString()} · 최고 등급`;
+  const ul = $("missionList"); ul.innerHTML = "";
+  MISSIONS.forEach(([k, goal, title]) => {
+    const li = document.createElement("li"); const done = me.daily.done.includes(k); const c = Math.min(goal, me.daily.c[k] || 0);
+    li.className = done ? "done" : ""; li.innerHTML = `<span>${done ? "✅" : "⬜"} </span>`; li.append(title);
+    const sm = document.createElement("small"); sm.textContent = `${c}/${goal}`; li.appendChild(sm); ul.appendChild(li);
+  });
+  const tl = $("titleList"); tl.innerHTML = "";
+  TITLES.forEach(([name, need], i) => { const li = document.createElement("li"); li.className = i <= lv ? "got" : ""; li.textContent = `${name} · ${need.toLocaleString()}`; tl.appendChild(li); });
+}
+
 /* ---------- 법복 꾸미기 ---------- */
 const LOOKS = {
   robe: [["회색", "#c9ccd2"], ["먹색", "#4a4f5a"], ["연분홍", "#f0c9cf"], ["하늘", "#b9d3ea"], ["연두", "#cfe2b8"], ["미색", "#efe6d2"]],
   sash: [["황금", "#d9b44a"], ["주황", "#e0874a"], ["자주", "#8e3b5c"], ["갈색", "#7a5233"], ["청록", "#3f8f7d"]],
-  acc: [["없음", ""], ["염주", "beads"], ["삿갓", "hat"], ["연꽃", "lotus"], ["털모자", "beanie"]]
+  acc: [["없음", ""], ["염주", "beads"], ["털모자", "beanie"], ["삿갓", "hat"], ["연꽃", "lotus"]]
 };
+const ACC_LEVEL = [0, 0, 1, 2, 3]; // 소품을 쓰려면 필요한 등급 (털모자: 행자, 삿갓: 수행자, 연꽃: 스님)
 const looksOk = (l) => typeof l === "string" && /^[0-9]-[0-9]-[0-9]$/.test(l);
 function lookParts(l) { const [r, s, a] = (looksOk(l) ? l : "0-0-0").split("-").map(Number); return { r: LOOKS.robe[r] ? r : 0, s: LOOKS.sash[s] ? s : 0, a: LOOKS.acc[a] ? a : 0 }; }
 function applyLook(m, l) {
@@ -552,7 +610,7 @@ for (const [z, n] of Object.entries(placeNames)) {
   $("places").appendChild(b);
 }
 
-function act(name, extra = {}) { sendPresence({ act: name, ...extra }); }
+function act(name, extra = {}) { sendPresence({ act: name, ...extra }); if (PTS[name] !== undefined) gain(name); }
 function doMok() { sfx.mok(); playAnim(player, "mok"); me.mok++; save(); if (me.mok % 10 === 0) say(); bubble(player, `똑 · ${me.mok}`); act("mok"); }
 function doBow() {
   if (player.anim === "bow") return;
@@ -596,7 +654,9 @@ function renderLookPanel(boxId) {
     LOOKS[k].forEach(([name, val], i) => {
       const b = document.createElement("button"); b.type = "button"; b.className = "look-opt" + (cur[key] === i ? " on" : "");
       if (k !== "acc") { const sw = document.createElement("span"); sw.className = "sw"; sw.style.background = val; b.appendChild(sw); }
-      b.append(name);
+      const locked = k === "acc" && levelOf(me.pts) < ACC_LEVEL[i];
+      b.append(locked ? `🔒 ${name}` : name);
+      if (locked) { b.classList.add("locked"); b.title = `${TITLES[ACC_LEVEL[i]][0]}부터 쓸 수 있어요`; b.onclick = () => toast(`${name}은(는) ${TITLES[ACC_LEVEL[i]][0]} 등급부터 쓸 수 있어요`); opts.appendChild(b); return; }
       b.onclick = () => { const p = lookParts(me.look); p[key] = i; me.look = `${p.r}-${p.s}-${p.a}`; save(); if (player) { applyLook(player, me.look); lastMoveTx = 0; lastTarget = { x: 1e9, z: 1e9 }; sendPresence(); trackMe(); } renderLookPanel(boxId); };
       opts.appendChild(b);
     });
@@ -604,6 +664,31 @@ function renderLookPanel(boxId) {
   });
 }
 renderLookPanel("gateLook");
+$("hud").onclick = () => { renderMissionPanel(); openPanel("missionPanel"); };
+$("chatBtn").onclick = () => { $("chatPanel").hidden = !$("chatPanel").hidden; if (!$("chatPanel").hidden) setTimeout(() => $("chatInput").focus(), 50); };
+const QUICK = ["안녕하세요 🙏", "성불하세요", "좋은 밤 되세요 🌙", "같이 108배 해요", "고마워요", "힘내요"];
+QUICK.forEach((q) => { const b = document.createElement("button"); b.type = "button"; b.className = "look-opt"; b.textContent = q; b.onclick = () => sendChat(q); $("chatQuick").appendChild(b); });
+$("chatSend").onclick = () => { sendChat($("chatInput").value); $("chatInput").value = ""; };
+$("chatInput").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.isComposing) { e.preventDefault(); $("chatSend").click(); } });
+$("chatMute").onclick = () => { chatMuted = !chatMuted; $("chatMute").textContent = chatMuted ? "말풍선 켜기" : "말풍선 끄기"; };
+$("chatClose").onclick = () => { $("chatPanel").hidden = true; };
+
+/* ---------- 앱으로 설치 (홈 화면에 추가) ---------- */
+let installEvt = null;
+const isStandalone = () => window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); installEvt = e; });
+if ("serviceWorker" in navigator) window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+if (isStandalone()) $("installBtn").hidden = true;
+$("installBtn").onclick = async () => {
+  if (installEvt) { installEvt.prompt(); const r = await installEvt.userChoice.catch(() => null); installEvt = null; if (r && r.outcome === "accepted") $("installBtn").hidden = true; return; }
+  const ua = navigator.userAgent; const inApp = /Instagram|FBAN|FBAV|KAKAOTALK|NAVER/i.test(ua); const ios = /iPhone|iPad|iPod/i.test(ua);
+  $("installHow").innerHTML = "";
+  const steps = inApp ? ["오른쪽 위 ⋯ 버튼을 눌러요", ios ? "\"외부 브라우저로 열기\" 또는 Safari로 열기를 눌러요" : "\"다른 브라우저로 열기\"를 눌러요", "열린 화면에서 이 버튼을 한 번 더 눌러 주세요"]
+    : ios ? ["Safari 아래쪽 공유 버튼(□↑)을 눌러요", "\"홈 화면에 추가\"를 눌러요", "오른쪽 위 \"추가\"를 누르면 앱처럼 생겨요"]
+    : ["브라우저 오른쪽 위 ⋮ 메뉴를 눌러요", "\"홈 화면에 추가\" 또는 \"앱 설치\"를 눌러요"];
+  steps.forEach((t) => { const li = document.createElement("li"); li.textContent = t; $("installHow").appendChild(li); });
+  openPanel("installPanel");
+};
 $("lookBtn").onclick = () => { renderLookPanel("lookBody"); openPanel("lookPanel"); };
 $("soundBtn").onclick = () => { ac(); noiseLoop("wind"); noiseLoop("water"); openPanel("soundPanel"); };
 function renderStats() { $("stats").innerHTML = ""; [["오늘 목탁", me.mok], ["오늘 108배", me.bow], ["탑돌이", me.tap]].forEach(([k, v]) => { const d = document.createElement("div"); d.innerHTML = `<small>${k}</small><b>${v}</b>`; $("stats").appendChild(d); }); }
@@ -620,7 +705,7 @@ function drawBeads() {
   const round = Math.floor((me.bead - 1) / 108) + 1; $("beadRound").textContent = me.bead === 0 ? "첫 번째 바퀴" : `${["첫", "두", "세", "네", "다섯"][round - 1] || round} 번째 바퀴`;
 }
 function openBeads() { $("beadPanel").hidden = false; drawBeads(); }
-function nextBead() { me.bead++; beadOffset++; save(); sfx.bead(); drawBeads(); if (navigator.vibrate) navigator.vibrate(8); if (me.bead % 108 === 0) { sfx.soft(); say("염주 한 바퀴, 108번의 마음을 모았어요."); } }
+function nextBead() { me.bead++; beadOffset++; gain("bead"); sfx.bead(); drawBeads(); if (navigator.vibrate) navigator.vibrate(8); if (me.bead % 108 === 0) { sfx.soft(); say("염주 한 바퀴, 108번의 마음을 모았어요."); } }
 $("beadRing").addEventListener("click", nextBead);
 $("beadRing").addEventListener("keydown", (e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); nextBead(); } });
 
@@ -632,7 +717,7 @@ function renderWishList() {
   wishes.slice(0, 50).forEach((w) => { const li = document.createElement("li"); li.textContent = w.text; if (w.nick) { const s = document.createElement("small"); s.textContent = w.nick; li.appendChild(s); } ul.appendChild(li); });
   renderLanterns(wishes);
 }
-const BANNED = ["시발", "씨발", "병신", "좆", "개새"];
+const BANNED = ["시발", "씨발", "ㅅㅂ", "병신", "ㅂㅅ", "좆", "개새", "섹스", "fuck", "닥쳐", "꺼져", "자살", "죽어"];
 $("wishBtn").addEventListener("click", async () => {
   const text = $("wishInput").value.trim().slice(0, 40); if (!text) return;
   if (BANNED.some((b) => text.includes(b))) { $("wishNote").textContent = "고운 말로 적어 주세요."; return; }
@@ -641,8 +726,8 @@ $("wishBtn").addEventListener("click", async () => {
   if (sb) {
     const { error } = await sb.from("wishes").insert(w);
     if (error) { $("wishNote").textContent = "연등을 걸지 못했어요. 잠시 뒤 다시 시도해 주세요."; return; }
-    $("wishNote").textContent = "연등을 달았어요. 모두에게 보여요.";
-  } else { me.localWishes.unshift(w); me.localWishes = me.localWishes.slice(0, 40); save(); wishes = me.localWishes; renderWishList(); }
+    $("wishNote").textContent = "연등을 달았어요. 모두에게 보여요."; gain("wish");
+  } else { gain("wish"); me.localWishes.unshift(w); me.localWishes = me.localWishes.slice(0, 40); save(); wishes = me.localWishes; renderWishList(); }
 });
 $("wishInput").addEventListener("keydown", (e) => { if (e.key === "Enter") $("wishBtn").click(); });
 
@@ -658,7 +743,7 @@ const online = () => !!sb;
 /* 신호 아끼기: 접속 명단(presence)은 들어올 때와 30초마다 한 번만,
    걷기는 목적지가 바뀔 때만, 동작은 그때그때 짧은 메시지(broadcast)로 보내요. */
 let lastMoveTx = 0, lastTarget = { x: 1e9, z: 1e9 }, presence = {};
-const posPayload = () => ({ k: myKey, l: me.look, x: +player.pos.x.toFixed(2), z: +player.pos.z.toFixed(2), tx: +player.target.x.toFixed(2), tz: +player.target.z.toFixed(2) });
+const posPayload = () => ({ k: myKey, l: me.look, lv: levelOf(me.pts), x: +player.pos.x.toFixed(2), z: +player.pos.z.toFixed(2), tx: +player.target.x.toFixed(2), tz: +player.target.z.toFixed(2) });
 function trackMe() { if (roomCh && player) roomCh.track({ nick: me.nick.slice(0, 8), ...posPayload(), at: Date.now() }).catch(() => {}); }
 setInterval(trackMe, 30000);
 function sendPresence(patch = {}) {
@@ -673,7 +758,8 @@ function ensureOther(key, p) {
   let o = others.get(key);
   const nick = String(p.nick || o?.nick || "스님").slice(0, 8);
   if (!o) { o = { monk: makeMonk(nick, false), nick }; o.monk.pos.set(clamp(+p.x || 0, -40, 40), 0, clamp(+p.z || 0, -26, 46)); o.monk.target.copy(o.monk.pos); others.set(key, o); }
-  if (p.nick) { setLabel(o.monk, nick, false); o.nick = nick; }
+  if (p.nick) o.nick = nick;
+  setLabel(o.monk, labelText(o.nick, Number.isFinite(+p.lv) ? +p.lv : (o.lv ?? 0)), false); if (Number.isFinite(+p.lv)) o.lv = +p.lv;
   if (looksOk(p.l)) applyLook(o.monk, p.l);
   return o;
 }
@@ -691,6 +777,32 @@ function onRoomSync() {
   for (const [key, o] of others) if (!keys.has(key)) { scene.remove(o.monk.root); others.delete(key); }
   $("peopleCount").textContent = others.size + 1;
 }
+/* ---------- 대화 ---------- */
+let chatMuted = false, lastChatAt = 0; const chatLog = [];
+const cleanChat = (t) => String(t || "").replace(/[\u0000-\u001f]/g, "").slice(0, 40).trim();
+function addChat(nick, text, mine) {
+  chatLog.push({ nick, text, mine }); if (chatLog.length > 30) chatLog.shift();
+  const ul = $("chatLog"); if (!ul) return; ul.innerHTML = "";
+  chatLog.forEach((c) => { const li = document.createElement("li"); li.className = c.mine ? "mine" : ""; const b = document.createElement("b"); b.textContent = c.nick; li.appendChild(b); li.append(" " + c.text); ul.appendChild(li); });
+  ul.scrollTop = ul.scrollHeight;
+}
+function sendChat(text) {
+  text = cleanChat(text); if (!text || !player) return;
+  if (BANNED.some((b) => text.includes(b))) { toast("고운 말로 이야기해 주세요"); return; }
+  const now = Date.now(); if (now - lastChatAt < 2000) { toast("조금 천천히 이야기해요"); return; } lastChatAt = now;
+  bubble(player, text); addChat(me.nick, text, true); gain("chat");
+  if (roomCh) roomCh.send({ type: "broadcast", event: "chat", payload: { k: myKey, nick: me.nick.slice(0, 8), text } }).catch(() => {});
+}
+function onChat({ payload: p }) {
+  if (!p || typeof p.k !== "string" || p.k === myKey) return;
+  const text = cleanChat(p.text); if (!text || BANNED.some((b) => text.includes(b))) return;
+  const o = others.get(p.k); const nick = String(p.nick || o?.nick || "스님").slice(0, 8);
+  addChat(nick, text, false);
+  if (chatMuted) return;
+  if (o) bubble(o.monk, text);
+  if ($("chatPanel").hidden) toast(`💬 ${nick}: ${text}`);
+}
+
 function onAct({ payload: p }) {
   if (!p || typeof p.k !== "string" || p.k === myKey || !ACT[p.act]) return;
   const key = p.k, o = ensureOther(key, p); applyMove(o, p); const nick = o.nick;
@@ -713,7 +825,8 @@ async function joinRoom(n) {
   roomCh.on("presence", { event: "sync" }, onRoomSync)
     .on("presence", { event: "join" }, ({ key, newPresences }) => { if (Date.now() - roomJoinedAt > 3000 && key !== myKey && !others.has(key)) { const nm = String(newPresences?.[0]?.nick || "스님").slice(0, 8); toast(`${nm}님이 들어왔어요`); } })
     .on("broadcast", { event: "move" }, ({ payload: p }) => { if (!p || typeof p.k !== "string" || p.k === myKey) return; applyMove(ensureOther(p.k, p), p); })
-    .on("broadcast", { event: "act" }, onAct);
+    .on("broadcast", { event: "act" }, onAct)
+    .on("broadcast", { event: "chat" }, onChat);
   roomCh.subscribe((s) => { if (s === "SUBSCRIBED") { trackMe(); lobby && lobby.track({ room: n }).catch(() => {}); } });
 }
 
@@ -775,7 +888,8 @@ function enter() {
   me.nick = nick; save();
   $("gate").hidden = true; ac(); preloadRecs(); noiseLoop("wind"); noiseLoop("water");
   loadRec("nature").then((b) => { if (b) { natureRec = playRec("nature", .6 * Math.max(vol.wind, vol.water, .3), true); } });
-  player = makeMonk(nick, true); applyLook(player, me.look); player.pos.set(SPAWN.x + rand(-3, 3), 0, SPAWN.z + rand(-1, 1.5)); player.target.copy(player.pos); player.yaw = Math.PI;
+  { const lp = lookParts(me.look); if (levelOf(me.pts) < ACC_LEVEL[lp.a]) { me.look = `${lp.r}-${lp.s}-0`; save(); } }
+  player = makeMonk(nick, true); applyLook(player, me.look); setLabel(player, labelText(nick, levelOf(me.pts)), true); updateHud(); player.pos.set(SPAWN.x + rand(-3, 3), 0, SPAWN.z + rand(-1, 1.5)); player.target.copy(player.pos); player.yaw = Math.PI;
   zone = zoneOf(player.pos.x, player.pos.z); renderActions(); say(ZONES[zone].intro);
   connect();
 }
@@ -806,7 +920,7 @@ function tick() {
     if (moved && now - lastMoveSent > 250) { lastMoveSent = now; sendPresence(); }
     animateMonk(player, dt, now);
     const z = zoneOf(player.pos.x, player.pos.z);
-    if (z !== zone) { zone = z; renderActions(); say(ZONES[zone].intro); }
+    if (z !== zone) { zone = z; renderActions(); say(ZONES[zone].intro); gain(`visit:${z}`); }
     // 대웅전 안에서는 동자승 뒤쪽 위에서 부처님을 함께 바라보는 구도로 바꿔요
     if (zone === "hall") {
       const want = new THREE.Vector3(player.pos.x * .5, 2.3, player.pos.z - 4.2);

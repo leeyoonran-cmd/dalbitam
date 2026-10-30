@@ -1,0 +1,30 @@
+{
+  "name": "달빛암 · 온라인 절",
+  "short_name": "달빛암",
+  "description": "목탁 한 번, 숨 한 번. 잠시 쉬어 가는 온라인 암자",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#121a28",
+  "theme_color": "#121a28",
+  "lang": "ko",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

@@ -30,7 +30,7 @@ input{font:inherit;color:var(--ink);background:rgba(0,0,0,.3);border:1px solid v
 .chip.plain{pointer-events:none;font-variant-numeric:tabular-nums}
 .chip.on{background:var(--dancheong);border-color:var(--dancheong)}
 .place-tag{position:fixed;left:50%;top:calc(var(--st) + 58px);transform:translateX(-50%);z-index:9;font-family:var(--display);font-size:.95rem;background:var(--glass);border:1px solid var(--glass-line);border-radius:999px;padding:4px 14px;pointer-events:none}
-.toasts{position:fixed;left:var(--sl);right:var(--sr);top:calc(var(--st) + 96px);z-index:11;display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none}
+.toasts{position:fixed;left:var(--sl);right:var(--sr);top:calc(var(--st) + 122px);z-index:11;display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none}
 .toast{pointer-events:auto;background:var(--glass);backdrop-filter:blur(10px);border:1px solid var(--glass-line);border-radius:999px;padding:6px 8px 6px 14px;font-size:.85rem;display:flex;align-items:center;gap:8px;animation:tfade 5s forwards;max-width:100%}
 .toast span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .toast button{background:var(--lantern);color:#2a1a0c;border-radius:999px;padding:4px 10px;font-size:.78rem;font-weight:700}
@@ -87,3 +87,30 @@ input[type=range]{padding:0;accent-color:var(--lantern);background:none;border:0
 .look-opt.on{border-color:var(--lantern);background:rgba(242,166,90,.18)}
 .look-opt .sw{width:14px;height:14px;border-radius:50%;border:1px solid rgba(0,0,0,.25)}
 .gate-card .look-box{margin:2px 0 6px}
+
+.ghost-btn{background:transparent;border:1px solid var(--glass-line);border-radius:14px;padding:11px 16px;color:var(--ink)}
+.hud{position:fixed;left:var(--sl);top:calc(var(--st) + 56px);z-index:10;display:flex;flex-direction:column;align-items:flex-start;gap:4px;background:var(--glass);border:1px solid var(--glass-line);backdrop-filter:blur(10px);border-radius:14px;padding:7px 11px;font-size:.78rem;min-width:118px;text-align:left}
+.hud-top b{color:var(--lantern);font-family:var(--display)}
+.hud-top{font-variant-numeric:tabular-nums}
+.hud-bar{display:block;width:100%;height:4px;border-radius:4px;background:rgba(255,255,255,.12);overflow:hidden}
+.hud-bar i{display:block;height:100%;width:0;background:var(--lantern);transition:width .4s}
+.hud-mission{color:var(--mute);font-size:.72rem}
+.chat-btn{position:fixed;right:var(--sr);bottom:calc(var(--sb) + 150px);z-index:11;width:48px;height:48px;border-radius:50%;background:var(--glass);border:1px solid var(--glass-line);backdrop-filter:blur(10px);font-size:1.3rem}
+.chat-panel{position:fixed;left:var(--sl);right:var(--sr);bottom:calc(var(--sb) + 150px);z-index:20;max-width:440px;margin-left:auto;background:rgba(28,34,45,.94);backdrop-filter:blur(14px);border:1px solid var(--glass-line);border-radius:18px;padding:12px;display:flex;flex-direction:column;gap:8px}
+.chat-head{display:flex;justify-content:space-between;align-items:center}
+.chat-head .mini{background:rgba(255,255,255,.08);border-radius:999px;padding:4px 10px;font-size:.76rem;margin-left:6px}
+.chat-log{list-style:none;margin:0;padding:0;max-height:22vh;overflow-y:auto;display:flex;flex-direction:column;gap:4px;font-size:.86rem}
+.chat-log li{overflow-wrap:anywhere}
+.chat-log b{color:var(--mute);font-weight:400;font-size:.78rem}
+.chat-log li.mine b{color:var(--lantern)}
+.mission-list,.title-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.mission-list li{background:rgba(0,0,0,.25);border-radius:10px;padding:9px 12px;display:flex;align-items:center;gap:4px}
+.mission-list li small{margin-left:auto;color:var(--mute);font-variant-numeric:tabular-nums}
+.mission-list li.done{opacity:.7}
+.title-list{flex-direction:row;flex-wrap:wrap}
+.title-list li{border:1px solid var(--glass-line);border-radius:999px;padding:4px 10px;font-size:.8rem;color:var(--mute)}
+.title-list li.got{color:var(--ink);border-color:var(--lantern)}
+.sub-h{font-family:var(--display);font-size:1rem;margin:4px 0 0}
+.install-how{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:8px;line-height:1.5}
+.look-opt.locked{opacity:.5}
+@media (max-width:430px){.top .chip{padding:7px 10px;font-size:.82rem}.chip-group{gap:4px}}

@@ -9,6 +9,14 @@
 <meta property="og:description" content="지금 접속한 사람들과 함께 수행하는 온라인 절">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Gowun+Dodum&display=swap">
 <link rel="stylesheet" href="style.css">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#121a28">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="달빛암">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <script type="importmap">
 { "imports": {
   "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
@@ -29,6 +37,7 @@
     <input id="nickInput" maxlength="8" placeholder="예: 고요" autocomplete="off">
     <div id="gateLook" class="look-box"></div>
     <button id="enterBtn" type="button" class="primary">입장하기</button>
+    <button id="installBtn" type="button" class="ghost-btn">📲 앱처럼 홈 화면에 추가하기</button>
     <p class="hint">눌러 이동 · 끌어서 둘러보기 · 두 손가락으로 확대</p>
   </div>
 </div>
@@ -38,13 +47,26 @@
   <button id="roomBtn" class="chip" type="button"><span id="roomLabel">월하당 1</span> ▾</button>
   <div class="chip-group">
     <span class="chip plain" id="peopleChip">👤 <b id="peopleCount">1</b></span>
-    <button id="chantBtn" class="chip" type="button">염불 듣기</button>
+    <button id="chantBtn" class="chip" type="button">염불</button>
     <button id="lookBtn" class="chip" type="button" aria-label="법복 꾸미기">👘</button>
     <button id="soundBtn" class="chip" type="button" aria-label="자연 소리 설정">🎐</button>
   </div>
 </div>
 
 <div id="placeTag" class="place-tag">마당</div>
+<button id="hud" class="hud" type="button" aria-label="수행 등급과 오늘의 수행">
+  <span class="hud-top"><b id="hudTitle">동자</b> · 공덕 <span id="hudPts">0</span></span>
+  <span class="hud-bar"><i id="hudBar"></i></span>
+  <span class="hud-mission" id="hudMission">오늘의 수행 0/3</span>
+</button>
+<button id="chatBtn" class="chat-btn" type="button" aria-label="대화하기">💬</button>
+<div id="chatPanel" class="chat-panel" hidden>
+  <div class="chat-head"><b>월하당 대화</b><span><button id="chatMute" type="button" class="mini">말풍선 끄기</button><button id="chatClose" type="button" class="mini" aria-label="닫기">✕</button></span></div>
+  <ul id="chatLog" class="chat-log"></ul>
+  <div id="chatQuick" class="look-opts"></div>
+  <div class="row"><input id="chatInput" maxlength="40" placeholder="같은 법당 사람들에게 한마디 (40자)" autocomplete="off"><button id="chatSend" type="button" class="primary">보내기</button></div>
+  <p class="muted">대화는 저장되지 않고, 지금 같은 법당에 있는 사람에게만 보여요.</p>
+</div>
 <div id="toasts" class="toasts" aria-live="polite"></div>
 
 <!-- 하단 행동 버튼 -->
@@ -60,6 +82,28 @@
     <div class="panel-head"><h2>법당 고르기</h2><button class="close" data-close type="button" aria-label="닫기">✕</button></div>
     <p class="muted">어느 법당에서도 같은 절을 이용할 수 있어요. 숫자는 실제 접속자 수예요.</p>
     <div id="roomList" class="room-list"></div>
+  </div>
+</div>
+
+<!-- 오늘의 수행 -->
+<div id="missionPanel" class="panel" hidden>
+  <div class="panel-card">
+    <div class="panel-head"><h2>오늘의 수행</h2><button class="close" data-close type="button" aria-label="닫기">✕</button></div>
+    <p class="muted" id="missionLevel"></p>
+    <ul id="missionList" class="mission-list"></ul>
+    <p class="muted">미션 하나에 공덕 +30, 세 개 모두 마치면 +50. 미션은 매일 자정에 바뀌어요.</p>
+    <h3 class="sub-h">수행 등급</h3>
+    <ul id="titleList" class="title-list"></ul>
+    <p class="muted">등급이 오르면 털모자 · 삿갓 · 연꽃 소품이 열리고, 이름 앞에 등급이 보여요.</p>
+  </div>
+</div>
+
+<!-- 앱 설치 안내 -->
+<div id="installPanel" class="panel" hidden>
+  <div class="panel-card">
+    <div class="panel-head"><h2>홈 화면에 추가하기</h2><button class="close" data-close type="button" aria-label="닫기">✕</button></div>
+    <ol id="installHow" class="install-how"></ol>
+    <p class="muted">추가하면 휴대폰 홈 화면에 달빛암 아이콘이 생기고, 누르면 앱처럼 전체 화면으로 열려요.</p>
   </div>
 </div>
 
