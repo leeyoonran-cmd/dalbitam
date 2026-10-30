@@ -171,7 +171,7 @@ scene.background = new THREE.Color("#18202c");
 scene.fog = new THREE.Fog("#18202c", 28, 70);
 const camera = new THREE.PerspectiveCamera(55, 1, .1, 200);
 
-scene.add(new THREE.HemisphereLight("#8fa6c8", "#2a2018", .9));
+const hemi = new THREE.HemisphereLight("#8fa6c8", "#2a2018", .9); scene.add(hemi);
 const moon = new THREE.DirectionalLight("#dfe6ff", .9); moon.position.set(-20, 30, 10); scene.add(moon);
 
 const M = (color, extra = {}) => new THREE.MeshStandardMaterial(Object.assign({ color, roughness: .85 }, extra));
@@ -193,13 +193,14 @@ for (let i = 0; i < 14; i++) {
   const m = new THREE.Mesh(new THREE.ConeGeometry(rand(14, 24), rand(14, 26), 6), M(i % 2 ? "#1d2633" : "#222d3a"));
   m.position.set(Math.cos(a) * r, 5, Math.sin(a) * r); scene.add(m);
 }
+let starField = null;
 const moonBall = new THREE.Mesh(new THREE.SphereGeometry(3, 24, 16), new THREE.MeshBasicMaterial({ color: "#efe6cc" }));
 moonBall.position.set(-40, 38, -60); scene.add(moonBall);
 // 별
 { const g = new THREE.BufferGeometry(), p = [];
   for (let i = 0; i < 500; i++) { const a = rand(0, Math.PI * 2), e = rand(.15, 1.3), r = 90; p.push(Math.cos(a) * Math.cos(e) * r, Math.sin(e) * r, Math.sin(a) * Math.cos(e) * r); }
   g.setAttribute("position", new THREE.Float32BufferAttribute(p, 3));
-  scene.add(new THREE.Points(g, new THREE.PointsMaterial({ color: "#fff4d6", size: .35, fog: false }))); }
+  starField = new THREE.Points(g, new THREE.PointsMaterial({ color: "#fff4d6", size: .35, fog: false, transparent: true })); scene.add(starField); }
 
 /* 길 */
 for (let z = -11; z < 40; z += 1.3) box(2.2, .06, 1, mat.darkStone, Math.sin(z * .15) * (z > 10 ? 1.5 : 0), .03, z);
@@ -259,8 +260,25 @@ const smoke = [];
 for (let i = 0; i < 10; i++) { const s = new THREE.Mesh(new THREE.SphereGeometry(.12, 8, 6), new THREE.MeshBasicMaterial({ color: "#dddddd", transparent: true, opacity: 0 })); s.userData.t = i / 10; incense.add(s); smoke.push(s); }
 let incenseUntil = 0;
 // 방석
-const hallSeats = [];
-for (let r = 0; r < 3; r++) for (let c = -3; c <= 3; c++) { const x = c * 1.9, z = -19.2 + r * 1.8; box(1.1, .12, 1.1, mat.cushion, x, .6, z); hallSeats.push({ x, z }); }
+const hallSeats = [], cushions = [];
+for (let r = 0; r < 4; r++) for (let c = -3; c <= 3; c++) {
+  const x = c * 1.9, z = -19.6 + r * 1.6;
+  const cu = box(1.15, .14, 1.15, mat.cushion, x, .62, z); cu.userData.seat = { x, z }; cushions.push(cu); hallSeats.push({ x, z });
+}
+/* 대웅전 뒷벽 탱화: 직접 그린 구름·연꽃 무늬 */
+{
+  const cv = document.createElement("canvas"); cv.width = 1024; cv.height = 280; const x = cv.getContext("2d");
+  const grd = x.createLinearGradient(0, 0, 0, 280); grd.addColorStop(0, "#3a1410"); grd.addColorStop(1, "#5a2018"); x.fillStyle = grd; x.fillRect(0, 0, 1024, 280);
+  x.strokeStyle = "rgba(217,180,74,.55)"; x.lineWidth = 3;
+  for (let i = 0; i < 26; i++) { const cx = 20 + (i * 997) % 1000, cy = 40 + (i * 613) % 200, r = 14 + (i % 4) * 6; for (let k = 0; k < 3; k++) { x.beginPath(); x.arc(cx + k * r * .9, cy, r * (1 - k * .2), Math.PI, 0); x.stroke(); } }
+  x.fillStyle = "rgba(242,160,184,.55)";
+  [[140, 210], [880, 210], [300, 70], [720, 70]].forEach(([cx, cy]) => { for (let k = 0; k < 7; k++) { x.save(); x.translate(cx, cy); x.rotate(-Math.PI / 2 + (k - 3) * .32); x.beginPath(); x.ellipse(0, -22, 9, 24, 0, 0, Math.PI * 2); x.fill(); x.restore(); } });
+  x.strokeStyle = "rgba(242,200,120,.8)"; x.lineWidth = 6; x.beginPath(); x.arc(512, 150, 118, 0, Math.PI * 2); x.stroke();
+  x.strokeStyle = "rgba(242,200,120,.45)"; x.lineWidth = 3; for (let k = 0; k < 24; k++) { const a = k / 24 * Math.PI * 2; x.beginPath(); x.moveTo(512 + Math.cos(a) * 125, 150 + Math.sin(a) * 125); x.lineTo(512 + Math.cos(a) * 150, 150 + Math.sin(a) * 150); x.stroke(); }
+  const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
+  const mural = new THREE.Mesh(new THREE.PlaneGeometry(15.5, 4.1), new THREE.MeshStandardMaterial({ map: tex, roughness: .9 }));
+  mural.position.set(0, 2.62, -23.77); scene.add(mural);
+}
 
 /* 석탑 (마당 가운데) */
 const PAGODA = { x: 0, z: 0 };
@@ -450,7 +468,7 @@ function applyLook(m, l) {
 
 function makeMonk(nick, isMe) {
   const root = new THREE.Group(); const body = new THREE.Group(); root.add(body);
-  const robeM = mat.robe.clone(), sashM = mat.sash.clone();
+  const robeM = mat.robe.clone(), sashM = mat.sash.clone(); const legs = [];
   // 몸통: 동글동글한 승복
   const torso = new THREE.Mesh(new THREE.SphereGeometry(.42, 24, 18), robeM); torso.scale.set(1, 1.08, .92); torso.position.y = .62; body.add(torso);
   const hem = new THREE.Mesh(new THREE.CylinderGeometry(.38, .44, .22, 20), robeM); hem.position.y = .34; body.add(hem);
@@ -459,8 +477,8 @@ function makeMonk(nick, isMe) {
   sash.position.y = .64; sash.scale.set(1, 1.08, .94); sash.rotation.set(0, Math.PI / 2, .8); body.add(sash);
   // 다리와 신발
   [-.15, .15].forEach((x) => {
-    const leg = new THREE.Mesh(new THREE.CapsuleGeometry(.1, .14, 4, 8), robeM); leg.position.set(x, .2, 0); body.add(leg);
-    const shoe = new THREE.Mesh(new THREE.SphereGeometry(.11, 10, 8), M("#efe8d8")); shoe.scale.set(1, .6, 1.4); shoe.position.set(x, .05, .05); body.add(shoe);
+    const leg = new THREE.Mesh(new THREE.CapsuleGeometry(.1, .14, 4, 8), robeM); leg.position.set(x, .2, 0); body.add(leg); legs.push(leg);
+    const shoe = new THREE.Mesh(new THREE.SphereGeometry(.11, 10, 8), M("#efe8d8")); shoe.scale.set(1, .6, 1.4); shoe.position.set(x, .05, .05); shoe.userData.z0 = .05; body.add(shoe); legs.push(shoe);
   });
   // 팔 (어깨를 축으로 움직여요)
   const arm = (side) => {
@@ -481,7 +499,7 @@ function makeMonk(nick, isMe) {
   const mouth = new THREE.Mesh(new THREE.TorusGeometry(.05, .013, 6, 12, Math.PI), mat.eye); mouth.rotation.z = Math.PI; mouth.position.set(0, -.14, .47); head.add(mouth);
   const label = textSprite(nick || "스님", { size: 30, color: isMe ? "#f2a65a" : "#ece6d8", pad: 10 }); label.scale.multiplyScalar(.6); label.position.y = 2.25; root.add(label);
   scene.add(root);
-  return { root, body, head, armL, armR, label, nick, robeMat: robeM, sashMat: sashM, acc: null, look: null, pos: new THREE.Vector3(), target: new THREE.Vector3(), yaw: 0, anim: null, animT: 0, moving: false, bubble: null, bubbleUntil: 0 };
+  return { root, body, head, armL, armR, legs, sitting: false, label, nick, robeMat: robeM, sashMat: sashM, acc: null, look: null, pos: new THREE.Vector3(), target: new THREE.Vector3(), yaw: 0, anim: null, animT: 0, moving: false, bubble: null, bubbleUntil: 0 };
 }
 function setLabel(m, nick, isMe) { if (m.nick === nick) return; m.root.remove(m.label); m.label.material.map.dispose(); m.label = textSprite(nick || "스님", { size: 30, color: isMe ? "#f2a65a" : "#ece6d8", pad: 10 }); m.label.scale.multiplyScalar(.6); m.label.position.y = 2.25; m.root.add(m.label); m.nick = nick; }
 function bubble(m, text) { if (m.bubble) { m.root.remove(m.bubble); m.bubble.material.map.dispose(); } m.bubble = textSprite(text, { size: 30, color: "#2a1a0c", bg: "rgba(243,238,227,.95)", pad: 10 }); m.bubble.scale.multiplyScalar(.65); m.bubble.position.y = 2.65; m.root.add(m.bubble); m.bubbleUntil = performance.now() + 2200; }
@@ -490,7 +508,7 @@ function animateMonk(m, dt, now) {
   // 걷기
   const step = m.moving ? Math.abs(Math.sin(now * .012)) * .06 : 0;
   m.body.position.y = step;
-  const fy = floorY(m.pos.x, m.pos.z); m.y = (m.y ?? fy) + (fy - (m.y ?? fy)) * Math.min(1, dt * 12);
+  const fy = floorY(m.pos.x, m.pos.z) + (m.sitting ? .02 : 0); m.y = (m.y ?? fy) + (fy - (m.y ?? fy)) * Math.min(1, dt * 12);
   m.root.position.set(m.pos.x, m.y, m.pos.z);
   let curYaw = m.root.rotation.y, d = m.yaw - curYaw; d = Math.atan2(Math.sin(d), Math.cos(d)); m.root.rotation.y = curYaw + d * Math.min(1, dt * 10);
   // 동작
@@ -502,6 +520,8 @@ function animateMonk(m, dt, now) {
     else if (m.anim === "mok") { const p = m.animT / .35; handsUp = .6; m.head.rotation.x = Math.sin(Math.min(p, 1) * Math.PI) * .15; if (p >= 1) { m.anim = null; m.head.rotation.x = 0; } }
     else if (m.anim === "pray") { const p = m.animT / 3; handsUp = 1; bowX = .2; if (p >= 1) m.anim = null; }
   }
+  if (m.sitting) { handsUp = Math.max(handsUp, 1); m.body.position.y -= .2; }
+  m.legs?.forEach((l) => { l.scale.y = m.sitting ? .25 : 1; l.position.z = m.sitting ? .2 : (l.userData.z0 || 0); });
   m.body.rotation.x = bowX;
   m.body.position.z = Math.sin(bowX) * .25;
   const sw = m.moving && !m.anim ? Math.sin(now * .012) * .5 : 0;
@@ -567,7 +587,7 @@ window.addEventListener("keydown", (e) => {
   let v = null;
   if (k === "w" || k === "arrowup") v = fw; if (k === "s" || k === "arrowdown") v = fw.clone().negate();
   if (k === "a" || k === "arrowleft") v = rt.clone().negate(); if (k === "d" || k === "arrowright") v = rt;
-  if (v) { player.target.copy(player.pos).addScaledVector(v, f); autoPath = null; }
+  if (v) { standUp(); pendingSeat = null; player.target.copy(player.pos).addScaledVector(v, f); autoPath = null; }
 });
 function tap(cx, cy) {
   const r = canvas.getBoundingClientRect(); ndc.set(((cx - r.left) / r.width) * 2 - 1, -((cy - r.top) / r.height) * 2 + 1);
@@ -576,8 +596,10 @@ function tap(cx, cy) {
   if (hitL) { const w = hitL.object.userData.wish; toast(`🏮 ${w.text}${w.nick ? " · " + w.nick : ""}`); return; }
   const hitM = raycaster.intersectObjects([...others.values()].map((o) => o.monk.root), true)[0];
   if (hitM) { for (const [key, o] of others) { let n = hitM.object; while (n && n !== o.monk.root) n = n.parent; if (n) { greet(key); return; } } }
+  const hitC = raycaster.intersectObjects(cushions, false)[0];
+  if (hitC) { const st = hitC.object.userData.seat; standUp(); player.target.set(st.x, 0, st.z); pendingSeat = st; autoPath = null; say("방석으로 가서 앉아요."); return; }
   const hit = raycaster.intersectObject(ground)[0];
-  if (hit) { player.target.set(hit.point.x, 0, hit.point.z); autoPath = null; }
+  if (hit) { standUp(); player.target.set(hit.point.x, 0, hit.point.z); autoPath = null; pendingSeat = null; }
 }
 
 /* =========================================================
@@ -590,7 +612,7 @@ let mealIdx = 0;
 const A = (icon, label, fn, hot) => ({ icon, label, fn, hot });
 function actionsFor(z) {
   const greetA = A("🙏", "합장", () => greet(null)), beadA = A("📿", "염주", openBeads), wishA = A("🏮", "소원 연등", () => openPanel("wishPanel"));
-  if (z === "hall") return [A("🪵", "목탁", doMok, true), A("🙇", "절하기", doBow, true), A("🕯️", "향 피우기", doIncense), greetA, beadA];
+  if (z === "hall") return [A(player?.sitting ? "🧍" : "🧘", player?.sitting ? "일어나기" : "방석 앉기", doSit, !player?.sitting), A(autoBow ? "⏸️" : "🙇", autoBow ? "멈추기" : "계속 절하기", toggleAutoBow, true), A("🪵", "목탁", doMok), A("🕯️", "향", doIncense), greetA, beadA];
   if (z === "pagoda") return [A("🗼", "탑돌이", doTapdori, true), wishA, greetA, beadA];
   if (z === "shrine") return [A("⛰️", "산신 기도", () => doPray("산신"), true), A("✨", "칠성 기도", () => doPray("칠성"), true), A("🕯️", "초 켜기", doCandle), greetA];
   if (z === "kitchen") return [A("🍚", "공양하기", doMeal, true), A("🍵", "차 마시기", doTea, true), greetA, beadA];
@@ -606,7 +628,7 @@ function renderActions() {
 const placeNames = { hall: "대웅전", pagoda: "석탑", shrine: "산신각", kitchen: "공양간", walk: "산책길" };
 for (const [z, n] of Object.entries(placeNames)) {
   const b = document.createElement("button"); b.type = "button"; b.dataset.z = z; b.textContent = n;
-  b.onclick = () => { const [x, zz] = GOTO[z]; player.pos.set(x, 0, zz); player.target.set(x, 0, zz); autoPath = null; camYaw = z === "walk" ? Math.PI : 0; lastMoveTx = 0; sendPresence(); };
+  b.onclick = () => { standUp(); pendingSeat = null; const [x, zz] = GOTO[z]; player.pos.set(x, 0, zz); player.target.set(x, 0, zz); autoPath = null; camYaw = z === "walk" ? Math.PI : 0; lastMoveTx = 0; sendPresence(); };
   $("places").appendChild(b);
 }
 
@@ -618,6 +640,30 @@ function doBow() {
   bubble(player, `${me.bow}배`);
   if (me.bow === 108) { say("오늘 108배를 모두 마쳤어요. 정말 수고했어요."); sfx.bell(); } else if (me.bow % 12 === 0) say();
 }
+/* ---------- 방석에 앉기 · 계속 절하기 ---------- */
+let pendingSeat = null, autoBow = null;
+function sitDown() { if (!player || player.sitting) return; player.sitting = true; player.yaw = Math.PI; act("sit"); renderActions(); say("방석에 앉았어요. 숨을 고르고 절을 올려 보세요."); }
+function standUp() { if (!player) return; stopAutoBow(); if (player.sitting) { player.sitting = false; act("stand"); renderActions(); } }
+function nearestFreeSeat() {
+  let best = null, bd = 1e9;
+  for (const st of hallSeats) {
+    if ([...others.values()].some((o) => Math.hypot(o.monk.pos.x - st.x, o.monk.pos.z - st.z) < .5)) continue;
+    const d = Math.hypot(player.pos.x - st.x, player.pos.z - st.z); if (d < bd) { bd = d; best = st; }
+  }
+  return best;
+}
+function doSit() {
+  if (player.sitting) { standUp(); return; }
+  const st = nearestFreeSeat(); if (!st) { toast("빈 방석이 없어요"); return; }
+  player.target.set(st.x, 0, st.z); pendingSeat = st; autoPath = null;
+}
+function stopAutoBow() { if (autoBow) { clearInterval(autoBow); autoBow = null; renderActions(); } }
+function toggleAutoBow() {
+  if (autoBow) { stopAutoBow(); return; }
+  doBow(); autoBow = setInterval(() => { if (!player) return stopAutoBow(); doBow(); if (me.bow % 108 === 0) stopAutoBow(); }, 1900);
+  renderActions(); say("천천히 절을 올리는 중이에요. 멈추려면 한 번 더 눌러요.");
+}
+
 function doIncense() { incenseUntil = Date.now() + 90000; act("incense"); say("향 연기가 천천히 피어올라요."); }
 function doBell() { const bx = -9, bz = 7; if (player.pos.distanceTo(new THREE.Vector3(bx, 0, bz)) > 5) { player.target.set(bx + 2.4, 0, bz); } sfx.bell(); act("bell"); say(); bubble(player, "데엥…"); }
 function doTapdori() {
@@ -664,6 +710,16 @@ function renderLookPanel(boxId) {
   });
 }
 renderLookPanel("gateLook");
+/* ---------- 시처럼 짓는 법명 ---------- */
+const NICK_A = ["느린", "맑은", "포근한", "잔잔한", "새벽", "따스한", "조용한", "말랑한", "졸린", "수줍은", "향긋한", "동그란", "반짝", "느긋한"];
+const NICK_B = ["연꽃", "구름", "이슬", "풍경", "솔방울", "찻잔", "별빛", "산새", "반딧불", "도토리", "달팽이", "모과", "다람쥐", "보름달"];
+const poeticNick = () => { for (;;) { const n = `${NICK_A[Math.floor(Math.random() * NICK_A.length)]} ${NICK_B[Math.floor(Math.random() * NICK_B.length)]}`; if (n.length <= 8) return n; } };
+$("nickInput").placeholder = poeticNick();
+$("nickDice").onclick = () => { $("nickInput").value = poeticNick(); sfx.bead?.(); };
+
+/* ---------- 촬영 모드: 화면 글자를 숨겨 영상 찍기 좋게 ---------- */
+$("recBtn").onclick = () => { document.body.classList.add("rec"); document.querySelectorAll(".panel").forEach((p) => (p.hidden = true)); $("chatPanel").hidden = true; toast("촬영 모드예요. 오른쪽 위 모서리를 두 번 톡톡 누르면 돌아와요"); };
+let recTap = 0; $("recExit").onclick = () => { const t = Date.now(); if (t - recTap < 450) document.body.classList.remove("rec"); recTap = t; };
 $("hud").onclick = () => { renderMissionPanel(); openPanel("missionPanel"); };
 $("chatBtn").onclick = () => { $("chatPanel").hidden = !$("chatPanel").hidden; if (!$("chatPanel").hidden) setTimeout(() => $("chatInput").focus(), 50); };
 const QUICK = ["안녕하세요 🙏", "성불하세요", "좋은 밤 되세요 🌙", "같이 108배 해요", "고마워요", "힘내요"];
@@ -737,15 +793,21 @@ $("wishInput").addEventListener("keydown", (e) => { if (e.key === "Enter") $("wi
 let sb = null, lobby = null, roomCh = null, roomNo = 1, roomJoinedAt = 0;
 const others = new Map(); // key -> {monk, nick, seenAt}
 const roomCounts = {};
-const ACT = { mok: "목탁을 쳤어요", greet: "합장했어요", bow: "절을 올렸어요", incense: "향을 피웠어요", candle: "초를 밝혔어요", pray: "기도를 올렸어요", tap: "탑을 한 바퀴 돌았어요", meal: "공양을 해요", tea: "차를 마셔요", bell: "범종을 울렸어요" };
+const ACT = { sit: "방석에 앉았어요", stand: "일어났어요", mok: "목탁을 쳤어요", greet: "합장했어요", bow: "절을 올렸어요", incense: "향을 피웠어요", candle: "초를 밝혔어요", pray: "기도를 올렸어요", tap: "탑을 한 바퀴 돌았어요", meal: "공양을 해요", tea: "차를 마셔요", bell: "범종을 울렸어요" };
 const online = () => !!sb;
 
 /* 신호 아끼기: 접속 명단(presence)은 들어올 때와 30초마다 한 번만,
    걷기는 목적지가 바뀔 때만, 동작은 그때그때 짧은 메시지(broadcast)로 보내요. */
 let lastMoveTx = 0, lastTarget = { x: 1e9, z: 1e9 }, presence = {};
-const posPayload = () => ({ k: myKey, l: me.look, lv: levelOf(me.pts), x: +player.pos.x.toFixed(2), z: +player.pos.z.toFixed(2), tx: +player.target.x.toFixed(2), tz: +player.target.z.toFixed(2) });
+const posPayload = () => ({ k: myKey, l: me.look, lv: levelOf(me.pts), s: player.sitting ? 1 : 0, x: +player.pos.x.toFixed(2), z: +player.pos.z.toFixed(2), tx: +player.target.x.toFixed(2), tz: +player.target.z.toFixed(2) });
 function trackMe() { if (roomCh && player) roomCh.track({ nick: me.nick.slice(0, 8), ...posPayload(), at: Date.now() }).catch(() => {}); }
 setInterval(trackMe, 30000);
+setInterval(() => {
+  const now = Date.now(); let n = [...others.values()].filter((o) => now - (o.lastBow || 0) < 4500).length;
+  if (player && player.anim === "bow" || autoBow) n++;
+  const el = $("groupBanner"); if (!el) return;
+  if (n >= 2) { el.textContent = `🙇 지금 ${n}명이 함께 절하고 있어요`; el.hidden = false; } else el.hidden = true;
+}, 1000);
 function sendPresence(patch = {}) {
   if (!roomCh || !player) return;
   if (patch.act) { roomCh.send({ type: "broadcast", event: "act", payload: { k: myKey, nick: me.nick.slice(0, 8), act: patch.act, to: patch.to || null, what: patch.what || null, ...posPayload() } }).catch(() => {}); return; }
@@ -761,6 +823,7 @@ function ensureOther(key, p) {
   if (p.nick) o.nick = nick;
   setLabel(o.monk, labelText(o.nick, Number.isFinite(+p.lv) ? +p.lv : (o.lv ?? 0)), false); if (Number.isFinite(+p.lv)) o.lv = +p.lv;
   if (looksOk(p.l)) applyLook(o.monk, p.l);
+  if (p.s !== undefined) { o.monk.sitting = !!p.s; if (o.monk.sitting) o.monk.yaw = Math.PI; }
   return o;
 }
 function applyMove(o, p) {
@@ -806,7 +869,9 @@ function onChat({ payload: p }) {
 function onAct({ payload: p }) {
   if (!p || typeof p.k !== "string" || p.k === myKey || !ACT[p.act]) return;
   const key = p.k, o = ensureOther(key, p); applyMove(o, p); const nick = o.nick;
-  if (p.act === "bow") playAnim(o.monk, "bow");
+  if (p.act === "bow") { playAnim(o.monk, "bow"); o.lastBow = Date.now(); }
+  if (p.act === "sit") { o.monk.sitting = true; o.monk.yaw = Math.PI; }
+  if (p.act === "stand") o.monk.sitting = false;
   if (p.act === "greet") { playAnim(o.monk, "greet"); bubble(o.monk, "🙏"); }
   if (p.act === "pray") playAnim(o.monk, "pray");
   if (p.act === "incense") incenseUntil = Math.max(incenseUntil, Date.now() + 60000);
@@ -814,7 +879,7 @@ function onAct({ payload: p }) {
   const near = player && o.monk.pos.distanceTo(player.pos) < 14;
   if (p.act === "greet" && p.to === myKey) toast(`${nick}님이 나에게 합장했어요 🙏`, { label: "맞합장", fn: () => greet(key) });
   else if (near && p.act === "greet") toast(`${nick}님이 합장했어요`, { label: "맞합장", fn: () => greet(key) });
-  else if (near && p.act !== "bow" && p.act !== "mok") toast(`${nick}님이 ${ACT[p.act]}`);
+  else if (near && !["bow", "mok", "sit", "stand"].includes(p.act)) toast(`${nick}님이 ${ACT[p.act]}`);
 }
 
 async function joinRoom(n) {
@@ -884,7 +949,7 @@ function toast(text, btn) {
 $("enterBtn").addEventListener("click", enter);
 $("nickInput").addEventListener("keydown", (e) => { if (e.key === "Enter") enter(); });
 function enter() {
-  const nick = $("nickInput").value.trim().slice(0, 8) || ["고요", "청산", "연화", "바람", "달빛", "솔향", "보리"][Math.floor(Math.random() * 7)];
+  const nick = $("nickInput").value.trim().slice(0, 8) || $("nickInput").placeholder.replace(/^예: /, "").slice(0, 8);
   me.nick = nick; save();
   $("gate").hidden = true; ac(); preloadRecs(); noiseLoop("wind"); noiseLoop("water");
   loadRec("nature").then((b) => { if (b) { natureRec = playRec("nature", .6 * Math.max(vol.wind, vol.water, .3), true); } });
@@ -917,16 +982,17 @@ function tick() {
       if (Math.hypot(p.x - player.pos.x, p.z - player.pos.z) < .3) { autoPath.i++; if (autoPath.i >= autoPath.pts.length) { const a = autoPath; autoPath = null; a.done(); } }
     }
     const moved = moveMonk(player, dt, autoPath ? 2 : 3.4);
+    if (pendingSeat && !moved && Math.hypot(player.pos.x - pendingSeat.x, player.pos.z - pendingSeat.z) < .3) { pendingSeat = null; sitDown(); }
     if (moved && now - lastMoveSent > 250) { lastMoveSent = now; sendPresence(); }
     animateMonk(player, dt, now);
     const z = zoneOf(player.pos.x, player.pos.z);
     if (z !== zone) { zone = z; renderActions(); say(ZONES[zone].intro); gain(`visit:${z}`); }
     // 대웅전 안에서는 동자승 뒤쪽 위에서 부처님을 함께 바라보는 구도로 바꿔요
     if (zone === "hall") {
-      const want = new THREE.Vector3(player.pos.x * .5, 2.3, player.pos.z - 4.2);
+      const want = new THREE.Vector3(player.pos.x * .5, 2.3, Math.max(player.pos.z - 4.2, -22));
       camTarget.lerp(want, Math.min(1, dt * 4));
-      const back = 3.3, yaw = clamp(camYaw, -.6, .6);
-      const camWant = new THREE.Vector3(player.pos.x + Math.sin(yaw) * back, 4.1, Math.min(player.pos.z + Math.cos(yaw) * back, -14.4));
+      const back = player.sitting ? 4.6 : 3.3, yaw = clamp(camYaw, -.6, .6);
+      const camWant = new THREE.Vector3(player.pos.x * (player.sitting ? .7 : 1) + Math.sin(yaw) * back, player.sitting ? 4.4 : 4.1, Math.min(player.pos.z + Math.cos(yaw) * back, -14.3));
       camera.position.lerp(camWant, Math.min(1, dt * 4));
     } else {
       camTarget.lerp(new THREE.Vector3(player.pos.x, 1.6, player.pos.z), Math.min(1, dt * 5));
@@ -954,6 +1020,23 @@ function tick() {
   renderer.render(scene, camera);
   requestAnimationFrame(tick);
 }
+/* ---------- 실제 시간에 맞춘 낮 · 노을 · 밤 ---------- */
+function applyTimeOfDay() {
+  const h = new Date().getHours() + new Date().getMinutes() / 60;
+  const phase = h >= 6.5 && h < 17 ? "day" : (h >= 17 && h < 19) || (h >= 5 && h < 6.5) ? "dusk" : "night";
+  const P = {
+    day: { bg: "#a9c6dc", sky: "#cfe3f1", ground: "#6b5a44", hemi: 1.25, sun: "#fff1d6", sunI: 1.4, moon: false, stars: 0 },
+    dusk: { bg: "#d99a7a", sky: "#f2c38f", ground: "#4a3a30", hemi: 1.0, sun: "#ffb27a", sunI: 1.0, moon: true, stars: .3 },
+    night: { bg: "#18202c", sky: "#8fa6c8", ground: "#2a2018", hemi: .9, sun: "#dfe6ff", sunI: .9, moon: true, stars: 1 }
+  }[phase];
+  scene.background.set(P.bg); scene.fog.color.set(P.bg);
+  hemi.color.set(P.sky); hemi.groundColor.set(P.ground); hemi.intensity = P.hemi;
+  moon.color.set(P.sun); moon.intensity = P.sunI;
+  moonBall.visible = P.moon; if (starField) { starField.visible = P.stars > 0; starField.material.opacity = P.stars; }
+  document.body.dataset.time = phase;
+}
+applyTimeOfDay(); setInterval(applyTimeOfDay, 60000);
+
 renderLanterns(me.localWishes);
 requestAnimationFrame(tick);
 say("법명을 정하고 산사에 들어가 보세요.");

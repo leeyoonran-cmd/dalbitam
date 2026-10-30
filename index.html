@@ -34,7 +34,7 @@
     <h1 id="siteTitle">달빛암</h1>
     <p class="lead">목탁 한 번, 숨 한 번.<br>잠시 마음을 내려놓고 쉬어 가세요.</p>
     <label for="nickInput">법명</label>
-    <input id="nickInput" maxlength="8" placeholder="예: 고요" autocomplete="off">
+    <div class="row"><input id="nickInput" maxlength="8" placeholder="예: 고요" autocomplete="off"><button id="nickDice" type="button" class="ghost-btn dice" aria-label="법명 새로 짓기">🎲</button></div>
     <div id="gateLook" class="look-box"></div>
     <button id="enterBtn" type="button" class="primary">입장하기</button>
     <button id="installBtn" type="button" class="ghost-btn">📲 앱처럼 홈 화면에 추가하기</button>
@@ -54,6 +54,8 @@
 </div>
 
 <div id="placeTag" class="place-tag">마당</div>
+<div id="groupBanner" class="group-banner" hidden></div>
+<button id="recExit" class="rec-exit" type="button" aria-label="촬영 모드 끝내기"></button>
 <button id="hud" class="hud" type="button" aria-label="수행 등급과 오늘의 수행">
   <span class="hud-top"><b id="hudTitle">동자</b> · 공덕 <span id="hudPts">0</span></span>
   <span class="hud-bar"><i id="hudBar"></i></span>
@@ -128,6 +130,7 @@
       <label for="vFx">목탁·종</label><input type="range" id="vFx" min="0" max="100" value="80">
     </div>
     <div class="stats" id="stats"></div>
+    <button id="recBtn" type="button" class="ghost-btn">🎬 촬영 모드 (화면 글자 숨기기)</button>
   </div>
 </div>
 
