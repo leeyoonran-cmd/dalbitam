@@ -1675,7 +1675,7 @@ function onRoomSync() {
     const isNew = !others.has(key); const o = ensureOther(key, p); if (isNew) applyMove(o, p);
   }
   for (const [key, o] of others) if (!keys.has(key)) { scene.remove(o.monk.root); others.delete(key); }
-  $("peopleCount").textContent = others.size + 1;
+  if (!$("roomPanel").hidden) renderRooms();
 }
 /* ---------- 대화 ---------- */
 let chatMuted = false, lastChatAt = 0; const chatLog = [];
@@ -1770,12 +1770,21 @@ async function connect() {
   }).subscribe();
 }
 function solo(msg) {
-  sb = null; giwaOnline = false; giwas = me.localGiwa.slice(); renderGiwaList(); $("roomLabel").textContent = "혼자 수행 중"; $("peopleCount").textContent = "1";
+  sb = null; giwaOnline = false; giwas = me.localGiwa.slice(); renderGiwaList(); $("roomLabel").textContent = "혼자 수행 중";
   $("wishNote").textContent = "지금은 연등이 이 기기에만 저장돼요.";
   wishes = me.localWishes; renderWishList(); if (msg) toast(msg);
 }
 function renderRooms() {
   const list = $("roomList"); list.innerHTML = ""; countRooms();
+  if (CONFIG.roomCount <= 1) { // 법당이 하나면: 지금 함께 있는 사람 수와 법명을 보여줘요
+    const names = [me.nick || "나", ...[...others.values()].map((o) => o.nick || "스님")];
+    $("roomTitle").textContent = CONFIG.roomName; $("roomNote").textContent = "지금 달빛암에 함께 있는 사람이에요. 숫자는 실제 접속자 수예요.";
+    const head = document.createElement("div"); head.className = "room-now"; head.innerHTML = `<b>${names.length}</b><span>명이 함께 수행하고 있어요</span>`; list.appendChild(head);
+    const ul = document.createElement("ul"); ul.className = "room-names";
+    names.slice(0, 60).forEach((n, i) => { const li = document.createElement("li"); li.textContent = i === 0 ? `${n} (나)` : n; ul.appendChild(li); });
+    if (names.length > 60) { const li = document.createElement("li"); li.textContent = `외 ${names.length - 60}명`; ul.appendChild(li); }
+    list.appendChild(ul); return;
+  }
   for (let i = 1; i <= CONFIG.roomCount; i++) {
     const n = roomCounts[i] || 0, full = n >= CONFIG.roomCap;
     const b = document.createElement("button"); b.type = "button"; b.className = i === roomNo ? "cur" : ""; b.disabled = full && i !== roomNo;
