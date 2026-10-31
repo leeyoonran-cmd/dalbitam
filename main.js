@@ -1194,9 +1194,26 @@ const LOOKS = {
 };
 const ACC_LEVEL = [0, 0, 1, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0];
 // 염꾸: 알 색깔과 이니셜
-const YK_BEADS = [["백단", "#c89a62"], ["흑단", "#2e2420"], ["옥", "#7fbf9a"], ["자수정", "#9b72c9"], ["장미석", "#f0a6b8"], ["호박", "#e8a33a"]];
-const YK_OK = /^[0-9A-Z*+]{1,6}$/; // * 는 ♥, + 는 ★
+const YK_BEADS = [["백단", "#c89a62"], ["흑단", "#2e2420"], ["옥", "#7fbf9a"], ["자수정", "#9b72c9"], ["장미석", "#f0a6b8"], ["호박", "#e8a33a"], ["청금석", "#3b5fb0"], ["진주", "#f2ede4"], ["산호", "#e8604c"], ["수정", "#cfe8f2"]];
 const ykShow = (t) => String(t || "").replace(/\*/g, "♥").replace(/\+/g, "★");
+// 십이지신: 자축인묘진사오미신유술해
+const ZODIAC = [["자", "子", "🐭", "쥐"], ["축", "丑", "🐮", "소"], ["인", "寅", "🐯", "호랑이"], ["묘", "卯", "🐰", "토끼"], ["진", "辰", "🐲", "용"], ["사", "巳", "🐍", "뱀"], ["오", "午", "🐴", "말"], ["미", "未", "🐑", "양"], ["신", "申", "🐵", "원숭이"], ["유", "酉", "🐔", "닭"], ["술", "戌", "🐶", "개"], ["해", "亥", "🐷", "돼지"]];
+const YK_N = 16, YK_ZSLOT = 8; // 알 16개, 십이지 장식은 맨 아래
+// 염꾸 설정 문자열: Z + 알 16개 색(숫자) + 띠(0-9,a,b / n=없음) + 표시(g=그림, h=한자) + 이니셜(최대 6자)
+const YK_RE = /^Z([0-9]{16})([0-9abn])([gh])([0-9A-Z*+]{0,6})$/, YK_OLD = /^([0-9])([0-9A-Z*+]{1,6})$/;
+function ykParse(c) {
+  let m = YK_RE.exec(c || ""); if (m) return { cols: [...m[1]].map(Number), z: m[2] === "n" ? -1 : parseInt(m[2], 16), mode: m[3], text: m[4] };
+  m = YK_OLD.exec(c || ""); if (m) return { cols: Array(YK_N).fill(+m[1]), z: -1, mode: "g", text: m[2] };
+  return null;
+}
+const ykStr = (k) => `Z${k.cols.join("")}${k.z < 0 ? "n" : k.z.toString(16)}${k.mode}${k.text}`;
+function ykLayout(k) { // 맨 위에 이니셜, 맨 아래 십이지, 나머지는 알
+  const L = [...k.text], start = (YK_N - Math.floor(L.length / 2)) % YK_N, out = [];
+  for (let i = 0; i < YK_N; i++) { const li = (i - start + YK_N) % YK_N;
+    if (li < L.length) out.push({ t: "l", ch: L[li] }); else if (i === YK_ZSLOT && k.z >= 0) out.push({ t: "z", z: k.z }); else out.push({ t: "b", c: k.cols[i] }); }
+  return out;
+}
+const zodLabel = (z, mode) => (mode === "h" ? ZODIAC[z][1] : ZODIAC[z][2]);
 const SKINS = [["구릿빛", "#c4825a"], ["살구", "#f0c39c"], ["뽀얀", "#f7e2d0"], ["복숭아", "#f2a99a"], ["갈색", "#9a6440"], ["진갈색", "#6b4128"], ["달빛", "#cdd8ee"], ["연두", "#bfdca4"], ["노랑", "#f4d77a"]];
 const SHOP = [ // 기념품 가게에서 복전으로 사는 소품 (acc 번호, 값, 설명)
   [5, 150, "🪵", "허리춤에 차는 미니 목탁"], [6, 220, "🏮", "손에 드는 작은 연등"], [7, 300, "🌼", "머리에 쓰는 들꽃 화관"], [8, 500, "😎", "깨달음의 선글라스"],
@@ -1204,9 +1221,9 @@ const SHOP = [ // 기념품 가게에서 복전으로 사는 소품 (acc 번호,
 ];
 const shopPrice = (i) => (SHOP.find((x) => x[0] === i) || [])[1];
 const ownedAcc = (i) => !shopPrice(i) || me.owned.includes(i); // 소품을 쓰려면 필요한 등급 (털모자: 행자, 삿갓: 수행자, 연꽃: 스님)
-const looksOk = (l) => typeof l === "string" && /^[0-9]{1,2}(-[0-9]{1,2}){2,4}(-[0-9][0-9A-Z*+]{1,6})?$/.test(l);
+const looksOk = (l) => typeof l === "string" && /^[0-9]{1,2}(-[0-9]{1,2}){2,4}(-(Z[0-9]{16}[0-9abn][gh][0-9A-Z*+]{0,6}|[0-9][0-9A-Z*+]{1,6}))?$/.test(l);
 function lookParts(l) { const parts = (looksOk(l) ? l : "0-0-0").split("-"); const [r, s, a, f = 0, k = 0] = parts.slice(0, 5).map(Number); const c = parts[5] || "";
-  return { r: LOOKS.robe[r] ? r : 0, s: LOOKS.sash[s] ? s : 0, a: LOOKS.acc[a] ? a : 0, f: FACES[f] ? f : 0, k: SKINS[k] ? k : 0, c: /^[0-9][0-9A-Z*+]{1,6}$/.test(c) ? c : "" }; }
+  return { r: LOOKS.robe[r] ? r : 0, s: LOOKS.sash[s] ? s : 0, a: LOOKS.acc[a] ? a : 0, f: FACES[f] ? f : 0, k: SKINS[k] ? k : 0, c: ykParse(c) ? c : "" }; }
 const lookStr = (p) => `${p.r}-${p.s}-${p.a}-${p.f}-${p.k}` + (p.c ? `-${p.c}` : "");
 function applyLook(m, l) {
   if (!m || m.look === l) return; m.look = l;
@@ -1265,14 +1282,15 @@ function applyLook(m, l) {
     g.position.set(0, -.42, .05); m.armR.add(g);
   } else if (kind === "bracelet" || kind === "yeomku") { // 팔찌 염주 · 염꾸
     g = new THREE.Group();
-    const yk = kind === "yeomku" && p.c ? p.c : "", col = yk ? YK_BEADS[+yk[0]] ? YK_BEADS[+yk[0]][1] : "#c89a62" : "#5a3418";
-    const letters = yk ? [...yk.slice(1)] : [], n = 14, bm = M(col, { roughness: .35 });
-    for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2, li = i - (n - letters.length) / 2 | 0, L = letters[li];
-      let b;
-      if (L !== undefined && li >= 0) { const tx = canvasTex(64, 64, (x, w, h) => { x.fillStyle = "#f6f1e6"; x.fillRect(0, 0, w, h); x.fillStyle = "#2a1a0c"; x.font = "bold 44px sans-serif"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText(ykShow(L), w / 2, h / 2 + 3); });
-        b = new THREE.Mesh(new THREE.BoxGeometry(.06, .06, .06), new THREE.MeshStandardMaterial({ map: tx, roughness: .5 })); }
-      else b = new THREE.Mesh(new THREE.SphereGeometry(.035, 8, 6), bm);
-      b.position.set(Math.cos(a) * .12, 0, Math.sin(a) * .12); b.lookAt(0, 0, 0); g.add(b); }
+    const k = kind === "yeomku" ? ykParse(p.c) : null, slots = k ? ykLayout(k) : Array(14).fill({ t: "b", c: -1 }), n = slots.length;
+    slots.forEach((sl, i) => { const a = i / n * Math.PI * 2; let b;
+      if (sl.t === "l") { const tx = canvasTex(64, 64, (x, w, h) => { x.fillStyle = "#f6f1e6"; x.fillRect(0, 0, w, h); x.fillStyle = "#2a1a0c"; x.font = "bold 44px sans-serif"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText(ykShow(sl.ch), w / 2, h / 2 + 3); });
+        b = new THREE.Mesh(new THREE.BoxGeometry(.055, .055, .055), new THREE.MeshStandardMaterial({ map: tx, roughness: .5 })); }
+      else if (sl.t === "z") { const tx = canvasTex(128, 128, (x, w, h) => { const g2 = x.createRadialGradient(46, 40, 6, 64, 64, 64); g2.addColorStop(0, "#fff3c4"); g2.addColorStop(1, "#d9a83a"); x.fillStyle = g2; x.fillRect(0, 0, w, h); x.textAlign = "center"; x.textBaseline = "middle";
+          if (k.mode === "h") { x.fillStyle = "#5a1e10"; x.font = "bold 78px serif"; } else x.font = "80px 'Apple Color Emoji','Noto Color Emoji','Segoe UI Emoji',sans-serif"; x.fillText(zodLabel(sl.z, k.mode), w / 2, h / 2 + 6); });
+        b = new THREE.Mesh(new THREE.SphereGeometry(.052, 16, 12), new THREE.MeshStandardMaterial({ map: tx, roughness: .35, metalness: .2 })); }
+      else b = new THREE.Mesh(new THREE.SphereGeometry(.033, 10, 8), M(sl.c < 0 ? "#5a3418" : YK_BEADS[sl.c][1], { roughness: .35 }));
+      b.position.set(Math.cos(a) * .12, 0, Math.sin(a) * .12); b.lookAt(0, 0, 0); g.add(b); });
     g.position.set(0, -.27, 0); m.armR.add(g);
   } else if (kind === "shades") {
     g = new THREE.Group(); const dark = new THREE.MeshStandardMaterial({ color: "#111318", metalness: .6, roughness: .2 });
@@ -1687,31 +1705,43 @@ function doCandle() { candleUntil = Date.now() + 120000; act("candle"); bubble(p
 /* ---------- 기념품 가게 ---------- */
 function openShop() { renderShop(); $("ykBox").hidden = true; openPanel("shopPanel"); }
 // 염꾸 만들기
-let ykColor = 0, ykText = "";
+let yk = { cols: Array(YK_N).fill(0), z: -1, mode: "g", text: "" }, ykSel = -1;
 function openYeomku() {
-  const c = lookParts(me.look).c; if (c) { ykColor = +c[0] || 0; ykText = c.slice(1); }
+  const k = ykParse(lookParts(me.look).c) || ykParse(me.yk); if (k) yk = k; ykSel = -1;
   $("ykBox").hidden = false; renderYeomku(); setTimeout(() => $("ykBox").scrollIntoView({ behavior: "smooth", block: "nearest" }), 30);
 }
+function beadBg(c) { const col = YK_BEADS[c] ? YK_BEADS[c][1] : "#c89a62"; return `radial-gradient(circle at 35% 30%, #fffa, ${col} 42%, #0005)`; }
 function renderYeomku() {
   const cbox = $("ykColors"); cbox.innerHTML = "";
-  YK_BEADS.forEach(([nm, col], i) => { const b = document.createElement("button"); b.type = "button"; b.className = "look-opt" + (i === ykColor ? " on" : ""); const sw = document.createElement("span"); sw.className = "sw"; sw.style.background = col; b.append(sw, nm); b.onclick = () => { ykColor = i; renderYeomku(); }; cbox.appendChild(b); });
-  $("ykInput").value = ykShow(ykText);
-  const pv = $("ykPreview"); pv.innerHTML = ""; const col = YK_BEADS[ykColor][1], letters = [...ykText], n = 16;
-  for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2 - Math.PI / 2, li = (i + Math.floor(letters.length / 2)) % n, L = letters[li];
-    const d = document.createElement("span"); d.className = li < letters.length ? "yk-letter" : "yk-bead";
-    if (d.className === "yk-letter") d.textContent = ykShow(L); else d.style.background = `radial-gradient(circle at 35% 30%, #fff8, ${col} 45%, #0004)`;
-    d.style.left = `${50 + Math.cos(a) * 40}%`; d.style.top = `${50 + Math.sin(a) * 40}%`; pv.appendChild(d); }
+  const cur = ykSel >= 0 ? yk.cols[ykSel] : yk.cols.every((c) => c === yk.cols[0]) ? yk.cols[0] : -1;
+  YK_BEADS.forEach(([nm, col], i) => { const b = document.createElement("button"); b.type = "button"; b.className = "look-opt" + (i === cur ? " on" : ""); const sw = document.createElement("span"); sw.className = "sw"; sw.style.background = col; b.append(sw, nm);
+    b.onclick = () => { if (ykSel >= 0) yk.cols[ykSel] = i; else yk.cols = Array(YK_N).fill(i); sfx.bead(); renderYeomku(); }; cbox.appendChild(b); });
+  $("ykHint").textContent = ykSel >= 0 ? `${ykSel + 1}번째 알을 고르는 중이에요. 색을 누르면 이 알만 바뀌어요.` : "알을 누르면 그 알만 색을 바꿀 수 있어요. 아무 알도 안 고르면 전체가 바뀌어요.";
+  $("ykAll").hidden = ykSel < 0;
+  const zb = $("ykZodiac"); zb.innerHTML = "";
+  [[-1, "없음"]].concat(ZODIAC.map((z, i) => [i, `${z[2]} ${z[0]}(${z[1]})`])).forEach(([i, label]) => { const b = document.createElement("button"); b.type = "button"; b.className = "look-opt" + (yk.z === i ? " on" : ""); b.textContent = label; b.onclick = () => { yk.z = i; sfx.bead(); renderYeomku(); }; zb.appendChild(b); });
+  document.querySelectorAll("[data-ykmode]").forEach((b) => b.classList.toggle("on", b.dataset.ykmode === yk.mode));
+  $("ykInput").value = ykShow(yk.text);
+  const pv = $("ykPreview"); pv.innerHTML = ""; const slots = ykLayout(yk);
+  slots.forEach((sl, i) => { const a = i / YK_N * Math.PI * 2 - Math.PI / 2, d = document.createElement("span");
+    if (sl.t === "l") { d.className = "yk-letter"; d.textContent = ykShow(sl.ch); }
+    else if (sl.t === "z") { d.className = "yk-zod" + (yk.mode === "h" ? " hanja" : ""); d.textContent = zodLabel(sl.z, yk.mode); }
+    else { d.className = "yk-bead" + (i === ykSel ? " sel" : ""); d.style.background = beadBg(sl.c); d.onclick = () => { ykSel = ykSel === i ? -1 : i; sfx.bead(); renderYeomku(); }; }
+    d.style.left = `${50 + Math.cos(a) * 40}%`; d.style.top = `${50 + Math.sin(a) * 40}%`; pv.appendChild(d); });
   const own = me.owned.includes(12); $("ykBuy").textContent = own ? "이대로 착용하기" : `🪙 ${shopPrice(12)} · 만들어서 착용하기`;
 }
-$("ykInput").addEventListener("input", () => { const v = $("ykInput").value.toUpperCase().replace(/♥/g, "*").replace(/★/g, "+").replace(/[^0-9A-Z*+]/g, "").slice(0, 6); ykText = v; renderYeomku(); });
-document.querySelectorAll("[data-yk]").forEach((b) => b.addEventListener("click", () => { if (ykText.length < 6) { ykText += b.dataset.yk; renderYeomku(); } }));
-$("ykClear").addEventListener("click", () => { ykText = ""; renderYeomku(); });
+$("ykInput").addEventListener("input", () => { yk.text = $("ykInput").value.toUpperCase().replace(/♥/g, "*").replace(/★/g, "+").replace(/[^0-9A-Z*+]/g, "").slice(0, 6); renderYeomku(); });
+document.querySelectorAll("[data-yk]").forEach((b) => b.addEventListener("click", () => { if (yk.text.length < 6) { yk.text += b.dataset.yk; renderYeomku(); } }));
+document.querySelectorAll("[data-ykmode]").forEach((b) => b.addEventListener("click", () => { yk.mode = b.dataset.ykmode; renderYeomku(); }));
+$("ykClear").addEventListener("click", () => { yk.text = ""; renderYeomku(); });
+$("ykAll").addEventListener("click", () => { yk.cols = Array(YK_N).fill(yk.cols[ykSel]); ykSel = -1; renderYeomku(); });
 $("ykBuy").addEventListener("click", () => {
-  if (!YK_OK.test(ykText)) { toast("이니셜을 한 글자 이상 넣어 주세요 (영문 · 숫자 · ♥ · ★, 최대 6자)"); return; }
-  const price = shopPrice(12);
-  if (!me.owned.includes(12)) { if (me.coin < price) { toast(`복전이 ${price - me.coin}닢 모자라요. 108배를 마치면 108닢을 받아요`); return; } me.coin -= price; me.owned.push(12); sfx.bell(); toast(`📿 나만의 염꾸 '${ykShow(ykText)}' 완성!`); }
-  const p = lookParts(me.look); p.a = 12; p.c = `${ykColor}${ykText}`; me.look = lookStr(p); save();
-  if (player) { applyLook(player, me.look); showFront(); bubble(player, `📿 ${ykShow(ykText)}`); lastMoveTx = 0; lastTarget = { x: 1e9, z: 1e9 }; sendPresence(); trackMe(); }
+  const plain = !yk.text && yk.z < 0 && yk.cols.every((c) => c === yk.cols[0]);
+  if (plain) { toast("이니셜이나 십이지를 넣거나, 알 색을 하나 이상 바꿔 주세요"); return; }
+  const price = shopPrice(12), name = [yk.z >= 0 ? ZODIAC[yk.z][3] + "띠" : "", ykShow(yk.text)].filter(Boolean).join(" ") || "알록달록";
+  if (!me.owned.includes(12)) { if (me.coin < price) { toast(`복전이 ${price - me.coin}닢 모자라요. 108배를 마치면 108닢을 받아요`); return; } me.coin -= price; me.owned.push(12); sfx.bell(); toast(`📿 나만의 염꾸 '${name}' 완성! 염주 돌리기에서도 이 염주로 돌려요`); }
+  const p = lookParts(me.look); p.a = 12; p.c = ykStr(yk); me.look = lookStr(p); me.yk = p.c; me.ykRing = true; save();
+  if (player) { applyLook(player, me.look); showFront(); bubble(player, `📿 ${name}`); lastMoveTx = 0; lastTarget = { x: 1e9, z: 1e9 }; sendPresence(); trackMe(); }
   updateHud(); renderShop(); renderActions(); $("ykBox").hidden = false; renderYeomku(); renderLookPanel("lookBody");
 });
 function renderShop() {
@@ -1850,7 +1880,15 @@ function renderStats() { $("stats").innerHTML = ""; [["오늘 목탁", me.mok], 
 const BEADS = 27; let beadOffset = 0;
 function drawBeads() {
   const ring = $("beadRing"); ring.innerHTML = "";
-  for (let i = 0; i < BEADS; i++) {
+  const k = me.ykRing !== false ? ykParse(me.yk) : null; $("beadMine").hidden = !ykParse(me.yk); $("beadMine").textContent = k ? "📿 기본 염주로" : "📿 내 염꾸로";
+  ring.classList.toggle("custom", !!k);
+  if (k) { // 내가 꾸민 염꾸: 16알을 그대로, 크게
+    ykLayout(k).forEach((sl, i) => { const a = ((i + beadOffset) / YK_N) * Math.PI * 2 - Math.PI / 2, b = document.createElement("span");
+      if (sl.t === "l") { b.className = "bead yk-letter"; b.textContent = ykShow(sl.ch); }
+      else if (sl.t === "z") { b.className = "bead yk-zod" + (k.mode === "h" ? " hanja" : ""); b.textContent = zodLabel(sl.z, k.mode); }
+      else { b.className = "bead"; b.style.background = beadBg(sl.c); }
+      b.style.left = `${50 + Math.cos(a) * 40}%`; b.style.top = `${50 + Math.sin(a) * 40}%`; ring.appendChild(b); });
+  } else for (let i = 0; i < BEADS; i++) {
     const a = ((i + beadOffset) / BEADS) * Math.PI * 2 - Math.PI / 2;
     const b = document.createElement("span"); b.className = "bead" + (i === 0 ? " head" : "");
     b.style.left = `${50 + Math.cos(a) * 40}%`; b.style.top = `${50 + Math.sin(a) * 40}%`; ring.appendChild(b);
@@ -1861,6 +1899,7 @@ function drawBeads() {
 function openBeads() { $("beadPanel").hidden = false; drawBeads(); }
 function nextBead() { me.bead++; beadOffset++; gain("bead"); sfx.bead(); drawBeads(); if (navigator.vibrate) navigator.vibrate(8); if (me.bead % 108 === 0) { sfx.soft(); say("염주 한 바퀴, 108번의 마음을 모았어요."); } }
 $("beadRing").addEventListener("click", nextBead);
+$("beadMine").addEventListener("click", (e) => { e.stopPropagation(); me.ykRing = me.ykRing === false; save(); drawBeads(); });
 $("beadRing").addEventListener("keydown", (e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); nextBead(); } });
 
 /* 소원 연등 */

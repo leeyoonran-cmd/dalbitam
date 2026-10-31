@@ -176,3 +176,15 @@ body.rec .rec-exit{display:block;position:fixed;right:0;top:0;width:80px;height:
 .fade-out{position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;transition:opacity .35s;z-index:40}.fade-out.on{opacity:1}
 body.rec .pray-box{display:none!important}
 .pray-box.compact{padding:8px 12px;gap:4px}.pray-box.compact .pray-lines{min-height:4.6em}.pray-box.compact .pl:first-child,.pray-box.compact .pl:last-child{display:none}.pray-box.compact .primary{display:none}
+
+.yk-bead{cursor:pointer;transition:transform .15s}.yk-bead.sel{outline:3px solid #fff;outline-offset:2px;transform:scale(1.15)}
+.yk-zod{position:absolute;width:34px;height:34px;margin:-17px 0 0 -17px;border-radius:50%;display:grid;place-items:center;font-size:1.25rem;background:radial-gradient(circle at 35% 30%,#fff3c4,#d9a83a);box-shadow:0 2px 6px rgba(0,0,0,.45)}
+.yk-zod.hanja{font-family:"Gowun Batang",serif;font-weight:700;color:#5a1e10;font-size:1.1rem}
+.yk-mode .look-opt{flex:1;justify-content:center}
+.mini-all{align-self:flex-start;padding:7px 12px;font-size:.82rem}
+#ykZodiac .look-opt{font-size:.82rem}
+.bead-mine{position:absolute;right:calc(var(--sr) + 14px);top:calc(var(--st) + 14px);background:rgba(255,255,255,.7);border:1px solid rgba(90,60,30,.25);border-radius:999px;padding:8px 14px;color:#3a2a1c;font-size:.86rem;z-index:2}
+.bead-ring.custom .bead{width:15%;display:grid;place-items:center}
+.bead-ring.custom .bead.yk-letter{border-radius:16%;width:12%;background:#f6f1e6;color:#2a1a0c;font-weight:800;font-size:clamp(.9rem,4.5vw,1.4rem);margin:0;height:auto;aspect-ratio:1}
+.bead-ring.custom .bead.yk-zod{width:19%;height:auto;aspect-ratio:1;margin:0;font-size:clamp(1.3rem,7vw,2.2rem)}
+.bead-ring.custom .bead.yk-zod.hanja{font-size:clamp(1.2rem,6vw,2rem)}
