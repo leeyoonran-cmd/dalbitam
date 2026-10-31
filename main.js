@@ -43,14 +43,18 @@ const say = (t) => { $("saying").textContent = t || sayings[Math.floor(Math.rand
 /* =========================================================
    소리 (모두 브라우저에서 직접 합성 — 음원 파일 없음)
    ========================================================= */
-let ctx, master, noiseBuf;
-const vol = { wind: .3, water: .2, bird: .3, chime: .25, fx: .8 };
+let ctx, master, noiseBuf, softBuf;
+const vol = { wind: 0, water: 0, bird: .3, chime: .25, fx: .8 }; // 바람 · 계곡물은 기본으로 꺼 둬요 (휴대폰 스피커에서 잡음처럼 들려서)
 function ac() {
   if (!ctx) {
     ctx = new (window.AudioContext || window.webkitAudioContext)();
     master = ctx.createGain(); master.gain.value = 1; master.connect(ctx.destination);
     const n = ctx.sampleRate * 2; noiseBuf = ctx.createBuffer(1, n, ctx.sampleRate);
     const d = noiseBuf.getChannelData(0); for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+    // 바람 · 물소리용 부드러운 잡음 (갈색 잡음, 길게 만들어 반복 티가 안 나게)
+    const m = ctx.sampleRate * 9; softBuf = ctx.createBuffer(1, m, ctx.sampleRate);
+    const e = softBuf.getChannelData(0); let last = 0; for (let i = 0; i < m; i++) { last = (last + .02 * (Math.random() * 2 - 1)) / 1.02; e[i] = last * 3.2; }
+    const fadeN = ctx.sampleRate * .5; for (let i = 0; i < fadeN; i++) { const k = i / fadeN; e[m - fadeN + i] = e[m - fadeN + i] * (1 - k) + e[i] * k; }
   }
   if (ctx.state === "suspended") ctx.resume();
   return ctx;
@@ -165,13 +169,14 @@ const loops = {};
 function noiseLoop(kind) {
   const c = ac();
   if (!loops[kind]) {
-    const s = c.createBufferSource(); s.buffer = noiseBuf; s.loop = true;
+    if (!vol[kind]) return; // 꺼져 있으면 아예 만들지 않아요
+    const s = c.createBufferSource(); s.buffer = softBuf; s.loop = true; s.loopEnd = softBuf.duration - .5;
     const f = c.createBiquadFilter(), g = c.createGain(); g.gain.value = 0;
-    if (kind === "wind") { f.type = "lowpass"; f.frequency.value = 380; const l = c.createOscillator(), lg = c.createGain(); l.frequency.value = .12; lg.gain.value = 220; l.connect(lg).connect(f.frequency); l.start(); }
-    else { f.type = "bandpass"; f.frequency.value = 1100; f.Q.value = .6; }
-    s.connect(f).connect(g).connect(master); s.start(); loops[kind] = g;
+    if (kind === "wind") { f.type = "lowpass"; f.frequency.value = 300; f.Q.value = .3; const l = c.createOscillator(), lg = c.createGain(); l.frequency.value = .08; lg.gain.value = 120; l.connect(lg).connect(f.frequency); l.start(); }
+    else { f.type = "lowpass"; f.frequency.value = 900; f.Q.value = .2; s.playbackRate.value = 1.6; }
+    s.connect(f).connect(g).connect(master); s.start(rand(0, 1)); loops[kind] = g;
   }
-  loops[kind].gain.setTargetAtTime(vol[kind] * (kind === "wind" ? .45 : .2), c.currentTime, .4);
+  loops[kind].gain.setTargetAtTime(vol[kind] * (kind === "wind" ? .35 : .22), c.currentTime, .6);
 }
 [["vWind", "wind"], ["vWater", "water"], ["vBird", "bird"], ["vChime", "chime"], ["vFx", "fx"]].forEach(([id, k]) => {
   $(id).addEventListener("input", (e) => { vol[k] = e.target.value / 100; if (ctx && (k === "wind" || k === "water")) { noiseLoop(k); if (natureRec) natureRec.volume = clamp(.6 * Math.max(vol.wind, vol.water), 0, 1); } });
@@ -1556,7 +1561,7 @@ function startEat(i) {
   };
 }
 function doTea() { tea.visible = true; teaUntil = Date.now() + 60000; act("tea"); say("따뜻한 차 한 모금에 숨을 골라 보세요."); bubble(player, "후―"); }
-function doNature() { vol.water = .7; vol.bird = .6; vol.wind = .35; $("vWater").value = 70; $("vBird").value = 60; $("vWind").value = 35; noiseLoop("water"); noiseLoop("wind"); say("물소리와 새소리를 들으며 천천히 걸어 보세요."); }
+function doNature() { vol.water = .4; vol.bird = .6; vol.wind = .2; $("vWater").value = 40; $("vBird").value = 60; $("vWind").value = 20; noiseLoop("water"); noiseLoop("wind"); say("물소리와 새소리를 들으며 천천히 걸어 보세요."); }
 function greet(toKey) {
   playAnim(player, "greet"); tone(660, .8, .07 * vol.fx); act("greet", { to: toKey || null });
   const o = toKey && others.get(toKey); bubble(player, o ? `${o.nick}님께 합장` : "🙏 합장");
