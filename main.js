@@ -577,13 +577,45 @@ for (let row = 0; row < 3; row++) {
   scene.add(new THREE.Line(g, new THREE.LineBasicMaterial({ color: "#6b5a48" })));
 }
 const lanternColors = ["#f2a65a", "#e86a5a", "#f2d05a", "#7fc7a0", "#d98ac9", "#7fb0e6"];
+// 연등 종류: 소원 성격에 따라 색이 달라요
+const LANTERN_KINDS = {
+  gold:   { name: "황금등", emoji: "💰", color: "#f5c542", desc: "재물 · 사업 · 금전운" },
+  wisdom: { name: "지혜등", emoji: "📚", color: "#8fc4ff", desc: "합격 · 학업 · 취업 · 승진" },
+  health: { name: "건강등", emoji: "🍀", color: "#7fd6a0", desc: "건강 · 가족의 평안" },
+  love:   { name: "인연등", emoji: "💗", color: "#f29ac8", desc: "사랑 · 결혼 · 좋은 인연" },
+  hope:   { name: "소망등", emoji: "🏮", color: "#f2a65a", desc: "그 밖의 모든 소원" }
+};
+const KIND_KEYS = Object.keys(LANTERN_KINDS);
+const KIND_WORDS = [
+  ["gold", /돈|부자|로또|복권|재물|대박|억|월급|연봉|사업|장사|매출|주식|코인|금전|빚|재테크|집\s?사|건물주|부귀|횡재/],
+  ["wisdom", /합격|시험|공부|취업|취직|성적|지혜|대학|수능|임용|자격증|승진|면접|학업|논문|졸업|이직/],
+  ["health", /건강|아프지|병|수술|회복|장수|무병|낫게|완쾌|평안|무탈/],
+  ["love", /사랑|결혼|연애|남자\s?친구|여자\s?친구|남친|여친|인연|짝|좋아하|썸|재회|첫사랑|고백|솔로/]
+];
+function guessKind(text) { for (const [k, re] of KIND_WORDS) if (re.test(text)) return k; return "hope"; }
+const kindOf = (w) => (w && LANTERN_KINDS[w.kind] ? w.kind : null);
+// 불빛 번짐 텍스처 (한 번만 만들어 둬요)
+const glowTex = (() => {
+  const c = document.createElement("canvas"); c.width = c.height = 64; const x = c.getContext("2d");
+  const g = x.createRadialGradient(32, 32, 0, 32, 32, 32); g.addColorStop(0, "rgba(255,255,255,1)"); g.addColorStop(.35, "rgba(255,255,255,.45)"); g.addColorStop(1, "rgba(255,255,255,0)");
+  x.fillStyle = g; x.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c);
+})();
+const lanternGeo = new THREE.SphereGeometry(.32, 12, 10), tasselGeo = new THREE.CylinderGeometry(.02, .02, .3, 4);
 function renderLanterns(list) {
   lanternGroup.clear();
   list.slice(0, lanternSlots.length).forEach((w, i) => {
-    const color = lanternColors[i % lanternColors.length];
-    const m = new THREE.Mesh(new THREE.SphereGeometry(.32, 12, 10), new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: .9 }));
+    const k = kindOf(w), color = k ? LANTERN_KINDS[k].color : lanternColors[i % lanternColors.length];
+    const lit = !k || !!w.lit; // 예전 연등(종류 없음)은 원래대로 켜 둬요
+    const base = new THREE.Color(color);
+    const mat = new THREE.MeshStandardMaterial({ color: lit ? base : base.clone().multiplyScalar(.38), emissive: color, emissiveIntensity: lit ? (k === "gold" ? 1.35 : 1.05) : .05 });
+    const m = new THREE.Mesh(lanternGeo, mat);
     m.scale.y = 1.2; m.position.copy(lanternSlots[i]); m.userData.wish = w; lanternGroup.add(m);
-    const tassel = new THREE.Mesh(new THREE.CylinderGeometry(.02, .02, .3, 4), new THREE.MeshBasicMaterial({ color })); tassel.position.y = -.5; m.add(tassel);
+    const tassel = new THREE.Mesh(tasselGeo, new THREE.MeshBasicMaterial({ color: lit ? color : "#5a4a3a" })); tassel.position.y = -.5; m.add(tassel);
+    if (lit) {
+      const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color, transparent: true, opacity: k === "gold" ? .75 : .5, depthWrite: false, blending: THREE.AdditiveBlending }));
+      halo.scale.setScalar(k === "gold" ? 1.9 : 1.5); halo.raycast = () => {}; m.add(halo); m.userData.halo = halo;
+    }
+    if (isMyWish(w) && !lit) { const tag = textSprite("내 연등", { size: 30, color: "#f3e6c4", bg: "rgba(16,21,29,.6)", pad: 10 }); tag.scale.multiplyScalar(.7); tag.position.y = .75; tag.raycast = () => {}; m.add(tag); }
   });
 }
 
@@ -906,7 +938,12 @@ function tap(cx, cy) {
   const r = canvas.getBoundingClientRect(); ndc.set(((cx - r.left) / r.width) * 2 - 1, -((cy - r.top) / r.height) * 2 + 1);
   raycaster.setFromCamera(ndc, camera);
   const hitL = raycaster.intersectObjects(lanternGroup.children, false)[0];
-  if (hitL) { const w = hitL.object.userData.wish; toast(`🏮 ${w.text}${w.nick ? " · " + w.nick : ""}`); return; }
+  if (hitL) {
+    const w = hitL.object.userData.wish, k = kindOf(w), kd = k ? LANTERN_KINDS[k] : null;
+    const state = !kd ? "" : w.lit ? " · 불 밝힘" : isMyWish(w) ? " · 108배를 올리면 불이 켜져요" : " · 아직 불이 꺼져 있어요";
+    toast(`${kd ? kd.emoji + " " + kd.name + " · " : "🏮 "}${w.text}${w.nick ? " · " + w.nick : ""}${state}`);
+    return;
+  }
   const hitM = raycaster.intersectObjects([...others.values()].map((o) => o.monk.root), true)[0];
   if (hitM) { for (const [key, o] of others) { let n = hitM.object; while (n && n !== o.monk.root) n = n.parent; if (n) { greet(key); return; } } }
   const hitC = raycaster.intersectObjects(cushions, false)[0];
@@ -966,7 +1003,11 @@ function doBow() {
   if (player.anim === "bow") return;
   sfx.soft(); playAnim(player, "bow"); me.bow++; save(); act("bow");
   bubble(player, `${me.bow}배`);
-  if (me.bow === 108) { say("오늘 108배를 모두 마쳤어요. 정말 수고했어요."); sfx.bell(); me.coin += 108; save(); updateHud(); toast("🪙 108배 완료! 복전 108닢을 받았어요. 기념품 가게에 들러 보세요"); } else if (me.bow % 12 === 0) say();
+  if (me.bow === 108) {
+    say("오늘 108배를 모두 마쳤어요. 정말 수고했어요."); sfx.bell(); me.coin += 108; save(); updateHud(); toast("🪙 108배 완료! 복전 108닢을 받았어요. 기념품 가게에 들러 보세요");
+    setTimeout(() => lightMyLanterns(true), 1600);
+  } else if (me.bow % 12 === 0) say();
+  if (!$("wishPanel").hidden) renderMyLantern();
 }
 /* ---------- 방석에 앉기 · 계속 절하기 ---------- */
 let pendingSeat = null, autoBow = null;
@@ -1184,25 +1225,122 @@ $("beadRing").addEventListener("keydown", (e) => { if (e.key === " " || e.key ==
 
 /* 소원 연등 */
 let wishes = [];
+let lanternSchemaOld = false; // Supabase 에 kind · lit 칸을 아직 안 만들었으면 true
+if (!Array.isArray(me.myWishes)) me.myWishes = []; // 내가 단 연등 [{id, text}]
+if (!Array.isArray(me.litWishes)) me.litWishes = []; // 내가 불 밝힌 연등 (id 또는 글)
+const wishKey = (w) => (w.id ? "#" + w.id : "t:" + w.text);
+function isMyWish(w) {
+  if (!w || !Array.isArray(me.myWishes)) return false;
+  return me.myWishes.some((m) => (m.id && w.id ? m.id === w.id : m.text === w.text && (!w.nick || w.nick === me.nick)));
+}
+function applyLocalLit(w) { if (w && (me.litWishes.includes(wishKey(w)) || me.litWishes.includes("t:" + w.text) && isMyWish(w))) w.lit = true; return w; }
+function cleanWish(w) { return applyLocalLit({ id: w.id || null, text: String(w.text || "").slice(0, 40), nick: String(w.nick || "").slice(0, 8), kind: KIND_KEYS.includes(w.kind) ? w.kind : null, lit: !!w.lit }); }
+
+// 연등 종류 고르기
+let pickedKind = "gold", kindTouched = false;
+function renderKindPick() {
+  const box = $("kindPick"); box.innerHTML = "";
+  for (const k of KIND_KEYS) {
+    const d = LANTERN_KINDS[k], b = document.createElement("button");
+    b.type = "button"; b.setAttribute("role", "radio"); b.setAttribute("aria-checked", k === pickedKind); b.className = k === pickedKind ? "on" : ""; b.style.setProperty("--kc", d.color);
+    b.innerHTML = `<i>${d.emoji}</i>`; b.append(d.name);
+    b.onclick = () => { pickedKind = k; kindTouched = true; renderKindPick(); sfx.soft(); };
+    box.appendChild(b);
+  }
+  $("kindDesc").textContent = `${LANTERN_KINDS[pickedKind].emoji} ${LANTERN_KINDS[pickedKind].name}: ${LANTERN_KINDS[pickedKind].desc}`;
+}
+$("wishInput").addEventListener("input", () => { if (kindTouched) return; const g = guessKind($("wishInput").value); if (g !== pickedKind && $("wishInput").value.trim()) { pickedKind = g; renderKindPick(); } });
+
+// 내 연등 상태 (108배 진행)
+function renderMyLantern() {
+  const box = $("myLantern"), mine = wishes.filter(isMyWish), off = mine.filter((w) => kindOf(w) && !w.lit);
+  if (!mine.length) { box.hidden = true; return; }
+  box.hidden = false; box.innerHTML = "";
+  const left = document.createElement("div"); left.style.flex = "1";
+  if (off.length) {
+    const n = Math.min(me.bow, 108);
+    left.innerHTML = `<b>🌑 내 연등 ${off.length}개 · 불 꺼짐</b><br><span class="muted">오늘 108배 ${n} / 108</span>`;
+    const bar = document.createElement("div"); bar.className = "bar"; bar.innerHTML = `<i style="width:${(n / 108) * 100}%"></i>`; left.appendChild(bar);
+    box.appendChild(left);
+    const go = document.createElement("button"); go.type = "button"; go.textContent = "🙇 108배 하러 가기";
+    go.onclick = () => { $("wishPanel").hidden = true; goPlace("hall"); setTimeout(() => toast("방석에 앉아 '계속 절하기'를 누르면 108배를 올려요"), 400); };
+    box.appendChild(go);
+  } else {
+    left.innerHTML = `<b>✨ 내 연등 ${mine.length}개 모두 불이 켜져 있어요</b>`; box.appendChild(left);
+    const go = document.createElement("button"); go.type = "button"; go.textContent = "보러 가기";
+    go.onclick = () => { $("wishPanel").hidden = true; goPlace("pagoda"); }; box.appendChild(go);
+  }
+}
+function renderKindStats() {
+  const box = $("kindStats"), cnt = {}; box.innerHTML = "";
+  wishes.forEach((w) => { const k = kindOf(w); if (k) cnt[k] = (cnt[k] || 0) + 1; });
+  const ks = KIND_KEYS.filter((k) => cnt[k]).sort((a, b) => cnt[b] - cnt[a]);
+  ks.forEach((k) => { const s = document.createElement("span"); s.textContent = `${LANTERN_KINDS[k].emoji} ${LANTERN_KINDS[k].name} ${cnt[k]}`; box.appendChild(s); });
+}
 function renderWishList() {
   const ul = $("wishList"); ul.innerHTML = "";
   if (!wishes.length) { const li = document.createElement("li"); li.textContent = "아직 걸린 연등이 없어요. 첫 소원을 달아 보세요."; ul.appendChild(li); }
-  wishes.slice(0, 50).forEach((w) => { const li = document.createElement("li"); li.textContent = w.text; if (w.nick) { const s = document.createElement("small"); s.textContent = w.nick; li.appendChild(s); } ul.appendChild(li); });
-  renderLanterns(wishes);
+  wishes.slice(0, 50).forEach((w) => {
+    const li = document.createElement("li"), k = kindOf(w);
+    if (k) {
+      const d = LANTERN_KINDS[k]; li.style.borderLeftColor = d.color;
+      const tag = document.createElement("span"); tag.className = "wk"; tag.style.color = d.color; tag.textContent = `${d.emoji} ${d.name}`; li.appendChild(tag);
+      if (!w.lit) li.classList.add("off");
+    }
+    if (isMyWish(w)) li.classList.add("mine");
+    li.append(w.text);
+    if (w.nick) { const s = document.createElement("small"); s.textContent = w.nick; li.appendChild(s); }
+    if (k) { const s = document.createElement("span"); s.className = "lit-tag"; s.textContent = w.lit ? "💡" : "· 불 꺼짐"; li.appendChild(s); }
+    ul.appendChild(li);
+  });
+  renderLanterns(wishes); renderKindStats(); renderMyLantern();
 }
+function goPlace(z) { const b = document.querySelector(`#places button[data-z="${z}"]`); if (b && player) b.click(); }
+
+// 108배를 마치면 내 연등에 불을 켜요
+function lightMyLanterns(fromBow) {
+  const off = wishes.filter((w) => isMyWish(w) && kindOf(w) && !w.lit);
+  if (!off.length) { if (fromBow) setTimeout(() => toast("🏮 소원 연등을 달면, 다음 108배 때 내 연등에 불이 켜져요", { label: "연등 달기", fn: () => openPanel("wishPanel") }), 600); return false; }
+  const now = performance.now();
+  off.forEach((w) => { w.lit = true; w.flashAt = now; const key = wishKey(w); if (!me.litWishes.includes(key)) me.litWishes.push(key); });
+  me.litWishes = me.litWishes.slice(-80);
+  if (!sb) me.localWishes = wishes; // 혼자 수행 모드면 기기에 저장
+  save(); renderWishList(); sfx.bell();
+  if (sb && !lanternSchemaOld) off.forEach((w) => { if (w.id) sb.rpc("light_wish", { wish_id: w.id }).then(({ error }) => { if (error) lanternSchemaOld = true; }, () => {}); });
+  const names = [...new Set(off.map((w) => LANTERN_KINDS[kindOf(w)].name))].join(" · ");
+  say(`108배의 공덕으로 ${names}에 불이 밝혀졌어요.`);
+  toast(`🏮 내 ${names} ${off.length > 1 ? off.length + "개" : ""}에 불이 켜졌어요!`, zone === "pagoda" || zone === "yard" ? null : { label: "보러 가기", fn: () => goPlace("pagoda") });
+  if (navigator.vibrate) navigator.vibrate([30, 60, 30]);
+  return true;
+}
+
 const BANNED = ["시발", "씨발", "ㅅㅂ", "병신", "ㅂㅅ", "좆", "개새", "섹스", "fuck", "닥쳐", "꺼져", "자살", "죽어"];
 $("wishBtn").addEventListener("click", async () => {
   const text = $("wishInput").value.trim().slice(0, 40); if (!text) return;
   if (BANNED.some((b) => text.includes(b))) { $("wishNote").textContent = "고운 말로 적어 주세요."; return; }
   $("wishInput").value = ""; sfx.soft();
-  const w = { text, nick: me.nick.slice(0, 8) };
+  const kind = pickedKind, w = { text, nick: me.nick.slice(0, 8), kind };
+  const mineRec = { id: null, text }; me.myWishes.unshift(mineRec); me.myWishes = me.myWishes.slice(0, 40); save();
+  const kd = LANTERN_KINDS[kind];
+  const after = () => {
+    gain("wish"); kindTouched = false;
+    if (me.bow >= 108) { $("wishNote").textContent = `${kd.name}을 달았어요. 오늘 108배를 이미 마쳐서 바로 불을 밝혀요!`; setTimeout(() => lightMyLanterns(false), 500); }
+    else $("wishNote").textContent = `${kd.emoji} ${kd.name}을 달았어요. 대웅전에서 108배를 올리면 불이 켜져요 (오늘 ${me.bow}/108).`;
+    renderMyLantern();
+  };
   if (sb) {
-    const { error } = await sb.from("wishes").insert(w);
-    if (error) { $("wishNote").textContent = "연등을 걸지 못했어요. 잠시 뒤 다시 시도해 주세요."; return; }
-    $("wishNote").textContent = "연등을 달았어요. 모두에게 보여요."; gain("wish");
-  } else { gain("wish"); me.localWishes.unshift(w); me.localWishes = me.localWishes.slice(0, 40); save(); wishes = me.localWishes; renderWishList(); }
+    let res = lanternSchemaOld ? { error: { message: "kind" } } : await sb.from("wishes").insert(w).select("id").single();
+    if (res.error) { // kind · lit 칸이 없는 예전 테이블이면 글만 저장
+      lanternSchemaOld = true; res = await sb.from("wishes").insert({ text: w.text, nick: w.nick });
+      if (res.error) { me.myWishes.shift(); save(); $("wishNote").textContent = "연등을 걸지 못했어요. 잠시 뒤 다시 시도해 주세요."; return; }
+      // 예전 테이블: 색 구분을 내 화면에서라도 보이게
+      wishes.unshift(cleanWish({ text: w.text, nick: w.nick, kind })); wishes = wishes.slice(0, 42); renderWishList();
+    } else { mineRec.id = res.data?.id || null; save(); const found = wishes.find((x) => !x.id ? false : x.id === mineRec.id); if (!found) { wishes.unshift(cleanWish({ ...w, id: mineRec.id })); wishes = wishes.slice(0, 42); } renderWishList(); }
+    after();
+  } else { me.localWishes.unshift(cleanWish(w)); me.localWishes = me.localWishes.slice(0, 40); wishes = me.localWishes; save(); renderWishList(); after(); }
 });
 $("wishInput").addEventListener("keydown", (e) => { if (e.key === "Enter") $("wishBtn").click(); });
+renderKindPick();
 
 /* =========================================================
    실시간 (Supabase)
@@ -1331,11 +1469,20 @@ async function connect() {
   lobby.on("presence", { event: "sync" }, () => { countRooms(); if (!$("roomPanel").hidden) renderRooms(); start(); });
   lobby.subscribe((s) => { if (s === "SUBSCRIBED") setTimeout(start, 1200); if (s === "CHANNEL_ERROR" || s === "TIMED_OUT") { if (!started) solo("연결이 불안정해 혼자 수행 모드로 열었어요."); } });
   // 소원 연등
-  const { data } = await sb.from("wishes").select("text,nick,created_at").order("created_at", { ascending: false }).limit(42);
-  wishes = data || []; renderWishList();
+  let res = await sb.from("wishes").select("id,text,nick,kind,lit,created_at").order("created_at", { ascending: false }).limit(42);
+  if (res.error) { lanternSchemaOld = true; res = await sb.from("wishes").select("text,nick,created_at").order("created_at", { ascending: false }).limit(42); }
+  wishes = (res.data || []).map(cleanWish); renderWishList();
   sb.channel("sansa-wishes").on("postgres_changes", { event: "INSERT", schema: "public", table: "wishes" }, ({ new: w }) => {
-    wishes.unshift({ text: String(w.text || "").slice(0, 40), nick: String(w.nick || "").slice(0, 8) }); wishes = wishes.slice(0, 42); renderWishList();
-    if (w.nick !== me.nick) toast(`🏮 새 연등: ${String(w.text).slice(0, 20)}`);
+    const nw = cleanWish(w);
+    if (nw.id && wishes.some((x) => x.id === nw.id)) return; // 내가 방금 단 연등은 이미 들어가 있어요
+    const pending = wishes.findIndex((x) => !x.id && x.text === nw.text && x.nick === nw.nick);
+    if (pending >= 0) { const old = wishes[pending]; nw.kind = nw.kind || old.kind; nw.lit = nw.lit || old.lit; wishes[pending] = nw; } else wishes.unshift(nw);
+    wishes = wishes.slice(0, 42); renderWishList();
+    if (w.nick !== me.nick) { const kd = LANTERN_KINDS[nw.kind]; toast(`${kd ? kd.emoji + " 새 " + kd.name : "🏮 새 연등"}: ${nw.text.slice(0, 20)}`); }
+  }).on("postgres_changes", { event: "UPDATE", schema: "public", table: "wishes" }, ({ new: w }) => {
+    const x = wishes.find((v) => v.id && v.id === w.id); if (!x || x.lit || !w.lit) return;
+    x.lit = true; x.flashAt = performance.now(); renderWishList();
+    if (!isMyWish(x) && kindOf(x)) toast(`✨ ${x.nick || "누군가"}님이 108배를 마치고 ${LANTERN_KINDS[x.kind].name}을 밝혔어요`);
   }).subscribe();
 }
 function solo(msg) {
@@ -1448,7 +1595,12 @@ function tick() {
   const glow = (sevenStars.userData.glowUntil || 0) > Date.now(); sevenStars.children.forEach((s, i) => s.scale.setScalar(glow ? 1.6 + Math.sin(t * 4 + i) * .4 : 1));
   const tv = Date.now() < teaUntil; tea.visible = tv;
   if (tv) steam.forEach((s) => { s.userData.t = (s.userData.t + dt * .4) % 1; const k = s.userData.t; s.position.set(Math.sin(k * 7) * .05, .25 + k * .6, 0); s.material.opacity = Math.sin(k * Math.PI) * .4; });
-  lanternGroup.children.forEach((l, i) => { l.rotation.z = Math.sin(t * .8 + i) * .06; });
+  lanternGroup.children.forEach((l, i) => {
+    l.rotation.z = Math.sin(t * .8 + i) * .06;
+    const w = l.userData.wish, fa = w && w.flashAt;
+    if (fa && now - fa < 4000) { const p = (now - fa) / 4000; const s = 1 + Math.sin(p * Math.PI * 6) * .25 * (1 - p); l.scale.set(s, 1.2 * s, s); if (l.userData.halo) l.userData.halo.scale.setScalar(1.6 + (1 - p) * 2.4); }
+    else if (l.userData.halo) l.userData.halo.material.opacity = (kindOf(w) === "gold" ? .7 : .45) + Math.sin(t * 2 + i) * .08;
+  });
   stream.material.color.setHSL(.55, .4, .27 + Math.sin(t * 2) * .02);
   renderer.render(scene, camera);
   requestAnimationFrame(tick);

@@ -172,8 +172,12 @@
 <div id="wishPanel" class="panel" hidden>
   <div class="panel-card">
     <div class="panel-head"><h2>소원 연등</h2><button class="close" data-close type="button" aria-label="닫기">✕</button></div>
+    <div id="kindPick" class="kind-pick" role="radiogroup" aria-label="연등 종류"></div>
+    <p class="muted kind-desc" id="kindDesc"></p>
     <div class="row"><input id="wishInput" maxlength="40" placeholder="소원을 적어 주세요 (40자)" autocomplete="off"><button id="wishBtn" type="button" class="primary">달기</button></div>
-    <p class="muted" id="wishNote">마당 위에 연등으로 걸려요. 연등을 누르면 소원이 보여요.</p>
+    <p class="muted" id="wishNote">새로 단 연등은 불이 꺼진 채로 걸려요. 대웅전에서 108배를 올리면 내 연등에 불이 켜져요.</p>
+    <div id="myLantern" class="my-lantern" hidden></div>
+    <div id="kindStats" class="kind-stats"></div>
     <ul id="wishList" class="wish-list"></ul>
   </div>
 </div>

@@ -70,6 +70,21 @@ input[type=range]{padding:0;accent-color:var(--lantern);background:none;border:0
 .wish-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;max-height:40vh;overflow:auto}
 .wish-list li{background:rgba(0,0,0,.25);border-left:3px solid var(--lantern);border-radius:8px;padding:7px 11px;font-size:.9rem;overflow-wrap:anywhere}
 .wish-list small{color:var(--mute);margin-left:6px}
+.wish-list li.off{opacity:.62;border-left-style:dashed}
+.wish-list li.mine{background:rgba(255,220,140,.08)}
+.wish-list .wk{font-size:.74rem;font-weight:700;margin-right:6px;white-space:nowrap}
+.wish-list .lit-tag{font-size:.72rem;margin-left:6px;color:var(--mute)}
+.kind-pick{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.kind-pick button{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 2px;border-radius:14px;background:rgba(0,0,0,.25);border:1.5px solid transparent;color:var(--ink);font-size:.78rem;line-height:1.2}
+.kind-pick button i{font-style:normal;font-size:1.3rem}
+.kind-pick button.on{border-color:var(--kc);background:color-mix(in srgb,var(--kc) 22%,transparent)}
+.kind-desc{margin-top:-4px}
+.kind-stats{display:flex;flex-wrap:wrap;gap:6px;font-size:.78rem;color:var(--mute)}
+.kind-stats span{background:rgba(0,0,0,.22);border-radius:999px;padding:4px 9px}
+.my-lantern{display:flex;align-items:center;justify-content:space-between;gap:10px;background:rgba(242,166,90,.12);border:1px solid rgba(242,166,90,.35);border-radius:14px;padding:10px 12px;font-size:.86rem}
+.my-lantern .bar{flex:1;height:6px;border-radius:99px;background:rgba(255,255,255,.12);overflow:hidden;margin-top:6px}
+.my-lantern .bar i{display:block;height:100%;background:var(--lantern)}
+.my-lantern button{flex:none;background:var(--lantern);color:#2a1a0c;font-weight:700;border-radius:999px;padding:8px 12px;font-size:.8rem}
 
 .beads-screen{position:fixed;inset:0;z-index:40;background:var(--paper);color:#3a2a1c;display:grid;place-items:center}
 .beads-screen .back{position:absolute;left:var(--sl);top:calc(var(--st) + 12px);background:#fff;border:1px solid #ddd2bf;border-radius:999px;padding:9px 16px;color:#3a2a1c}
