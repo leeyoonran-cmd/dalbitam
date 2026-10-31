@@ -97,6 +97,16 @@
     <p class="muted" id="shopCoin">내 복전 🪙 0</p>
     <p class="muted">복전은 수행할 때마다 쌓이고, 108배를 마치면 108닢을 한꺼번에 받아요.</p>
     <div id="shopList" class="menu-list one"></div>
+    <div id="ykBox" class="yk-box" hidden>
+      <h3 class="sub-h">📿 염꾸 · 나만의 이니셜 염주</h3>
+      <div id="ykPreview" class="yk-preview" aria-hidden="true"></div>
+      <small class="muted">알 색깔</small>
+      <div id="ykColors" class="look-opts"></div>
+      <small class="muted">이니셜 (영문 · 숫자, 최대 6자)</small>
+      <div class="row"><input id="ykInput" maxlength="6" placeholder="예: HELEN" autocomplete="off" autocapitalize="characters"><button type="button" class="ghost-btn" data-yk="*">♥</button><button type="button" class="ghost-btn" data-yk="+">★</button><button type="button" id="ykClear" class="ghost-btn">지우기</button></div>
+      <button id="ykBuy" type="button" class="primary">만들어서 착용하기</button>
+      <p class="muted">완성한 염꾸는 손목에 차고 다녀요. 같은 법당 사람들에게도 보여요.</p>
+    </div>
     <h3 class="sub-h">진짜 굿즈</h3>
     <div id="goodsList" class="menu-list one"></div>
     <div id="couponBox" class="coupon" hidden><small>108배 인증 할인 쿠폰</small><b id="couponCode"></b></div>
