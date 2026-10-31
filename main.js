@@ -982,6 +982,39 @@ function makeMonk(nick, isMe) {
   buildFace(mm, "smile"); return mm;
 }
 
+/* ---------- 함께 수행하는 동자승: 빈 방석에 같은 법복을 입고 앉아 절해요 ---------- */
+const npcs = [];
+const NPC_MAX = 30;
+function buildNpcs() {
+  // 앞줄부터 가운데 위주로 자리를 골라요
+  const seats = hallSeats.slice().sort((a, b) => (b.z - a.z) * 0 + (a.z - b.z) * -1 + (Math.abs(a.x) - Math.abs(b.x)) * .4).sort((a, b) => (Math.round(a.z) - Math.round(b.z)) || (Math.abs(a.x) - Math.abs(b.x)));
+  seats.slice(0, NPC_MAX).forEach((st, i) => {
+    const m = makeMonk("", false); m.label.visible = false; buildFace(m, i % 3 ? "calm" : "smile");
+    m.pos.set(st.x, 0, st.z); m.target.copy(m.pos); m.sitting = true; m.yaw = Math.PI; m.root.rotation.y = Math.PI; m.seat = st;
+    m.nextBow = performance.now() + 2000 + Math.random() * 9000; m.root.visible = false; npcs.push(m);
+  });
+}
+let npcCheck = 0;
+function updateNpcs(dt, now) {
+  const inHall = zone === "hall" || (player && player.pos.z < -10 && Math.abs(player.pos.x) < 18);
+  if (now > npcCheck) {
+    npcCheck = now + 500;
+    const want = Math.max(6, NPC_MAX - others.size * 2); let shown = 0;
+    for (const m of npcs) {
+      const taken = (player && Math.hypot(player.pos.x - m.seat.x, player.pos.z - m.seat.z) < .9) || (pendingSeat && pendingSeat.x === m.seat.x && pendingSeat.z === m.seat.z) || [...others.values()].some((o) => Math.hypot(o.monk.pos.x - m.seat.x, o.monk.pos.z - m.seat.z) < .9);
+      m.root.visible = inHall && !taken && shown < want; if (m.root.visible) shown++;
+    }
+  }
+  if (!inHall) return;
+  for (const m of npcs) {
+    if (!m.root.visible) continue;
+    if (now > m.nextBow) { playAnim(m, "bow"); m.nextBow = now + 5000 + Math.random() * 7000; }
+    animateMonk(m, dt, now);
+  }
+}
+// 내가 절하면 함께 따라 절해요
+function npcsBowAlong() { const now = performance.now(); npcs.forEach((m) => { if (m.root.visible && !m.anim) setTimeout(() => playAnim(m, "bow"), 150 + Math.random() * 700); m.nextBow = Math.max(m.nextBow, now + 2500); }); }
+
 /* ---------- 등급 후광: 스님부터 머리 뒤에 빛이 생겨요 ---------- */
 function applyAura(m, lv) {
   if (!m || m.auraLv === lv) return; m.auraLv = lv;
@@ -1092,7 +1125,7 @@ const ZONES = {
   peak: { name: "정상", intro: "정상이에요! 달빛암이 한눈에 내려다보여요." },
   shop: { name: "기념품 가게", intro: "수행하며 모은 복전으로 기념품을 골라 보세요." }
 };
-const GOTO = { shop: [9.5, 6.2], hall: [0, -15.4], pagoda: [0, 3.2], shrine: [15, -2.6], kitchen: [-15, -1.2], walk: [0, 16], yard: [0, 8], mountain: [TRAIL[0].x + 1.2, TRAIL[0].z] };
+const GOTO = { shop: [9.5, 6.2], hall: [0, -16.8], pagoda: [0, 3.2], shrine: [15, -2.6], kitchen: [-15, -1.2], walk: [0, 16], yard: [0, 8], mountain: [TRAIL[0].x + 1.2, TRAIL[0].z] };
 
 /* =========================================================
    카메라 조작
@@ -1186,15 +1219,18 @@ function renderActions() {
 const placeNames = { hall: "대웅전", pagoda: "석탑", shrine: "산신각", kitchen: "공양간", walk: "산책길", mountain: "달빛봉", shop: "기념품" };
 for (const [z, n] of Object.entries(placeNames)) {
   const b = document.createElement("button"); b.type = "button"; b.dataset.z = z; b.textContent = n;
-  b.onclick = () => { standUp(); pendingSeat = null; const [x, zz] = GOTO[z]; player.pos.set(x, 0, zz); player.target.set(x, 0, zz); autoPath = null; camYaw = z === "walk" ? Math.PI : z === "mountain" ? Math.PI / 2 : 0; lastMoveTx = 0; sendPresence(); };
+  b.onclick = () => { standUp(); pendingSeat = null; const [x, zz] = GOTO[z]; player.pos.set(x, 0, zz); player.target.set(x, 0, zz); autoPath = null; camYaw = z === "walk" ? Math.PI : z === "mountain" ? Math.PI / 2 : 0; lastMoveTx = 0; sendPresence(); if (z === "hall") enterHallView(); };
   $("places").appendChild(b);
 }
 
+// 법당에 들어서면 입구에서 법당 전체가 한눈에 보이게
+let hallTipShown = false;
+function enterHallView() { camYaw = 0; camPitch = .34; camDist = 8.5; if (!hallTipShown) { hallTipShown = true; setTimeout(() => toast("화면을 끌면 법당 안을 둘러볼 수 있어요. 두 손가락으로 가까이 · 멀리"), 900); } }
 function act(name, extra = {}) { sendPresence({ act: name, ...extra }); if (PTS[name] !== undefined) gain(name); }
 function doMok() { sfx.mok(); playAnim(player, "mok"); me.mok++; save(); if (me.mok % 10 === 0) say(); bubble(player, `똑 · ${me.mok}`); act("mok"); }
 function doBow() {
   if (player.anim === "bow") return;
-  sfx.soft(); playAnim(player, "bow"); me.bow++; save(); act("bow");
+  sfx.soft(); playAnim(player, "bow"); me.bow++; save(); act("bow"); npcsBowAlong();
   bubble(player, `${me.bow}배`);
   if (me.bow === 108) {
     say("오늘 108배를 모두 마쳤어요. 정말 수고했어요."); sfx.bell(); me.coin += 108; save(); updateHud(); toast("🪙 108배 완료! 복전 108닢을 받았어요. 기념품 가게에 들러 보세요");
@@ -1802,15 +1838,17 @@ function tick() {
     if (moved && now - lastMoveSent > 250) { lastMoveSent = now; sendPresence(); }
     animateMonk(player, dt, now);
     const z = zoneOf(player.pos.x, player.pos.z);
-    if (z !== zone) { zone = z; renderActions(); say(ZONES[zone].intro); gain(`visit:${z}`); if (z === "peak") reachPeak(); }
+    if (z !== zone) { const prev = zone; zone = z; renderActions(); say(ZONES[zone].intro); gain(`visit:${z}`); if (z === "peak") reachPeak(); if (z === "hall") enterHallView(prev); }
     // 대웅전 안에서는 동자승 뒤쪽 위에서 부처님을 함께 바라보는 구도로 바꿔요
     if (zone === "hall") {
-      // 대웅전: 법당 뒤쪽 높은 곳에서 부처님과 방석 줄이 함께 보이게
-      const want = new THREE.Vector3(player.pos.x * .25, 3.4, BUDDHA_Z + .4);
-      camTarget.lerp(want, Math.min(1, dt * 4));
-      const yaw = clamp(camYaw, -.5, .5);
-      const camWant = new THREE.Vector3(player.pos.x * .4 + Math.sin(yaw) * 3, 5.7, Math.min(Math.max(player.pos.z + 3.6, -27.5), -14.6));
-      camera.position.lerp(camWant, Math.min(1, dt * 4));
+      // 대웅전: 끌어서 사방을 둘러보고, 두 손가락으로 확대 · 축소. 카메라는 법당 벽과 천장 안쪽에만 머물러요
+      // 동자승 바로 뒤 눈높이에서 바라보는 방향으로 법당을 둘러봐요
+      const fx = -Math.sin(camYaw), fz = -Math.cos(camYaw), cp = clamp(camPitch, .12, 1.0);
+      const cd = 2.6 + (clamp(camDist, 3, 12) - 3) * .4;
+      const cw = new THREE.Vector3(player.pos.x - fx * cd, 2.3 + cp * 2.4, player.pos.z - fz * cd);
+      cw.x = clamp(cw.x, HB.x1 + .7, HB.x2 - .7); cw.z = clamp(cw.z, HB.z1 + .7, HB.z2 + 1.6); cw.y = clamp(cw.y, 1.3, HALL.h + .1);
+      camTarget.lerp(new THREE.Vector3(player.pos.x + fx * 7, 2.6 - (cp - .36) * 3.5, player.pos.z + fz * 7), Math.min(1, dt * 6));
+      camera.position.lerp(cw, Math.min(1, dt * 6));
     } else {
       camTarget.lerp(new THREE.Vector3(player.pos.x, 1.6 + (player.y || 0), player.pos.z), Math.min(1, dt * 5));
       const front = performance.now() < frontUntil, cy = front ? player.root.rotation.y : camYaw, cd = front ? 4.2 : camDist, cp = front ? .22 : camPitch;
@@ -1829,6 +1867,7 @@ function tick() {
     camera.position.set(Math.sin(t * .05) * 22, 9, Math.cos(t * .05) * 22 - 4); camera.lookAt(0, 2, -8);
   }
   for (const [, o] of others) { moveMonk(o.monk, dt, 3.6); animateMonk(o.monk, dt, now); }
+  updateNpcs(dt, now);
   // 효과
   const inc = Date.now() < incenseUntil; incense.visible = inc;
   if (inc) smoke.forEach((s) => { s.userData.t = (s.userData.t + dt * .3) % 1; const k = s.userData.t; s.position.set(Math.sin(k * 9) * .1, .6 + k * 1.6, 0); s.scale.setScalar(.6 + k * 1.8); s.material.opacity = Math.sin(k * Math.PI) * .35; });
@@ -1868,6 +1907,7 @@ function applyTimeOfDay() {
 }
 applyTimeOfDay(); setInterval(applyTimeOfDay, 60000);
 
+buildNpcs();
 renderLanterns(me.localWishes);
 for (let i = 0; i < Math.min(me.rice || 0, RICE_SPOTS.length); i++) addRiceBag(false);
 renderGiwa(me.localGiwa);
