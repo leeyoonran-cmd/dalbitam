@@ -68,11 +68,11 @@ begin
     'bow108', (select count(*) from v where bows >= 108),
     'returning', (select count(distinct v.visitor) from v join first_seen f using (visitor) where f.f < now() - make_interval(days => d) or exists (select 1 from public.visits x where x.visitor = v.visitor and x.started_at < v.started_at - interval '30 minutes')),
     'mobile_pct', (select coalesce(round(100.0 * count(*) filter (where mobile) / nullif(count(*), 0)), 0) from v),
-    'per_day', (select coalesce(jsonb_agg(jsonb_build_object('day', day, 'visitors', n, 'avg_secs', a) order by day), '[]') from (
-        select to_char(started_at at time zone 'Asia/Seoul', 'MM-DD') day, count(distinct visitor) n, round(avg(secs)) a from v group by 1) t),
-    'refs', (select coalesce(jsonb_agg(jsonb_build_object('ref', ref, 'n', n) order by n desc), '[]') from (
-        select coalesce(nullif(ref, ''), '직접 방문') ref, count(*) n from v group by 1 order by 2 desc limit 6) t),
-    'acts', (select coalesce(jsonb_object_agg(k, n), '{}') from (select k, sum((val)::int) n from v, jsonb_each_text(v.acts) e(k, val) where val ~ '^[0-9]+$' group by k) t),
+    'per_day', (select coalesce(jsonb_agg(jsonb_build_object('day', dd, 'visitors', n, 'avg_secs', a) order by dd), '[]') from (
+        select to_char(started_at at time zone 'Asia/Seoul', 'MM-DD') as dd, count(distinct visitor) as n, round(avg(secs)) as a from v group by 1) t),
+    'refs', (select coalesce(jsonb_agg(jsonb_build_object('ref', rf, 'n', n) order by n desc), '[]') from (
+        select coalesce(nullif(ref, ''), '직접 방문') as rf, count(*) as n from v group by 1 order by 2 desc limit 6) t),
+    'acts', (select coalesce(jsonb_object_agg(k, n), '{}') from (select k, sum((val)::int) as n from v, jsonb_each_text(v.acts) e(k, val) where val ~ '^[0-9]+$' group by k) t),
     'recent', (select coalesce(jsonb_agg(jsonb_build_object('nick', nick, 'at', to_char(started_at at time zone 'Asia/Seoul', 'MM-DD HH24:MI'), 'secs', secs, 'bows', bows, 'ref', ref) order by started_at desc), '[]') from (
         select * from v order by started_at desc limit 30) t)
   ) into r;
