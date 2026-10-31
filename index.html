@@ -47,7 +47,6 @@
 <div class="top">
   <button id="roomBtn" class="chip" type="button"><span id="roomLabel">월하당 1</span> ▾</button>
   <div class="chip-group">
-    <span class="chip plain" id="peopleChip">👤 <b id="peopleCount">1</b></span>
     <button id="chantBtn" class="chip" type="button">염불</button>
     <button id="lookBtn" class="chip" type="button" aria-label="법복 꾸미기">👘</button>
     <button id="soundBtn" class="chip" type="button" aria-label="자연 소리 설정">🎐</button>
@@ -84,8 +83,8 @@
 <!-- 법당(서버) 선택 -->
 <div id="roomPanel" class="panel" hidden>
   <div class="panel-card">
-    <div class="panel-head"><h2>법당 고르기</h2><button class="close" data-close type="button" aria-label="닫기">✕</button></div>
-    <p class="muted">어느 법당에서도 같은 절을 이용할 수 있어요. 숫자는 실제 접속자 수예요.</p>
+    <div class="panel-head"><h2 id="roomTitle">법당 고르기</h2><button class="close" data-close type="button" aria-label="닫기">✕</button></div>
+    <p class="muted" id="roomNote">어느 법당에서도 같은 절을 이용할 수 있어요. 숫자는 실제 접속자 수예요.</p>
     <div id="roomList" class="room-list"></div>
   </div>
 </div>

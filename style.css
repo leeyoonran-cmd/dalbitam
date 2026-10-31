@@ -157,3 +157,8 @@ body.rec .rec-exit{display:block;position:fixed;right:0;top:0;width:80px;height:
 .yk-bead,.yk-letter{position:absolute;width:24px;height:24px;margin:-12px 0 0 -12px;border-radius:50%;box-shadow:0 2px 4px rgba(0,0,0,.4)}
 .yk-letter{background:#f6f1e6;color:#2a1a0c;border-radius:6px;display:grid;place-items:center;font-weight:800;font-size:.85rem;font-family:"Gowun Dodum",sans-serif}
 .yk-box .row .ghost-btn{padding:10px 12px}
+.room-now{grid-column:1/-1;display:flex;align-items:baseline;justify-content:center;gap:6px;padding:14px;border-radius:16px;background:rgba(242,166,90,.12);border:1px solid rgba(242,166,90,.3)}
+.room-now b{font-size:2.2rem;font-family:var(--display);color:var(--lantern);font-variant-numeric:tabular-nums}
+.room-names{grid-column:1/-1;list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:6px;max-height:40vh;overflow:auto}
+.room-names li{background:rgba(0,0,0,.25);border-radius:999px;padding:5px 11px;font-size:.84rem}
+.room-names li:first-child{color:var(--lantern)}
