@@ -609,7 +609,7 @@ const GIWA = { x: -5.2, z: -12.6, cols: 8, rows: 3 };
 const giwaGroup = new THREE.Group(); giwaGroup.position.set(GIWA.x, 0, GIWA.z); scene.add(giwaGroup); camSolidGroups.push(giwaGroup);
 const giwaTiles = new THREE.Group(); giwaGroup.add(giwaTiles);
 for (let r = 0; r < GIWA.rows; r++) { const h = .35 + r * .42; box(4.3, h, .55, mat.wood, 0, h / 2, -r * .55, giwaGroup); }
-{ const sg = textSprite("기와 불사 · 소원 기와", { size: 34, color: "#f3e6c4", bg: "#3b2414", pad: 14 }); sg.material.depthTest = true; sg.scale.multiplyScalar(.75); sg.position.set(0, 2.55, -.6); giwaGroup.add(sg);
+{ const sg = textSprite("기와 불사 · 소원 기와", { size: 34, color: "#f3e6c4", bg: "#3b2414", pad: 14 }); sg.material.depthTest = true; sg.scale.multiplyScalar(.5); sg.position.set(0, 2.45, -.6); giwaGroup.add(sg);
   [-2.25, 2.25].forEach((x) => { cyl(.06, .07, 2.4, mat.pillar, x, 1.2, -.6, 8, giwaGroup); }); }
 block(GIWA.x - 2.3, GIWA.x + 2.3, GIWA.z - 1.5, GIWA.z + .35);
 const giwaGeo = new THREE.CylinderGeometry(.22, .24, .5, 18, 1, true, -Math.PI * .4, Math.PI * .8);
@@ -1090,6 +1090,9 @@ function animateMonk(m, dt, now) {
   if (m.anim === "eat") { const k = (Math.sin(m.animT * 5) + 1) / 2; m.armR.rotation.set(-1.3 - k * 1.0, 0, .55 - k * .25); m.armL.rotation.set(-1.1, 0, -.5); m.head.rotation.x = .1 * k; if (m.animT > 6) { m.anim = null; m.head.rotation.x = 0; const f = m.onEatDone; m.onEatDone = null; f && f(); } }
   if (m.anim === "nod") { m.head.rotation.x = Math.max(0, Math.sin(m.animT * 3)) * .35; if (m.animT > 3) { m.anim = null; m.head.rotation.x = 0; } }
   if (m.bubble && now > m.bubbleUntil) { m.root.remove(m.bubble); m.bubble.material.map.dispose(); m.bubble = null; }
+  // 카메라가 가까우면 이름표 · 말풍선을 작게 (화면을 덮지 않게)
+  const k = clamp(camera.position.distanceTo(m.root.position) / 9, .38, 1);
+  for (const sp of [m.label, m.bubble]) { if (!sp) continue; if (!sp.userData.base) sp.userData.base = sp.scale.clone(); sp.scale.copy(sp.userData.base).multiplyScalar(k); }
 }
 
 /* =========================================================
@@ -1138,7 +1141,7 @@ canvas.addEventListener("pointerdown", (e) => { canvas.setPointerCapture(e.point
 canvas.addEventListener("pointermove", (e) => {
   const p = pointers.get(e.pointerId); if (!p) return;
   const dx = e.clientX - p.x, dy = e.clientY - p.y; p.x = e.clientX; p.y = e.clientY;
-  if (pointers.size === 2) { const [a, b] = [...pointers.values()]; const d = Math.hypot(a.x - b.x, a.y - b.y); camDist = clamp(distStart * pinchStart / Math.max(d, 1), 3, 16); return; }
+  if (pointers.size === 2) { const [a, b] = [...pointers.values()]; const d = Math.hypot(a.x - b.x, a.y - b.y); camDist = clamp(distStart * pinchStart / Math.max(d, 1), 4, 16); return; }
   if (downAt) downAt.moved += Math.abs(dx) + Math.abs(dy);
   camYaw -= dx * .006; camPitch = clamp(camPitch + dy * .004, .12, 1.2);
 });
@@ -1148,7 +1151,7 @@ const endPointer = (e) => {
   downAt = null;
 };
 canvas.addEventListener("pointerup", endPointer); canvas.addEventListener("pointercancel", (e) => { pointers.delete(e.pointerId); downAt = null; });
-canvas.addEventListener("wheel", (e) => { e.preventDefault(); camDist = clamp(camDist + e.deltaY * .01, 3, 16); }, { passive: false });
+canvas.addEventListener("wheel", (e) => { e.preventDefault(); camDist = clamp(camDist + e.deltaY * .01, 4, 16); }, { passive: false });
 window.addEventListener("keydown", (e) => {
   if (!player || e.target.tagName === "INPUT") return;
   const k = e.key.toLowerCase(), f = 2.5;
@@ -1636,9 +1639,10 @@ const posPayload = () => ({ k: myKey, l: me.look, lv: levelOf(me.pts), s: player
 function trackMe() { if (roomCh && player) roomCh.track({ nick: me.nick.slice(0, 8), ...posPayload(), at: Date.now() }).catch(() => {}); }
 setInterval(trackMe, 30000);
 setInterval(() => {
-  const now = Date.now(); let n = [...others.values()].filter((o) => now - (o.lastBow || 0) < 4500).length;
+  const now = Date.now(); let n = [...others.values()].filter((o) => now - (o.lastBow || 0) < 4500 && zoneOf(o.monk.pos.x, o.monk.pos.z) === "hall").length;
   if (player && player.anim === "bow" || autoBow) n++;
   const el = $("groupBanner"); if (!el) return;
+  if (zone !== "hall") { el.hidden = true; return; }
   if (n >= 2) { el.textContent = `🙇 지금 ${n}명이 함께 절하고 있어요`; el.hidden = false; } else el.hidden = true;
 }, 1000);
 function sendPresence(patch = {}) {
@@ -1876,7 +1880,7 @@ function tick() {
       for (const t of camHide) { const px = t.position.x, pz = t.position.z, k = clamp(((px - ax) * vx + (pz - az) * vz) / L, 0, 1), dx = ax + vx * k - px, dz = az + vz * k - pz, r = 2.3 * t.scale.x; t.visible = dx * dx + dz * dz > r * r; } }
     if (hallG.userData.sign) hallG.userData.sign.visible = zone !== "hall";
     mountMesh.userData.far.visible = zone !== "peak" && zone !== "mountain";
-    player.label.visible = zone !== "hall" && camera.position.distanceTo(player.root.position) > 3.2;
+    player.label.visible = zone !== "hall" && camera.position.distanceTo(player.root.position) > 2.6;
     const fovWant = zone === "hall" ? 70 : 55;
     if (Math.abs(camera.fov - fovWant) > .1) { camera.fov += (fovWant - camera.fov) * Math.min(1, dt * 4); camera.updateProjectionMatrix(); }
   } else {
