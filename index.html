@@ -182,6 +182,18 @@
   </div>
 </div>
 
+<!-- 기와 불사 -->
+<div id="giwaPanel" class="panel" hidden>
+  <div class="panel-card">
+    <div class="panel-head"><h2>기와 불사</h2><button class="close" data-close type="button" aria-label="닫기">✕</button></div>
+    <p class="muted">절에서 지붕을 새로 이을 때 쓰는 기와에 소원을 적어 올려요. 법당 앞 너럭바위의 기와 단에 쌓여 모두에게 보여요.</p>
+    <div class="giwa-preview" aria-hidden="true"><span id="giwaPreviewText">소원을 적어 주세요</span></div>
+    <div class="row"><input id="giwaInput" maxlength="20" placeholder="기와에 적을 소원 (20자)" autocomplete="off"><button id="giwaBtn" type="button" class="primary">올리기</button></div>
+    <p class="muted" id="giwaNote">기와를 누르면 적힌 소원을 볼 수 있어요.</p>
+    <ul id="giwaList" class="wish-list"></ul>
+  </div>
+</div>
+
 <script type="module" src="main.js"></script>
 </body>
 </html>

@@ -583,7 +583,54 @@ const rockingStone = (() => {
 
 /* 법당 앞 너럭바위: 넓고 평평한 화강암 바닥 */
 { const slab = new THREE.Mesh(new THREE.BoxGeometry(18, .12, 3.4), GRANITE); slab.position.set(0, .06, -12.3); scene.add(slab);
-  [-8.2, 8.2].forEach((x) => rock(1, 1.1, .55, .9, x, .25, -12.2, x)); }
+  [-9.4, 9.4].forEach((x) => rock(1, 1.1, .55, .9, x, .25, -12.2, x)); }
+
+/* 공양미: 불단 앞 양옆에 쌀자루가 쌓여요 */
+const RICE_SPOTS = (() => { const one = [[2.45, .55, -26.55], [2.95, .55, -26.55], [3.45, .55, -26.55], [2.7, .55, -27.0], [3.2, .55, -27.0], [2.95, .9, -26.78]]; const out = []; one.forEach(([x, y, z]) => { out.push([-x, y, z], [x, y, z]); }); return out; })();
+const riceGroup = new THREE.Group(); scene.add(riceGroup);
+const riceSack = (() => { const g = new THREE.Group(), cloth = M("#efe8d6", { roughness: .95 }), tie = M("#b5402e", { roughness: .7 });
+  const b = new THREE.Mesh(new THREE.SphereGeometry(.24, 16, 12), cloth); b.scale.set(1, .85, .85); b.position.y = .2; g.add(b);
+  const nk = new THREE.Mesh(new THREE.CylinderGeometry(.06, .12, .14, 10), cloth); nk.position.y = .42; g.add(nk);
+  const tp = new THREE.Mesh(new THREE.ConeGeometry(.09, .1, 10), cloth); tp.position.y = .53; tp.rotation.x = Math.PI; g.add(tp);
+  const t = new THREE.Mesh(new THREE.TorusGeometry(.065, .018, 6, 14), tie); t.rotation.x = Math.PI / 2; t.position.y = .46; g.add(t);
+  const lb = textSprite("供養米", { size: 30, color: "#7a2a1a", bg: "rgba(0,0,0,0)", pad: 2 }); lb.material.depthTest = true; lb.scale.multiplyScalar(.28); lb.position.set(0, .2, .22); g.add(lb);
+  return g; })();
+let riceShown = 0;
+function addRiceBag(pop) {
+  if (riceShown >= RICE_SPOTS.length) { riceGroup.children.forEach((c) => (c.userData.popAt = performance.now())); return; }
+  const [x, y, z] = RICE_SPOTS[riceShown++]; const s = riceSack.clone(); s.position.set(x, y, z); s.rotation.y = rand(-.5, .5); if (pop) s.userData.popAt = performance.now(); riceGroup.add(s);
+}
+block(-3.75, -2.2, -27.25, -26.3); block(2.2, 3.75, -27.25, -26.3);
+
+/* 기와 불사: 법당 앞 너럭바위 위 기와 단에 소원을 적은 기와가 쌓여요 */
+const GIWA = { x: -5.2, z: -12.6, cols: 8, rows: 3 };
+const giwaGroup = new THREE.Group(); giwaGroup.position.set(GIWA.x, 0, GIWA.z); scene.add(giwaGroup);
+const giwaTiles = new THREE.Group(); giwaGroup.add(giwaTiles);
+for (let r = 0; r < GIWA.rows; r++) { const h = .35 + r * .42; box(4.3, h, .55, mat.wood, 0, h / 2, -r * .55, giwaGroup); }
+{ const sg = textSprite("기와 불사 · 소원 기와", { size: 34, color: "#f3e6c4", bg: "#3b2414", pad: 14 }); sg.material.depthTest = true; sg.scale.multiplyScalar(.75); sg.position.set(0, 2.55, -.6); giwaGroup.add(sg);
+  [-2.25, 2.25].forEach((x) => { cyl(.06, .07, 2.4, mat.pillar, x, 1.2, -.6, 8, giwaGroup); }); }
+block(GIWA.x - 2.3, GIWA.x + 2.3, GIWA.z - 1.5, GIWA.z + .35);
+const giwaGeo = new THREE.CylinderGeometry(.22, .24, .5, 18, 1, true, -Math.PI * .4, Math.PI * .8);
+function giwaTexture(text, nick) {
+  return canvasTex(256, 320, (x, w, h) => {
+    const g = x.createLinearGradient(0, 0, w, 0); g.addColorStop(0, "#2a2e33"); g.addColorStop(.5, "#4a5058"); g.addColorStop(1, "#2a2e33"); x.fillStyle = g; x.fillRect(0, 0, w, h);
+    for (let i = 0; i < 600; i++) { x.fillStyle = `rgba(255,255,255,${Math.random() * .06})`; x.fillRect(Math.random() * w, Math.random() * h, 2, 2); }
+    x.fillStyle = "#f4efe2"; x.textAlign = "center"; x.textBaseline = "middle";
+    const chars = [...String(text)], per = chars.length > 14 ? 7 : chars.length > 8 ? 6 : 5, lines = []; for (let i = 0; i < chars.length; i += per) lines.push(chars.slice(i, i + per).join(""));
+    const fs = lines.length > 2 ? 34 : 40; x.font = `${fs}px "Gowun Batang","Apple SD Gothic Neo",serif`;
+    lines.slice(0, 4).forEach((l, i) => x.fillText(l, w / 2, h * .42 + (i - (Math.min(lines.length, 4) - 1) / 2) * (fs + 8)));
+    if (nick) { x.font = `24px "Gowun Dodum",sans-serif`; x.fillStyle = "rgba(244,239,226,.7)"; x.fillText(nick, w / 2, h - 34); }
+  });
+}
+function renderGiwa(list) {
+  giwaTiles.children.forEach((t) => { t.material.map && t.material.map.dispose(); t.material.dispose(); }); giwaTiles.clear();
+  list.slice(0, GIWA.cols * GIWA.rows).forEach((gw, i) => {
+    const r = Math.floor(i / GIWA.cols), c = i % GIWA.cols, h = .35 + r * .42;
+    const m = new THREE.Mesh(giwaGeo, (() => { const tx = giwaTexture(gw.text, gw.nick); return new THREE.MeshStandardMaterial({ map: tx, emissiveMap: tx, emissive: "#ffffff", emissiveIntensity: .32, roughness: .55, metalness: .1, side: THREE.DoubleSide }); })());
+    m.position.set(-1.85 + c * .53, h + .27, -r * .55 + .02); m.rotation.x = -.18; m.userData.giwa = gw; giwaTiles.add(m);
+    if (gw.flashAt) m.userData.popAt = gw.flashAt;
+  });
+}
 
 /* 석탑 (마당 가운데) */
 const PAGODA = { x: 0, z: 0 };
@@ -779,11 +826,11 @@ function textSprite(text, { size = 40, color = "#ece6d8", bg = "rgba(16,21,29,.7
 const TITLES = [["동자", 0], ["행자", 100], ["수행자", 300], ["스님", 800], ["큰스님", 2000], ["도인", 5000]];
 const levelOf = (p) => { let l = 0; TITLES.forEach(([, need], i) => { if (p >= need) l = i; }); return l; };
 const labelText = (nick, lv) => `${TITLES[clamp(lv | 0, 0, TITLES.length - 1)][0]} ${nick || "스님"}`;
-const PTS = { emo: 0, mok: 1, bow: 3, incense: 3, bell: 2, tap: 10, pray: 5, candle: 3, meal: 3, tea: 2, greet: 2, wish: 5, bead: 1, chat: 1, visit: 0, climb: 10, yaho: 1 };
+const PTS = { rice: 5, giwa: 5, emo: 0, mok: 1, bow: 3, incense: 3, bell: 2, tap: 10, pray: 5, candle: 3, meal: 3, tea: 2, greet: 2, wish: 5, bead: 1, chat: 1, visit: 0, climb: 10, yaho: 1 };
 const MISSION_POOL = [
   ["mok", 30, "목탁 30번 치기"], ["bow", 30, "절 30번 올리기"], ["tap", 1, "탑돌이 한 바퀴"], ["greet", 3, "합장 인사 3번"],
   ["incense", 1, "향 피우기"], ["tea", 1, "공양간에서 차 마시기"], ["wish", 1, "소원 연등 달기"], ["visit:walk", 1, "산책길 걷기"],
-  ["chat", 1, "누군가에게 말 걸기"], ["bead", 108, "염주 한 바퀴 돌리기"], ["pray", 1, "산신각에서 기도하기"], ["bell", 3, "범종 3번 치기"], ["visit:peak", 1, "달빛봉 정상 오르기"], ["yaho", 1, "정상에서 야호 외치기"]
+  ["chat", 1, "누군가에게 말 걸기"], ["bead", 108, "염주 한 바퀴 돌리기"], ["pray", 1, "산신각에서 기도하기"], ["bell", 3, "범종 3번 치기"], ["visit:peak", 1, "달빛봉 정상 오르기"], ["yaho", 1, "정상에서 야호 외치기"], ["rice", 1, "부처님께 공양미 올리기"], ["giwa", 1, "기와에 소원 적기"]
 ];
 function todayMissions() {
   let h = 0; for (const ch of today) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
@@ -1079,6 +1126,8 @@ window.addEventListener("keydown", (e) => {
 function tap(cx, cy) {
   const r = canvas.getBoundingClientRect(); ndc.set(((cx - r.left) / r.width) * 2 - 1, -((cy - r.top) / r.height) * 2 + 1);
   raycaster.setFromCamera(ndc, camera);
+  const hitG = raycaster.intersectObjects(giwaTiles.children, false)[0];
+  if (hitG) { const gw = hitG.object.userData.giwa; toast(`🏯 기와 소원 · ${gw.text}${gw.nick ? " · " + gw.nick : ""}`); return; }
   const hitL = raycaster.intersectObjects(lanternGroup.children, false)[0];
   if (hitL) {
     const w = hitL.object.userData.wish, k = kindOf(w), kd = k ? LANTERN_KINDS[k] : null;
@@ -1116,15 +1165,16 @@ let pendingMeal = null, eating = null;
 const A = (icon, label, fn, hot) => ({ icon, label, fn, hot });
 function actionsFor(z) {
   const greetA = A("🙏", "합장", () => greet(null)), beadA = A("📿", "염주", openBeads), wishA = A("🏮", "소원 연등", () => openPanel("wishPanel"));
-  if (z === "hall") return [A(player?.sitting ? "🧍" : "🧘", player?.sitting ? "일어나기" : "방석 앉기", doSit, !player?.sitting), A(autoBow ? "⏸️" : "🙇", autoBow ? "멈추기" : "계속 절하기", toggleAutoBow, true), A("🪵", "목탁", doMok), A("🕯️", "향", doIncense), greetA, beadA];
-  if (z === "pagoda") return [A("🗼", "탑돌이", doTapdori, true), wishA, greetA, beadA];
+  if (z === "hall") return [A(player?.sitting ? "🧍" : "🧘", player?.sitting ? "일어나기" : "방석 앉기", doSit, !player?.sitting), A(autoBow ? "⏸️" : "🙇", autoBow ? "멈추기" : "계속 절하기", toggleAutoBow, true), A("🪵", "목탁", doMok), A("🕯️", "향", doIncense), A("🍚", "공양미", doRice), greetA, beadA];
+  const giwaA = A("🏯", "기와 소원", openGiwa);
+  if (z === "pagoda") return [A("🗼", "탑돌이", doTapdori, true), wishA, giwaA, greetA, beadA];
   if (z === "shrine") return [A("⛰️", "산신 기도", () => doPray("산신"), true), A("✨", "칠성 기도", () => doPray("칠성"), true), A("🕯️", "초 켜기", doCandle), greetA];
   if (z === "kitchen") return [A("🍚", "공양 고르기", () => { renderMenu(); openPanel("menuPanel"); }, true), A("🍵", "차 마시기", doTea, true), greetA, beadA];
   if (z === "shop") return [A("🛍️", "가게 둘러보기", openShop, true), greetA, beadA];
   if (z === "walk") return [A("🌊", "계곡 소리", doNature, true), A("⛰️", "달빛봉 오르기", doClimb, true), greetA, beadA];
   if (z === "mountain") return [A(autoPath?.climb ? "⏸️" : "⛰️", autoPath?.climb ? "멈추기" : "정상까지 오르기", doClimb, true), A("🌬️", "바람 소리", doNature), greetA, beadA];
   if (z === "peak") return [A("📣", "야호!", doYaho, true), A("🌄", "경치 보기", doView, true), A("⬇️", "내려가기", doDescend), greetA, wishA];
-  return [A("🔔", "범종 치기", doBell), greetA, wishA, beadA];
+  return [A("🔔", "범종 치기", doBell), greetA, wishA, giwaA, beadA];
 }
 function renderActions() {
   const box = $("actions"); box.innerHTML = "";
@@ -1175,6 +1225,16 @@ function toggleAutoBow() {
   renderActions(); say("천천히 절을 올리는 중이에요. 멈추려면 한 번 더 눌러요.");
 }
 
+const RICE_COST = 10;
+function doRice() {
+  if (me.coin < RICE_COST) { toast(`공양미 한 되는 복전 🪙${RICE_COST}닢이에요. 절하고 목탁 치며 복전을 모아 보세요`); return; }
+  me.coin -= RICE_COST; me.rice = (me.rice || 0) + 1; save(); updateHud();
+  if (player) { player.yaw = Math.PI; playAnim(player, "pray"); }
+  sfx.soft(); addRiceBag(true); act("rice");
+  bubble(player, "공양미 한 되 🙏");
+  say(me.rice === 1 ? "부처님 앞에 공양미를 올렸어요. 나눔의 마음이 쌓여요." : `공양미를 올렸어요. 지금까지 ${me.rice}되를 시주했어요.`);
+  toast(`🍚 공양미 한 되를 올렸어요 (복전 -${RICE_COST} · 공덕 +${PTS.rice})`);
+}
 function doIncense() { incenseUntil = Date.now() + 90000; act("incense"); say("향 연기가 천천히 피어올라요."); }
 function doBell() { const bx = -9, bz = 7; if (player.pos.distanceTo(new THREE.Vector3(bx, 0, bz)) > 5) { player.target.set(bx + 2.4, 0, bz); } sfx.bell(); act("bell"); say(); bubble(player, "데엥…"); }
 function doTapdori() {
@@ -1484,13 +1544,51 @@ $("wishBtn").addEventListener("click", async () => {
 $("wishInput").addEventListener("keydown", (e) => { if (e.key === "Enter") $("wishBtn").click(); });
 renderKindPick();
 
+/* 기와 불사 */
+let giwas = [], giwaOnline = false;
+if (!Array.isArray(me.localGiwa)) me.localGiwa = [];
+function openGiwa() { renderGiwaList(); openPanel("giwaPanel"); setTimeout(() => $("giwaInput").focus(), 50); }
+function renderGiwaList() {
+  const ul = $("giwaList"); ul.innerHTML = "";
+  if (!giwas.length) { const li = document.createElement("li"); li.textContent = "아직 올라간 기와가 없어요. 첫 기와에 소원을 적어 보세요."; ul.appendChild(li); }
+  giwas.slice(0, 40).forEach((g) => { const li = document.createElement("li"); li.style.borderLeftColor = "#6b7280"; li.textContent = "🏯 " + g.text; if (g.nick) { const s = document.createElement("small"); s.textContent = g.nick; li.appendChild(s); } ul.appendChild(li); });
+  renderGiwa(giwas);
+}
+$("giwaInput").addEventListener("input", () => { $("giwaPreviewText").textContent = $("giwaInput").value.trim() || "소원을 적어 주세요"; });
+$("giwaBtn").addEventListener("click", async () => {
+  const text = $("giwaInput").value.trim().slice(0, 20); if (!text) return;
+  if (BANNED.some((b) => text.includes(b))) { $("giwaNote").textContent = "고운 말로 적어 주세요."; return; }
+  $("giwaInput").value = ""; $("giwaPreviewText").textContent = "소원을 적어 주세요"; sfx.soft();
+  const g = { text, nick: me.nick.slice(0, 8) };
+  if (sb && giwaOnline) {
+    const { data, error } = await sb.from("giwa").insert(g).select("id").single();
+    if (error) { $("giwaNote").textContent = "기와를 올리지 못했어요. 잠시 뒤 다시 시도해 주세요."; return; }
+    if (!giwas.some((x) => x.id === data?.id)) giwas.unshift({ ...g, id: data?.id, flashAt: performance.now() });
+  } else { const lg = { ...g, flashAt: performance.now() }; me.localGiwa.unshift({ text: g.text, nick: g.nick }); me.localGiwa = me.localGiwa.slice(0, 30); save(); giwas.unshift(lg); }
+  giwas = giwas.slice(0, 40); renderGiwaList(); act("giwa");
+  $("giwaNote").textContent = "기와를 올렸어요. 법당 앞 너럭바위 기와 단에서 볼 수 있어요.";
+  setTimeout(() => toast("🏯 기와에 소원을 적어 올렸어요", zone === "yard" ? null : { label: "보러 가기", fn: () => { $("giwaPanel").hidden = true; goGiwa(); } }), 300);
+});
+$("giwaInput").addEventListener("keydown", (e) => { if (e.key === "Enter") $("giwaBtn").click(); });
+function goGiwa() { if (!player) return; standUp(); pendingSeat = null; autoPath = null; player.pos.set(GIWA.x, 0, GIWA.z + 2.2); player.target.copy(player.pos); camYaw = 0; lastMoveTx = 0; sendPresence(); }
+async function loadGiwa() {
+  if (!sb) { giwas = me.localGiwa.slice(); renderGiwaList(); return; }
+  const { data, error } = await sb.from("giwa").select("id,text,nick,created_at").order("created_at", { ascending: false }).limit(40);
+  if (error) { giwaOnline = false; giwas = me.localGiwa.slice(); $("giwaNote").textContent = "지금은 기와가 이 기기에만 저장돼요."; renderGiwaList(); return; }
+  giwaOnline = true; giwas = (data || []).map((g) => ({ id: g.id, text: String(g.text || "").slice(0, 20), nick: String(g.nick || "").slice(0, 8) })); renderGiwaList();
+  sb.channel("sansa-giwa").on("postgres_changes", { event: "INSERT", schema: "public", table: "giwa" }, ({ new: g }) => {
+    if (giwas.some((x) => x.id === g.id)) return;
+    giwas.unshift({ id: g.id, text: String(g.text || "").slice(0, 20), nick: String(g.nick || "").slice(0, 8), flashAt: performance.now() }); giwas = giwas.slice(0, 40); renderGiwaList();
+  }).subscribe();
+}
+
 /* =========================================================
    실시간 (Supabase)
    ========================================================= */
 let sb = null, lobby = null, roomCh = null, roomNo = 1, roomJoinedAt = 0;
 const others = new Map(); // key -> {monk, nick, seenAt}
 const roomCounts = {};
-const ACT = { emo: "", sit: "방석에 앉았어요", stand: "일어났어요", mok: "목탁을 쳤어요", greet: "합장했어요", bow: "절을 올렸어요", incense: "향을 피웠어요", candle: "초를 밝혔어요", pray: "기도를 올렸어요", tap: "탑을 한 바퀴 돌았어요", meal: "공양을 해요", tea: "차를 마셔요", bell: "범종을 울렸어요", climb: "달빛봉 정상에 올랐어요", yaho: "야호를 외쳤어요" };
+const ACT = { emo: "", sit: "방석에 앉았어요", stand: "일어났어요", mok: "목탁을 쳤어요", greet: "합장했어요", bow: "절을 올렸어요", incense: "향을 피웠어요", candle: "초를 밝혔어요", pray: "기도를 올렸어요", tap: "탑을 한 바퀴 돌았어요", meal: "공양을 해요", tea: "차를 마셔요", bell: "범종을 울렸어요", climb: "달빛봉 정상에 올랐어요", yaho: "야호를 외쳤어요", rice: "공양미를 올렸어요", giwa: "기와에 소원을 적었어요" };
 const online = () => !!sb;
 
 /* 신호 아끼기: 접속 명단(presence)은 들어올 때와 30초마다 한 번만,
@@ -1577,6 +1675,7 @@ function onAct({ payload: p }) {
   if (p.act === "meal") { const mi = MENU[+p.what]; if (mi) { o.monk.yaw = Math.PI; playAnim(o.monk, "eat"); bubble(o.monk, `${mi[1]} ${mi[0]}`); } }
   if (p.act === "incense") incenseUntil = Math.max(incenseUntil, Date.now() + 60000);
   if (p.act === "candle") candleUntil = Math.max(candleUntil, Date.now() + 90000);
+  if (p.act === "rice") { addRiceBag(true); o.monk.yaw = Math.PI; playAnim(o.monk, "pray"); }
   const near = player && o.monk.pos.distanceTo(player.pos) < 14;
   if (p.act === "greet" && p.to === myKey) toast(`${nick}님이 나에게 합장했어요 🙏`, { label: "맞합장", fn: () => greet(key) });
   else if (near && p.act === "greet") toast(`${nick}님이 합장했어요`, { label: "맞합장", fn: () => greet(key) });
@@ -1610,6 +1709,7 @@ async function connect() {
   const start = () => { if (started) return; started = true; joinRoom(pickRoom()); };
   lobby.on("presence", { event: "sync" }, () => { countRooms(); if (!$("roomPanel").hidden) renderRooms(); start(); });
   lobby.subscribe((s) => { if (s === "SUBSCRIBED") setTimeout(start, 1200); if (s === "CHANNEL_ERROR" || s === "TIMED_OUT") { if (!started) solo("연결이 불안정해 혼자 수행 모드로 열었어요."); } });
+  loadGiwa();
   // 소원 연등
   let res = await sb.from("wishes").select("id,text,nick,kind,lit,created_at").order("created_at", { ascending: false }).limit(42);
   if (res.error) { lanternSchemaOld = true; res = await sb.from("wishes").select("text,nick,created_at").order("created_at", { ascending: false }).limit(42); }
@@ -1628,7 +1728,7 @@ async function connect() {
   }).subscribe();
 }
 function solo(msg) {
-  sb = null; $("roomLabel").textContent = "혼자 수행 중"; $("peopleCount").textContent = "1";
+  sb = null; giwaOnline = false; giwas = me.localGiwa.slice(); renderGiwaList(); $("roomLabel").textContent = "혼자 수행 중"; $("peopleCount").textContent = "1";
   $("wishNote").textContent = "지금은 연등이 이 기기에만 저장돼요.";
   wishes = me.localWishes; renderWishList(); if (msg) toast(msg);
 }
@@ -1737,6 +1837,8 @@ function tick() {
   const glow = (sevenStars.userData.glowUntil || 0) > Date.now(); sevenStars.children.forEach((s, i) => s.scale.setScalar(glow ? 1.6 + Math.sin(t * 4 + i) * .4 : 1));
   const tv = Date.now() < teaUntil; tea.visible = tv;
   if (tv) steam.forEach((s) => { s.userData.t = (s.userData.t + dt * .4) % 1; const k = s.userData.t; s.position.set(Math.sin(k * 7) * .05, .25 + k * .6, 0); s.material.opacity = Math.sin(k * Math.PI) * .4; });
+  const popAnim = (o) => { const pa = o.userData.popAt; if (!pa) return; const k = (now - pa) / 900; if (k >= 1) { o.scale.setScalar(1); o.userData.popAt = 0; return; } o.scale.setScalar(.2 + .8 * Math.min(1, k * 1.6) + Math.sin(k * Math.PI) * .25); };
+  riceGroup.children.forEach(popAnim); giwaTiles.children.forEach(popAnim);
   rockingStone.rotation.z = Math.sin(t * .9) * .025; rockingStone.rotation.x = Math.sin(t * .63) * .012;
   lanternGroup.children.forEach((l, i) => {
     l.rotation.z = Math.sin(t * .8 + i) * .06;
@@ -1766,5 +1868,7 @@ function applyTimeOfDay() {
 applyTimeOfDay(); setInterval(applyTimeOfDay, 60000);
 
 renderLanterns(me.localWishes);
+for (let i = 0; i < Math.min(me.rice || 0, RICE_SPOTS.length); i++) addRiceBag(false);
+renderGiwa(me.localGiwa);
 requestAnimationFrame(tick);
 say("법명을 정하고 산사에 들어가 보세요.");
