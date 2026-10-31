@@ -326,13 +326,13 @@ function hall({ w, d, h, x, z, open = false, sign = "" }) {
 
 /* 대웅전 (안에 들어갈 수 있음) */
 // 넓은 법당: 큰 절에 들어간 것처럼 앞뒤 · 좌우를 넉넉하게
-const HALL = { x: 0, z: -22.5, w: 22, d: 17, h: 5.4 };
-const HB = { x1: -11, x2: 11, z1: -31, z2: -14 }; // 법당 안쪽 범위
+const HALL = { x: 0, z: -26, w: 30, d: 24, h: 6.2 };
+const HB = { x1: -15, x2: 15, z1: -38, z2: -14 }; // 법당 안쪽 범위
 const hallG = hall({ ...HALL, open: true, sign: "大雄殿" });
-block(-11.6, 11.6, -31.6, -30.6); block(-11.6, -10.6, -31.6, -14); block(10.6, 11.6, -31.6, -14);
+block(-15.6, 15.6, -38.6, -37.6); block(-15.6, -14.6, -38.6, -14); block(14.6, 15.6, -38.6, -14);
 // 불상: 연꽃 대좌 위에 가부좌로 앉아 선정인을 한 금동 좌상
-const BUDDHA_Z = -28.4;
-const buddhaRoot = new THREE.Group(); buddhaRoot.position.set(0, .55, BUDDHA_Z); buddhaRoot.scale.setScalar(1); scene.add(buddhaRoot);
+const BUDDHA_Z = -35.2, BS = 1.2; // 부처님 위치와 크기
+const buddhaRoot = new THREE.Group(); buddhaRoot.position.set(0, .55, BUDDHA_Z); buddhaRoot.scale.setScalar(BS); scene.add(buddhaRoot);
 const altar = box(5.2, 1, 1.9, mat.wood, 0, .5, 0, buddhaRoot);
 box(5.5, .1, 2.1, mat.wood, 0, 1.03, 0, buddhaRoot);
 const statue = new THREE.Group(); buddhaRoot.add(statue);
@@ -442,10 +442,10 @@ function buildBuddha(G) {
   const haloRim = new THREE.Mesh(new THREE.TorusGeometry(1.24, .04, 8, 80), GOLD); haloRim.position.copy(halo.position); G.add(haloRim);
 }
 buildBuddha(statue);
-block(-2.9, 2.9, -29.6, -27.3);
+block(-3.5, 3.5, BUDDHA_Z - 1.4, BUDDHA_Z + 1.2);
 // 불상을 위에서 비추는 따뜻한 조명 + 뒤에서 윤곽을 살리는 빛
-const buddhaSpot = new THREE.SpotLight("#ffd9a0", 70, 16, .5, .6, 1.3); buddhaSpot.position.set(0, 5.4, -22.5); buddhaSpot.target.position.set(0, 3.2, BUDDHA_Z); scene.add(buddhaSpot, buddhaSpot.target);
-const buddhaRim = new THREE.PointLight("#ffcf88", 9, 6, 1.6); buddhaRim.position.set(0, 4.6, BUDDHA_Z - 1.6); scene.add(buddhaRim);
+const buddhaSpot = new THREE.SpotLight("#ffd9a0", 120, 22, .5, .6, 1.3); buddhaSpot.position.set(0, 6.3, BUDDHA_Z + 7); buddhaSpot.target.position.set(0, 3.8, BUDDHA_Z); scene.add(buddhaSpot, buddhaSpot.target);
+const buddhaRim = new THREE.PointLight("#ffcf88", 12, 7, 1.6); buddhaRim.position.set(0, 5.5, BUDDHA_Z - 2); scene.add(buddhaRim);
 // buddha.glb 파일이 있으면 그 모델로 바꿔요
 fetch("buddha.glb", { method: "HEAD" }).then((r) => {
   if (!r.ok || !(r.headers.get("content-type") || "").match(/gltf|octet|model|binary/)) return;
@@ -460,19 +460,19 @@ fetch("buddha.glb", { method: "HEAD" }).then((r) => {
 }).catch(() => {});
 // 촛대 + 향로
 const candles = [];
-[-3.6, 3.6].forEach((x) => { cyl(.12, .12, .7, mat.candle, x, 1.4, -27.9); const f = new THREE.Mesh(new THREE.SphereGeometry(.09, 8, 6), mat.flame); f.scale.y = 1.8; f.position.set(x, 1.85, -27.9); scene.add(f); candles.push(f); });
-const hallLight = new THREE.PointLight("#ffb466", 26, 24, 1.5); hallLight.position.set(0, 3.8, -24.5); scene.add(hallLight);
-[-7.4, 7.4].forEach((x) => { const l = new THREE.PointLight("#ffc27a", 10, 13, 1.7); l.position.set(x, 3.8, -25.2); scene.add(l); });
-cyl(.35, .25, .35, mat.gold, 0, 1.2, -27.1, 12);
-const incense = new THREE.Group(); incense.position.set(0, 1.4, -27.1); scene.add(incense);
+[-4.3, 4.3].forEach((x) => { cyl(.12, .12, .7, mat.candle, x, 1.4, BUDDHA_Z + .5); const f = new THREE.Mesh(new THREE.SphereGeometry(.09, 8, 6), mat.flame); f.scale.y = 1.8; f.position.set(x, 1.85, BUDDHA_Z + .5); scene.add(f); candles.push(f); block(x - .3, x + .3, BUDDHA_Z + .2, BUDDHA_Z + .8); });
+const hallLight = new THREE.PointLight("#ffb466", 36, 32, 1.5); hallLight.position.set(0, 4.6, -29.5); scene.add(hallLight);
+[-10, 10].forEach((x) => { const l = new THREE.PointLight("#ffc27a", 14, 16, 1.7); l.position.set(x, 4.4, -31.5); scene.add(l); });
+cyl(.35, .25, .35, mat.gold, 0, 1.2, BUDDHA_Z + 1.35, 12);
+const incense = new THREE.Group(); incense.position.set(0, 1.4, BUDDHA_Z + 1.35); scene.add(incense);
 cyl(.02, .02, .6, M("#8a5a3a"), 0, .3, 0, 6, incense); incense.visible = false;
 const smoke = [];
 for (let i = 0; i < 10; i++) { const s = new THREE.Mesh(new THREE.SphereGeometry(.12, 8, 6), new THREE.MeshBasicMaterial({ color: "#dddddd", transparent: true, opacity: 0 })); s.userData.t = i / 10; incense.add(s); smoke.push(s); }
 let incenseUntil = 0;
 // 방석
 const hallSeats = [], cushions = [];
-for (let r = 0; r < 5; r++) for (let c = -4; c <= 4; c++) {
-  const x = c * 2.2, z = -24.4 + r * 1.85;
+for (let r = 0; r < 7; r++) for (let c = -5; c <= 5; c++) {
+  const x = c * 2.3, z = -31.4 + r * 2.0;
   const cu = box(1.15, .14, 1.15, mat.cushion, x, .62, z); cu.userData.seat = { x, z }; cushions.push(cu); hallSeats.push({ x, z });
 }
 /* 대웅전 뒷벽 탱화: 직접 그린 구름·연꽃 무늬 */
@@ -486,8 +486,8 @@ for (let r = 0; r < 5; r++) for (let c = -4; c <= 4; c++) {
   x.strokeStyle = "rgba(242,200,120,.8)"; x.lineWidth = 6; x.beginPath(); x.arc(512, 150, 118, 0, Math.PI * 2); x.stroke();
   x.strokeStyle = "rgba(242,200,120,.45)"; x.lineWidth = 3; for (let k = 0; k < 24; k++) { const a = k / 24 * Math.PI * 2; x.beginPath(); x.moveTo(512 + Math.cos(a) * 125, 150 + Math.sin(a) * 125); x.lineTo(512 + Math.cos(a) * 150, 150 + Math.sin(a) * 150); x.stroke(); }
   const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
-  const mural = new THREE.Mesh(new THREE.PlaneGeometry(21.5, 5.3), new THREE.MeshStandardMaterial({ map: tex, roughness: .9 }));
-  mural.position.set(0, 3.2, -30.77); scene.add(mural);
+  const mural = new THREE.Mesh(new THREE.PlaneGeometry(29.5, 6.1), new THREE.MeshStandardMaterial({ map: tex, roughness: .9 }));
+  mural.position.set(0, 3.6, HB.z1 + .23); scene.add(mural);
 }
 /* 화강암: 설악산 계조암의 바위 느낌 */
 const GRANITE = new THREE.MeshStandardMaterial({ roughness: .95, map: canvasTex(256, 256, (x, w, h) => {
@@ -502,8 +502,8 @@ function rock(r, sx, sy, sz, x, y, z, rot = 0, parent = scene) {
   g.computeVertexNormals(); const m = new THREE.Mesh(g, GRANITE); m.scale.set(sx, sy, sz); m.position.set(x, y, z); m.rotation.y = rot; parent.add(m); return m;
 }
 // 부처님 뒤 석굴: 바위 틈 법당 (계조암 석굴처럼)
-[[-3.4, 1.4, .9, 1.3, 1.2], [3.4, 1.4, .95, 1.2, 1.25], [-3.7, 3.4, .85, 1.1, 1], [3.7, 3.5, .9, 1.15, 1.05], [-2.9, 5.2, 1.1, .7, .9], [2.8, 5.2, 1.1, .75, .9], [0, 5.65, 1.6, .5, .85], [-4.6, 2.4, .9, 1.6, .9], [4.6, 2.5, .9, 1.6, .9]].forEach(([x, y, sx, sy, sz], i) => rock(1, sx * 1.2, sy * 1.2, sz, x, y, BUDDHA_Z - 1.5, i));
-const caveBack = rock(1, 4.2, 3.2, .6, 0, 3, BUDDHA_Z - 2.05); caveBack.material = GRANITE.clone(); caveBack.material.color.set("#6f6a60");
+[[-3.4, 1.4, .9, 1.3, 1.2], [3.4, 1.4, .95, 1.2, 1.25], [-3.7, 3.4, .85, 1.1, 1], [3.7, 3.5, .9, 1.15, 1.05], [-2.9, 5.2, 1.1, .7, .9], [2.8, 5.2, 1.1, .75, .9], [0, 5.65, 1.6, .5, .85], [-4.6, 2.4, .9, 1.6, .9], [4.6, 2.5, .9, 1.6, .9]].forEach(([x, y, sx, sy, sz], i) => rock(1, sx * 1.2 * BS, sy * 1.2 * BS, sz * BS, x * BS, y * BS, BUDDHA_Z - 1.5 * BS, i));
+const caveBack = rock(1, 4.2 * BS, 3.2 * BS, .6, 0, 3 * BS, BUDDHA_Z - 2.1 * BS); caveBack.material = GRANITE.clone(); caveBack.material.color.set("#6f6a60");
 
 /* 금빛 꼬마 동자승들 (자세가 여러 가지) */
 const dongjaGeoCache = {};
@@ -545,36 +545,37 @@ function placeDongja(pose, x, y, z, s = .4, ry = 0, parent = scene) {
 { // 부처님 양옆 3단 계단 단 위에 줄지어 앉은 동자승
   const poses = ["hap", "sit", "lotus", "bead", "read", "moktak", "wave", "hap", "sit"];
   [-1, 1].forEach((sd) => {
-    const cx = sd * 7.6;
+    const cx = sd * 10.6;
     for (let t = 0; t < 3; t++) {
-      const h = .45 * (t + 1), z = -27.8 - t * .75;
-      box(3.6, h, .75, mat.wood, cx, .52 + h / 2, z); box(3.7, .05, .8, mat.wood, cx, .52 + h + .02, z);
-      for (let k = 0; k < 4; k++) placeDongja(poses[(t * 4 + k + (sd > 0 ? 3 : 0)) % poses.length], cx - 1.25 + k * .83, .55 + h, z, .38 + (t === 2 ? .04 : 0), 0);
+      const h = .45 * (t + 1), z = BUDDHA_Z + .6 - t * .75;
+      box(4.6, h, .75, mat.wood, cx, .52 + h / 2, z); box(4.7, .05, .8, mat.wood, cx, .52 + h + .02, z);
+      for (let k = 0; k < 5; k++) placeDongja(poses[(t * 5 + k + (sd > 0 ? 3 : 0)) % poses.length], cx - 1.7 + k * .85, .55 + h, z, .38 + (t === 2 ? .04 : 0), 0);
     }
-    block(cx - 1.9, cx + 1.9, -30.2, -27.3);
+    block(cx - 2.4, cx + 2.4, BUDDHA_Z - 1.4, BUDDHA_Z + 1.0);
   });
   // 불단 위 네 귀퉁이
   [[-2.2, .55, "lotus"], [2.2, .55, "lotus"], [-1.8, .78, "hap"], [1.8, .78, "hap"]].forEach(([x, z, p]) => placeDongja(p, x, 1.08, z, .3, 0, buddhaRoot));
   // 불단 앞에서 절하는 동자승
-  [-1.5, 1.5].forEach((x) => { placeDongja("bow", x, .55, -26.7, .42, Math.PI); });
-  block(-1.9, 1.9, -27.1, -26.3);
+  [-1.6, 1.6].forEach((x) => { placeDongja("bow", x, .55, BUDDHA_Z + 1.75, .42, Math.PI); });
+  block(-2, 2, BUDDHA_Z + 1.3, BUDDHA_Z + 2.15);
   // 양쪽 벽을 따라 참선하는 동자승
-  [-26, -23, -20, -17].forEach((z, i) => [-1, 1].forEach((sd) => { placeDongja(["sit", "sleep", "moktak", "read"][(i + (sd > 0 ? 2 : 0)) % 4], sd * 10.1, .55, z, .42, -sd * Math.PI / 2); block(sd * 10.1 - .35, sd * 10.1 + .35, z - .35, z + .35); }));
+  [-33, -29.5, -26, -22.5, -19, -15.5].forEach((z, i) => [-1, 1].forEach((sd) => { placeDongja(["sit", "sleep", "moktak", "read", "hap", "bead"][(i + (sd > 0 ? 3 : 0)) % 6], sd * 14.1, .55, z, .42, -sd * Math.PI / 2); block(sd * 14.1 - .35, sd * 14.1 + .35, z - .35, z + .35); }));
 }
 
 /* 계조암: 법당 뒤로 솟은 화강암 바위 무리와 그 위의 흔들바위 */
 const rockingStone = (() => {
   const C = { x: 0, z: -38 };
+  const RZ = -8.5, RY = 2.2; // 넓어진 법당 뒤로 물러나고 더 높게
   [[-10, 4, -36, 6, 5, 4], [-3, 6, -39, 7, 6.5, 4.5], [5, 5.2, -37.5, 6.5, 5.4, 4.2], [12, 3.6, -35.5, 5, 3.8, 3.6], [-15, 2.6, -34.5, 4, 2.8, 3.4], [16, 2.4, -33.8, 3.6, 2.6, 3],
-   [0, 10.5, -40.5, 5, 3.4, 3.4], [-7, 9, -40, 3.6, 3, 3], [8.5, 8.6, -39.5, 3.4, 2.6, 3]].forEach(([x, y, z, sx, sy, sz], i) => rock(1, sx, sy, sz, x, y, z, i * .7));
+   [0, 10.5, -40.5, 5, 3.4, 3.4], [-7, 9, -40, 3.6, 3, 3], [8.5, 8.6, -39.5, 3.4, 2.6, 3]].forEach(([x, y, z, sx, sy, sz], i) => rock(1, sx * 1.2, sy * 1.25, sz * 1.1, x * 1.2, y * 1.25 + RY, z + RZ, i * .7));
   // 흔들바위를 받치는 평평한 너럭바위
-  rock(1, 3.2, .8, 2.6, 6.2, 9.8, -38.3, .3);
-  const g = new THREE.Group(); g.position.set(6.2, 10.4, -38.3); scene.add(g);
+  rock(1, 3.2, .8, 2.6, 7.4, 9.8 * 1.25 + RY, -38.3 + RZ, .3);
+  const g = new THREE.Group(); g.position.set(7.4, 10.4 * 1.25 + RY - .1, -38.3 + RZ); scene.add(g);
   const stone = rock(1, 1.7, 1.5, 1.45, 0, 1.45, 0, 0, g);
   const sg = textSprite("흔들바위", { size: 34, color: "#f3e6c4", bg: "rgba(40,30,20,.6)", pad: 12 }); sg.material.depthTest = true; sg.position.set(0, 3.6, 0); sg.scale.multiplyScalar(.9); g.add(sg);
   // 바위 틈 소나무
   [[-12, 7.2, -35], [-4.5, 11.8, -38], [11, 6.4, -35], [2, 12.5, -40], [-8.5, 10.6, -39], [14.5, 5, -33.5]].forEach(([x, y, z]) => {
-    const t = new THREE.Group(); t.position.set(x, y, z); scene.add(t);
+    const t = new THREE.Group(); t.position.set(x * 1.2, y * 1.25 + RY, z + RZ); t.scale.setScalar(1.3); scene.add(t);
     const tr = cyl(.12, .2, 1.6, mat.trunk, 0, .8, 0, 6, t); tr.rotation.z = rand(-.25, .25);
     [[1.3, .5, 1.5], [1, .4, 2.0], [.7, .35, 2.4]].forEach(([r, h, yy]) => { const c = new THREE.Mesh(new THREE.CylinderGeometry(r * .9, r, h, 7), mat.leaf2); c.position.set(rand(-.2, .2), yy, rand(-.2, .2)); c.scale.z = .7; t.add(c); });
   });
@@ -586,7 +587,7 @@ const rockingStone = (() => {
   [-9.4, 9.4].forEach((x) => rock(1, 1.1, .55, .9, x, .25, -12.2, x)); }
 
 /* 공양미: 불단 앞 양옆에 쌀자루가 쌓여요 */
-const RICE_SPOTS = (() => { const one = [[2.45, .55, -26.55], [2.95, .55, -26.55], [3.45, .55, -26.55], [2.7, .55, -27.0], [3.2, .55, -27.0], [2.95, .9, -26.78]]; const out = []; one.forEach(([x, y, z]) => { out.push([-x, y, z], [x, y, z]); }); return out; })();
+const RICE_SPOTS = (() => { const RZ0 = BUDDHA_Z + 1.65, one = [[2.45, .55, RZ0 + .2], [2.95, .55, RZ0 + .2], [3.45, .55, RZ0 + .2], [2.7, .55, RZ0 - .25], [3.2, .55, RZ0 - .25], [2.95, .9, RZ0 - .02]]; const out = []; one.forEach(([x, y, z]) => { out.push([-x, y, z], [x, y, z]); }); return out; })();
 const riceGroup = new THREE.Group(); scene.add(riceGroup);
 const riceSack = (() => { const g = new THREE.Group(), cloth = M("#efe8d6", { roughness: .95 }), tie = M("#b5402e", { roughness: .7 });
   const b = new THREE.Mesh(new THREE.SphereGeometry(.24, 16, 12), cloth); b.scale.set(1, .85, .85); b.position.y = .2; g.add(b);
@@ -600,7 +601,7 @@ function addRiceBag(pop) {
   if (riceShown >= RICE_SPOTS.length) { riceGroup.children.forEach((c) => (c.userData.popAt = performance.now())); return; }
   const [x, y, z] = RICE_SPOTS[riceShown++]; const s = riceSack.clone(); s.position.set(x, y, z); s.rotation.y = rand(-.5, .5); if (pop) s.userData.popAt = performance.now(); riceGroup.add(s);
 }
-block(-3.75, -2.2, -27.25, -26.3); block(2.2, 3.75, -27.25, -26.3);
+block(-3.75, -2.2, BUDDHA_Z + 1.2, BUDDHA_Z + 2.1); block(2.2, 3.75, BUDDHA_Z + 1.2, BUDDHA_Z + 2.1);
 
 /* 기와 불사: 법당 앞 너럭바위 위 기와 단에 소원을 적은 기와가 쌓여요 */
 const GIWA = { x: -5.2, z: -12.6, cols: 8, rows: 3 };
@@ -1063,13 +1064,13 @@ function animateMonk(m, dt, now) {
 let player;
 const SPAWN = new THREE.Vector3(0, 0, 9);
 function blocked(x, z) {
-  if (Math.abs(x) > 44 || z < -32 || z > 46) return true;
+  if (Math.abs(x) > 44 || z < -40 || z > 46) return true;
   for (const b of blockers) if (x > b.x1 - .3 && x < b.x2 + .3 && z > b.z1 - .3 && z < b.z2 + .3) return true;
   return false;
 }
 function floorY(x, z) { return (x > HB.x1 - .5 && x < HB.x2 + .5 && z > HB.z1 - .5 && z < HB.z2 + .5) ? .55 : mh(x, z); }
 function zoneOf(x, z) {
-  if (z < -13.5 && Math.abs(x) < 11.5) return "hall";
+  if (z < -13.5 && Math.abs(x) < 15.5) return "hall";
   if (x > 10.5 && z < -1) return "shrine";
   if (x < -10.5 && z < -1) return "kitchen";
   const md = Math.hypot(x - MOUNT.x, z - MOUNT.z);
@@ -1614,7 +1615,7 @@ function sendPresence(patch = {}) {
 function ensureOther(key, p) {
   let o = others.get(key);
   const nick = String(p.nick || o?.nick || "스님").slice(0, 8);
-  if (!o) { o = { monk: makeMonk(nick, false), nick }; o.monk.pos.set(clamp(+p.x || 0, -44, 44), 0, clamp(+p.z || 0, -26, 46)); o.monk.target.copy(o.monk.pos); others.set(key, o); }
+  if (!o) { o = { monk: makeMonk(nick, false), nick }; o.monk.pos.set(clamp(+p.x || 0, -44, 44), 0, clamp(+p.z || 0, -40, 46)); o.monk.target.copy(o.monk.pos); others.set(key, o); }
   if (p.nick) o.nick = nick;
   setLabel(o.monk, labelText(o.nick, Number.isFinite(+p.lv) ? +p.lv : (o.lv ?? 0)), false); if (Number.isFinite(+p.lv)) { o.lv = clamp(+p.lv | 0, 0, 5); applyAura(o.monk, o.lv); }
   if (looksOk(p.l)) applyLook(o.monk, p.l);
@@ -1622,9 +1623,9 @@ function ensureOther(key, p) {
   return o;
 }
 function applyMove(o, p) {
-  const x = clamp(+p.x || 0, -44, 44), z = clamp(+p.z || 0, -26, 46);
+  const x = clamp(+p.x || 0, -44, 44), z = clamp(+p.z || 0, -40, 46);
   if (Math.hypot(o.monk.pos.x - x, o.monk.pos.z - z) > 6) o.monk.pos.set(x, 0, z);
-  o.monk.target.set(clamp(+p.tx || x, -44, 44), 0, clamp(+p.tz || z, -26, 46));
+  o.monk.target.set(clamp(+p.tx || x, -44, 44), 0, clamp(+p.tz || z, -40, 46));
 }
 function onRoomSync() {
   const state = roomCh.presenceState(); const keys = new Set();
@@ -1685,7 +1686,7 @@ function onAct({ payload: p }) {
 async function joinRoom(n) {
   if (roomCh) { await sb.removeChannel(roomCh); roomCh = null; }
   for (const [, o] of others) scene.remove(o.monk.root); others.clear();
-  roomNo = n; roomJoinedAt = Date.now(); $("roomLabel").textContent = `${CONFIG.roomName} ${n}`;
+  roomNo = n; roomJoinedAt = Date.now(); $("roomLabel").textContent = CONFIG.roomCount > 1 ? `${CONFIG.roomName} ${n}` : CONFIG.roomName;
   roomCh = sb.channel(`sansa-room-${n}`, { config: { presence: { key: myKey }, broadcast: { self: false } } });
   roomCh.on("presence", { event: "sync" }, onRoomSync)
     .on("presence", { event: "join" }, ({ key, newPresences }) => { if (Date.now() - roomJoinedAt > 3000 && key !== myKey && !others.has(key)) { const nm = String(newPresences?.[0]?.nick || "스님").slice(0, 8); toast(`${nm}님이 들어왔어요`); } })
@@ -1805,10 +1806,10 @@ function tick() {
     // 대웅전 안에서는 동자승 뒤쪽 위에서 부처님을 함께 바라보는 구도로 바꿔요
     if (zone === "hall") {
       // 대웅전: 법당 뒤쪽 높은 곳에서 부처님과 방석 줄이 함께 보이게
-      const want = new THREE.Vector3(player.pos.x * .25, 2.9, BUDDHA_Z + .4);
+      const want = new THREE.Vector3(player.pos.x * .25, 3.4, BUDDHA_Z + .4);
       camTarget.lerp(want, Math.min(1, dt * 4));
       const yaw = clamp(camYaw, -.5, .5);
-      const camWant = new THREE.Vector3(player.pos.x * .4 + Math.sin(yaw) * 2.5, 5.0, Math.min(Math.max(player.pos.z + 3.2, -21.5), -14.6));
+      const camWant = new THREE.Vector3(player.pos.x * .4 + Math.sin(yaw) * 3, 5.7, Math.min(Math.max(player.pos.z + 3.6, -27.5), -14.6));
       camera.position.lerp(camWant, Math.min(1, dt * 4));
     } else {
       camTarget.lerp(new THREE.Vector3(player.pos.x, 1.6 + (player.y || 0), player.pos.z), Math.min(1, dt * 5));
