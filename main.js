@@ -660,6 +660,211 @@ function placeDongja(pose, x, y, z, s = .4, ry = 0, parent = scene) {
   [-33, -29.5, -26, -22.5, -19, -15.5].forEach((z, i) => [-1, 1].forEach((sd) => { placeDongja(["sit", "sleep", "moktak", "read", "hap", "bead"][(i + (sd > 0 ? 3 : 0)) % 6], sd * 14.1, .55, z, .42, -sd * Math.PI / 2); block(sd * 14.1 - .35, sd * 14.1 + .35, z - .35, z + .35); }));
 }
 
+
+/* =========================================================
+   개인 법당: 칠성각 · 산신각 · 관음전 · 지장전
+   들어가면 혼자 앉아 경문을 따라 읽어요 (목탁 박자에 맞춰 한 글자씩)
+   ========================================================= */
+const ROOMS = {
+  sanshin: { name: "산신각", hanja: "山神閣", x: 15, z: -7, light: "#ffb466", wish: "가족의 평안과 넉넉한 살림",
+    intro: "산신께 산의 기운을 빌어요. 산왕경을 함께 읽어 보세요.",
+    sutra: ["산왕경", ["대산소산 산왕대신", "대악소악 산왕대신", "대각소각 산왕대신", "대축소축 산왕대신", "미산재처 산왕대신", "이십육정 산왕대신", "외악명산 산왕대신", "사해피발 산왕대신", "명당토산 산왕대신", "금궤대덕 산왕대신", "청룡백호 산왕대신", "현무주작 산왕대신", "동서남북 산왕대신", "원산근산 산왕대신", "상방하방 산왕대신", "흉산길산 산왕대신"]],
+    jeong: ["나무 만덕고승 성개한적 산왕대신", "산왕대신"] },
+  chilseong: { name: "칠성각", hanja: "七星閣", x: 26, z: -8, light: "#9fc4ff", wish: "건강과 장수, 자손의 복",
+    intro: "북두칠성께 건강과 복을 빌어요. 칠성경을 함께 읽어 보세요.",
+    sutra: ["칠성경", ["북두구진 중천대신", "상조금궐 하부곤륜", "조리강기 통제건곤", "대괴탐랑 거문녹존", "문곡염정 무곡파군", "고상옥황 자미제군", "대주천계 세입미진", "하재불멸 하복부진", "원황정기 내합아신", "천강소지 주야상륜", "속거소인 호도구령", "원견존의 영보장생", "삼태허정 육순곡생", "생아양아 호아신형", "괴작관행 필보표존제", "급급여율령 사바하"]],
+    jeong: ["나무 북두대성 칠원성군", "칠원성군"] },
+  gwaneum: { name: "관음전", hanja: "觀音殿", x: -26, z: -8, light: "#fff1d6", wish: "마음의 평화와 괴로움에서 벗어나기",
+    intro: "관세음보살께 마음의 평화를 빌어요. 반야심경을 함께 읽어 보세요.",
+    sutra: ["반야심경", ["마하반야바라밀다심경", "관자재보살 행심반야바라밀다시", "조견오온개공 도일체고액", "사리자 색불이공 공불이색", "색즉시공 공즉시색", "수상행식 역부여시", "사리자 시제법공상", "불생불멸 불구부정 부증불감", "시고 공중무색 무수상행식", "무안이비설신의 무색성향미촉법", "무안계 내지 무의식계", "무무명 역무무명진", "내지 무노사 역무노사진", "무고집멸도 무지역무득", "이무소득고 보리살타", "의반야바라밀다고 심무가애", "무가애고 무유공포", "원리전도몽상 구경열반", "삼세제불 의반야바라밀다고", "득아뇩다라삼먁삼보리", "고지반야바라밀다", "시대신주 시대명주", "시무상주 시무등등주", "능제일체고 진실불허", "고설반야바라밀다주 즉설주왈", "아제아제 바라아제 바라승아제 모지 사바하", "아제아제 바라아제 바라승아제 모지 사바하", "아제아제 바라아제 바라승아제 모지 사바하"]],
+    jeong: ["나무 보문시현 원력홍심 대자대비 구고구난 관세음보살", "관세음보살"] },
+  jijang: { name: "지장전", hanja: "地藏殿", x: 26, z: -19, light: "#ffc890", wish: "먼저 떠나신 분들의 평안",
+    intro: "지장보살께 먼저 떠나신 분들의 평안을 빌어요.",
+    sutra: ["지장보살 찬탄", ["지장대성위신력", "항하사겁설난진", "견문첨례일념간", "이익인천무량사", "옴 바라마니다니 사바하", "옴 바라마니다니 사바하", "옴 바라마니다니 사바하"]],
+    jeong: ["나무 남방화주 대원본존 지장보살", "지장보살"] }
+};
+const ROOM_KEYS = Object.keys(ROOMS);
+// 새 법당 건물 (산신각은 이미 있어요)
+ROOM_KEYS.filter((k) => k !== "sanshin").forEach((k) => { const r = ROOMS[k]; hall({ x: r.x, z: r.z, w: 6, d: 5, h: 3, sign: r.hanja }); block(r.x - 3.5, r.x + 3.5, r.z - 3, r.z + 2.8);
+  const lamp = new THREE.Mesh(new THREE.SphereGeometry(.16, 10, 8), new THREE.MeshBasicMaterial({ color: r.light })); lamp.scale.y = 1.3; lamp.position.set(r.x + 1.6, 2.6, r.z + 2.7); scene.add(lamp); });
+const roomAt = (x, z) => ROOM_KEYS.find((k) => { const r = ROOMS[k]; return Math.abs(x - r.x) < 4.2 && z > r.z - 3.5 && z < r.z + 5.5; });
+
+/* 법당 안 (멀리 떨어진 곳에 하나 만들어 두고, 들어갈 때마다 꾸밈을 바꿔요) */
+const RO = new THREE.Vector3(0, 0, 400);
+const roomG = new THREE.Group(); roomG.position.copy(RO); scene.add(roomG);
+{
+  box(7, .1, 7, mat.floor, 0, .05, 0, roomG);
+  box(7, 4, .2, mat.wall, 0, 2, -3.5, roomG); box(.2, 4, 7, mat.wall, -3.5, 2, 0, roomG); box(.2, 4, 7, mat.wall, 3.5, 2, 0, roomG); box(7, 4, .2, mat.wall, 0, 2, 3.5, roomG);
+  [-3.4, 3.4].forEach((x) => [-3.4, 3.4].forEach((z) => cyl(.16, .18, 4, mat.pillar, x, 2, z, 10, roomG)));
+  [-3.35, 3.35].forEach((x) => [.9, 3.3].forEach((y) => box(.08, .14, 7, mat.wood, x, y, 0, roomG)));
+  const cm = new THREE.MeshStandardMaterial({ map: COFFER_TEX.clone(), roughness: .85 }); cm.map.needsUpdate = true; cm.map.repeat.set(4, 4);
+  const ceil = new THREE.Mesh(new THREE.PlaneGeometry(7, 7), cm); ceil.rotation.x = Math.PI / 2; ceil.position.y = 4; roomG.add(ceil);
+  // 옆 창호 (은은한 빛)
+  [-1, 1].forEach((sd) => { const w = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 1.4), new THREE.MeshStandardMaterial({ map: DOOR_TEX, emissive: "#ffe9c4", emissiveMap: DOOR_TEX, emissiveIntensity: .35 })); w.position.set(sd * 3.38, 2.3, -.4); w.rotation.y = -sd * Math.PI / 2; roomG.add(w); });
+  box(3.6, .9, 1.1, mat.wood, 0, .45, -2.6, roomG); box(3.8, .06, 1.2, mat.wood, 0, .93, -2.6, roomG); // 불단
+  const cu = box(1.1, .14, 1.1, mat.cushion, 0, .17, .6, roomG);
+}
+const roomTang = new THREE.Mesh(new THREE.PlaneGeometry(4.4, 2.9), new THREE.MeshStandardMaterial({ roughness: .9 })); roomTang.position.set(0, 2.45, -3.38); roomG.add(roomTang);
+const tangFrame = box(4.7, 3.2, .06, mat.wood, 0, 2.45, -3.41, roomG);
+const roomStatue = new THREE.Group(); roomStatue.position.set(0, .96, -2.65); roomG.add(roomStatue);
+const roomCandles = [];
+[-1.45, 1.45].forEach((x) => { cyl(.08, .08, .5, mat.candle, x, 1.21, -2.4, 8, roomG); const f = new THREE.Mesh(new THREE.SphereGeometry(.07, 8, 6), mat.flame); f.scale.y = 1.8; f.position.set(x, 1.53, -2.4); roomG.add(f); roomCandles.push(f); });
+cyl(.22, .16, .22, GOLD, 0, 1.07, -2.15, 12, roomG);
+const roomLight = new THREE.PointLight("#ffb466", 12, 12, 1.4); roomLight.position.set(0, 3, .2); roomG.add(roomLight);
+const roomStars = new THREE.Group(); roomG.add(roomStars);
+{ const g = new THREE.BufferGeometry(), p = []; for (let i = 0; i < 220; i++) p.push(rand(-3.3, 3.3), 3.95, rand(-3.3, 3.3)); g.setAttribute("position", new THREE.Float32BufferAttribute(p, 3));
+  roomStars.add(new THREE.Points(g, new THREE.PointsMaterial({ color: "#fff4d6", size: .05, transparent: true, opacity: .9 }))); }
+const tangCache = {};
+function tangTex(k) {
+  if (tangCache[k]) return tangCache[k];
+  const t = canvasTex(1024, 680, (x, w, h) => {
+    const sky = (a, b) => { const g = x.createLinearGradient(0, 0, 0, h); g.addColorStop(0, a); g.addColorStop(1, b); x.fillStyle = g; x.fillRect(0, 0, w, h); };
+    const cloud = (cx, cy, s, col) => { x.strokeStyle = col; x.lineWidth = 5; for (let i = 0; i < 3; i++) { x.beginPath(); x.arc(cx + i * s * .9, cy, s * (1 - i * .18), Math.PI, 0); x.stroke(); } };
+    if (k === "chilseong") {
+      sky("#0b1530", "#1c2d55");
+      for (let i = 0; i < 500; i++) { x.fillStyle = `rgba(255,248,220,${Math.random() * .8})`; x.fillRect(Math.random() * w, Math.random() * h, 2, 2); }
+      const st = [[250, 230], [380, 260], [500, 280], [620, 250], [690, 380], [860, 360], [890, 220]];
+      x.strokeStyle = "rgba(255,226,150,.55)"; x.lineWidth = 3; x.beginPath(); st.forEach(([a, b], i) => (i ? x.lineTo(a, b) : x.moveTo(a, b))); x.lineTo(690, 380); x.stroke();
+      st.forEach(([a, b]) => { const g = x.createRadialGradient(a, b, 0, a, b, 34); g.addColorStop(0, "#fffbe6"); g.addColorStop(.3, "rgba(255,230,160,.8)"); g.addColorStop(1, "rgba(255,230,160,0)"); x.fillStyle = g; x.beginPath(); x.arc(a, b, 34, 0, Math.PI * 2); x.fill(); });
+      x.fillStyle = "rgba(245,197,66,.9)"; x.font = "bold 64px serif"; x.textAlign = "center"; x.fillText("北 斗 七 星", w / 2, h - 70);
+      cloud(120, 560, 40, "rgba(160,190,255,.35)"); cloud(800, 590, 46, "rgba(160,190,255,.35)");
+    } else if (k === "sanshin") {
+      sky("#cfe0d8", "#e9ddb8");
+      x.fillStyle = "#c0392b"; x.beginPath(); x.arc(820, 150, 62, 0, Math.PI * 2); x.fill();
+      [["#7fa894", 380, .9], ["#4f7d68", 470, .7], ["#2f5a48", 560, .55]].forEach(([c, base, amp]) => { x.fillStyle = c; x.beginPath(); x.moveTo(0, h); for (let i = 0; i <= w; i += 8) x.lineTo(i, base - Math.abs(Math.sin(i / 140 + amp * 4)) * 180 * amp - Math.sin(i / 37) * 12); x.lineTo(w, h); x.fill(); });
+      const pine = (px, py, s) => { x.strokeStyle = "#4a2f1e"; x.lineWidth = 12 * s; x.beginPath(); x.moveTo(px, py); x.quadraticCurveTo(px + 30 * s, py - 120 * s, px - 10 * s, py - 230 * s); x.stroke(); x.fillStyle = "#1f4a35"; [[-50, -200], [40, -170], [-20, -250], [60, -230]].forEach(([a, b]) => { x.beginPath(); x.ellipse(px + a * s, py + b * s, 70 * s, 22 * s, 0, 0, Math.PI * 2); x.fill(); }); };
+      pine(180, 640, 1.4); pine(900, 650, 1.1);
+      cloud(420, 120, 36, "rgba(255,255,255,.8)"); cloud(560, 210, 30, "rgba(255,255,255,.7)");
+      x.fillStyle = "rgba(90,40,20,.85)"; x.font = "bold 60px serif"; x.textAlign = "center"; x.fillText("山 王 大 神", w / 2, h - 50);
+    } else if (k === "gwaneum") {
+      sky("#e8eff6", "#bcd2e6");
+      x.strokeStyle = "rgba(90,130,170,.35)"; x.lineWidth = 3; for (let j = 0; j < 9; j++) { x.beginPath(); for (let i = 0; i <= w; i += 10) x.lineTo(i, 520 + j * 18 + Math.sin(i / 40 + j) * 5); x.stroke(); }
+      const g = x.createRadialGradient(w / 2, 300, 20, w / 2, 300, 240); g.addColorStop(0, "rgba(255,250,230,1)"); g.addColorStop(1, "rgba(255,250,230,0)"); x.fillStyle = g; x.beginPath(); x.arc(w / 2, 300, 240, 0, Math.PI * 2); x.fill();
+      for (let k2 = 0; k2 < 9; k2++) { x.save(); x.translate(w / 2, 470); x.rotate((k2 - 4) * .3); x.fillStyle = k2 % 2 ? "#f4b6c6" : "#f9d3dd"; x.beginPath(); x.ellipse(0, -90, 38, 100, 0, 0, Math.PI * 2); x.fill(); x.restore(); }
+      x.strokeStyle = "#6a8f5a"; x.lineWidth = 4; x.beginPath(); x.moveTo(820, 120); x.quadraticCurveTo(780, 260, 830, 420); x.stroke();
+      for (let i = 0; i < 14; i++) { x.fillStyle = "#86b06f"; x.beginPath(); x.ellipse(800 + Math.sin(i) * 20, 150 + i * 20, 22, 6, .6 * Math.sin(i * 2), 0, Math.PI * 2); x.fill(); }
+      x.fillStyle = "#f2f6f8"; x.beginPath(); x.ellipse(830, 470, 34, 56, 0, 0, Math.PI * 2); x.fill(); x.fillRect(822, 395, 16, 30);
+      x.fillStyle = "rgba(60,80,110,.85)"; x.font = "bold 56px serif"; x.textAlign = "center"; x.fillText("觀 世 音 菩 薩", w / 2, h - 40);
+    } else {
+      sky("#3a1410", "#6a2a18");
+      const g = x.createRadialGradient(w / 2, 280, 10, w / 2, 280, 260); g.addColorStop(0, "rgba(255,220,140,.95)"); g.addColorStop(1, "rgba(255,200,120,0)"); x.fillStyle = g; x.beginPath(); x.arc(w / 2, 280, 260, 0, Math.PI * 2); x.fill();
+      x.strokeStyle = "#e9c46a"; x.lineWidth = 10; x.beginPath(); x.moveTo(300, 620); x.lineTo(300, 140); x.stroke();
+      [[-34, 120], [34, 120], [-30, 160], [30, 160]].forEach(([a, b]) => { x.lineWidth = 5; x.beginPath(); x.arc(300 + a, b, 20, 0, Math.PI * 2); x.stroke(); });
+      x.fillStyle = "#fff3c8"; x.beginPath(); x.arc(w / 2 + 160, 300, 46, 0, Math.PI * 2); x.fill();
+      for (let k2 = 0; k2 < 7; k2++) { x.save(); x.translate(w / 2, 560); x.rotate((k2 - 3) * .33); x.fillStyle = "#e88aa4"; x.beginPath(); x.ellipse(0, -70, 30, 80, 0, 0, Math.PI * 2); x.fill(); x.restore(); }
+      cloud(140, 120, 36, "rgba(233,196,106,.45)"); cloud(760, 110, 40, "rgba(233,196,106,.45)");
+      x.fillStyle = "rgba(245,210,130,.95)"; x.font = "bold 56px serif"; x.textAlign = "center"; x.fillText("地 藏 菩 薩", w / 2, h - 40);
+    }
+    x.strokeStyle = "#d9b44a"; x.lineWidth = 14; x.strokeRect(7, 7, w - 14, h - 14);
+  });
+  t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping; t.repeat.set(1, 1); return (tangCache[k] = t);
+}
+let inRoom = null, roomReturn = null;
+function setupRoom(k) {
+  const r = ROOMS[k];
+  roomTang.material.map = tangTex(k); roomTang.material.needsUpdate = true;
+  roomLight.color.set(r.light); roomStars.visible = k === "chilseong";
+  roomStatue.clear(); placeDongja(k === "chilseong" ? "lotus" : k === "sanshin" ? "sit" : k === "gwaneum" ? "lotus" : "hap", 0, 0, 0, .55, 0, roomStatue);
+  { const base = new THREE.Mesh(new THREE.CylinderGeometry(.34, .4, .12, 20), GOLD); base.position.y = -.04; roomStatue.add(base); }
+}
+const fade = (fn) => { const f = $("fadeOut"); f.classList.add("on"); setTimeout(() => { fn(); setTimeout(() => f.classList.remove("on"), 60); }, 380); };
+function enterRoom(k) {
+  if (!player) return; standUp(); stopAutoBow(); pendingSeat = null; autoPath = null;
+  fade(() => {
+    roomReturn = { x: ROOMS[k].x, z: ROOMS[k].z + 3.6 }; inRoom = k; pray = null; setupRoom(k);
+    player.pos.set(RO.x, 0, RO.z + .6); player.target.copy(player.pos); player.yaw = Math.PI; player.root.rotation.y = Math.PI; player.y = 0; player.sitting = true;
+    camYaw = 0; ZONES.room.name = ROOMS[k].name; ZONES.room.intro = ROOMS[k].intro; zone = "room"; renderActions(); say(ROOMS[k].intro); gain(`visit:${k}`);
+    $("prayBox").hidden = false; renderPray(true); sendPresence();
+  });
+}
+function leaveRoom() {
+  stopPray(); const back = roomReturn;
+  fade(() => { inRoom = null; $("prayBox").hidden = true; player.sitting = false; if (back) { player.pos.set(back.x, 0, back.z); player.target.copy(player.pos); player.yaw = 0; } camYaw = 0; lastMoveTx = 0; sendPresence(); });
+}
+/* 기도: 경문 → 정근 → 축원 순서로 한 글자씩 목탁 박자에 맞춰 */
+let pray = null; // { k, lines, li, ci, timer, rounds, done, total }
+const prayKey = () => inRoom || (zone === "peak" ? "chilseong" : null);
+function prayLines(k) {
+  const r = ROOMS[k], [title, sutra] = r.sutra, [open, name] = r.jeong;
+  return [{ t: title, head: true }, ...sutra.map((s) => ({ t: s })), { t: `${r.name} 정근`, head: true }, { t: open }, ...Array(7).fill(0).map(() => ({ t: name })),
+    { t: "축원", head: true }, { t: `${me.nick || "불자"}님의 ${r.wish}을 비옵니다` }, { t: "나무 석가모니불 나무 석가모니불 나무 시아본사 석가모니불" }];
+}
+function renderPray(reset) {
+  const k = prayKey(); if (!k) return; if (reset && !pray) { const lines = prayLines(k); pray = { k, lines, li: 0, ci: 0, timer: 0, rounds: 0, done: 0, total: lines.reduce((n, L) => n + (L.head ? 0 : [...L.t].filter((c) => c !== " ").length), 0) }; }
+  if (!pray) return;
+  const P = pray, box = $("prayLines"); box.innerHTML = "";
+  $("prayTitle").textContent = inRoom ? `${ROOMS[k].name} · ${ROOMS[k].sutra[0]}` : "달빛봉 칠성기도 · 칠성경";
+  $("prayCount").textContent = P.timer ? `${P.rounds + 1}번째 독송 중 · ${P.li + 1}/${P.lines.length}` : P.rounds ? `${P.rounds}독 마쳤어요` : "기도 시작을 누르면 목탁 박자에 맞춰 한 글자씩 읽어요";
+  for (let d = -1; d <= 2; d++) {
+    const L = P.lines[P.li + d]; const div = document.createElement("div"); div.className = "pl" + (d === 0 ? " cur" : "") + (L && L.head ? " head" : "");
+    if (L) { if (d === 0 && !L.head) { const chars = [...L.t]; let n = 0; chars.forEach((c) => { const s = document.createElement("span"); s.textContent = c; if (c !== " ") { if (n < P.ci) s.className = "done"; else if (n === P.ci && P.timer) s.className = "now"; n++; } div.appendChild(s); }); } else div.textContent = L.t; }
+    else div.innerHTML = "&nbsp;";
+    box.appendChild(div);
+  }
+  const btn = $("prayToggle"); btn.textContent = P.timer ? "⏸️ 잠시 멈추기" : P.rounds || P.li ? "🙏 이어서 기도하기" : "🙏 기도 시작";
+}
+function prayStep() {
+  const P = pray; if (!P || !prayKey()) return;
+  const L = P.lines[P.li];
+  if (!L) { P.rounds++; P.li = 0; P.ci = 0; P.done = 0; if (!inRoom) { dipper.flashAt = performance.now(); dipper.full = true; } gain("pray"); me.pray = (me.pray || 0) + 1; save(); act("pray", { what: P.k });
+    sfx.bell(); say(inRoom ? `${ROOMS[P.k].name}에서 ${P.rounds}독을 마쳤어요. 마음이 맑아졌어요.` : `북두칠성이 모두 밝혀졌어요. ${P.rounds}독, 별빛이 가족을 지켜 주길.`); if (P.k === "chilseong") sevenStars.userData.glowUntil = Date.now() + 8000;
+    if (player) playAnim(player, "bow"); P.timer = setTimeout(prayStep, 2600); renderPray(); return; }
+  if (L.head) { P.li++; P.ci = 0; sfx.soft(); renderPray(); P.timer = setTimeout(prayStep, 900); return; }
+  const syl = [...L.t].filter((c) => c !== " ");
+  if (P.ci < syl.length) { prayMok(P.ci === 0); P.ci++; P.done++; renderPray(); P.timer = setTimeout(prayStep, 330); return; }
+  P.li++; P.ci = 0; renderPray(); P.timer = setTimeout(prayStep, 520);
+}
+function prayMok(accent) {
+  if (rec.moktak) { playRec("moktak", vol.fx * (accent ? .7 : .45)); return; }
+  const c = ac(), t = c.currentTime;
+  [[520, accent ? .4 : .26, .1], [355, accent ? .22 : .14, .14]].forEach(([f, v, d]) => { const o = c.createOscillator(), g = c.createGain(); o.frequency.setValueAtTime(f * 1.04, t); o.frequency.exponentialRampToValueAtTime(f, t + .02); g.gain.setValueAtTime(v * vol.fx, t); g.gain.exponentialRampToValueAtTime(.0001, t + d); o.connect(g).connect(master); o.start(t); o.stop(t + d + .02); });
+}
+function togglePray() {
+  const k = prayKey(); if (!k) return; if (!pray || pray.k !== k) { pray = null; renderPray(true); }
+  if (pray.timer) { stopPray(); return; }
+  $("prayBox").classList.toggle("compact", !inRoom);
+  if (!inRoom) { $("prayBox").hidden = false; dipper.active = true; if (player) { player.yaw = Math.PI; player.target.copy(player.pos); } }
+  ac(); pray.timer = setTimeout(prayStep, 200); if (player) playAnim(player, "pray"); renderPray(); renderActions();
+  const url = soundUrl[`pray_${k}`]; if (url) loopAudio(`pray_${k}`, .8 * vol.fx); // 직접 녹음한 파일(pray_chilseong.mp3 등)이 있으면 함께 틀어요
+}
+function stopPray() { if (pray && pray.timer) { clearTimeout(pray.timer); pray.timer = 0; } Object.keys(loopEls).filter((n) => n.startsWith("pray_")).forEach((n) => loopEls[n].pause()); if (pray && pray.k !== prayKey()) pray = null; renderPray(); renderActions(); }
+ROOM_KEYS.forEach((k) => findSound(`pray_${k}`));
+
+/* 달빛봉 칠성기도: 기도가 진행되는 만큼 하늘에 북두칠성이 하나씩 떠오르고 선으로 이어져요 */
+const dipper = { active: false, shown: 0, flashAt: 0, full: false, stars: [], segs: [], g: new THREE.Group() };
+function initDipper() {
+  const D = dipper, C = new THREE.Vector3(MOUNT.x, 26, MOUNT.z - 34); D.g.position.copy(C); scene.add(D.g);
+  // 탐랑 · 거문 · 녹존 · 문곡 · 염정 · 무곡 · 파군 (국자 끝에서 손잡이 끝으로)
+  const P2 = [[890, 220], [860, 360], [690, 380], [620, 250], [500, 280], [380, 260], [250, 230]].map(([x, y]) => new THREE.Vector3((x - 570) / 44, -(y - 300) / 44, 0));
+  const names = ["탐랑", "거문", "녹존", "문곡", "염정", "무곡", "파군"];
+  const starMat = () => new THREE.SpriteMaterial({ map: glowTex, color: "#fff4cf", transparent: true, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending, fog: false, opacity: 0 });
+  P2.forEach((p, i) => { const s = new THREE.Sprite(starMat()); s.position.copy(p); s.scale.setScalar(.01); s.renderOrder = 20; D.g.add(s);
+    const core = new THREE.Sprite(starMat()); core.material.color.set("#ffffff"); core.position.copy(p); core.scale.setScalar(.01); core.renderOrder = 21; D.g.add(core);
+    const lb = textSprite(names[i], { size: 34, color: "#fff2c4", bg: "rgba(10,16,32,.55)", pad: 10 }); lb.material.fog = false; lb.material.opacity = 0; lb.position.copy(p).add(new THREE.Vector3(0, -.85, 0)); lb.scale.multiplyScalar(.75); lb.renderOrder = 22; D.g.add(lb);
+    D.stars.push({ s, core, lb }); });
+  [[0, 1], [1, 2], [2, 3], [3, 0], [3, 4], [4, 5], [5, 6]].forEach(([a, b]) => { const A2 = P2[a], B2 = P2[b], len = A2.distanceTo(B2);
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(1, .07), new THREE.MeshBasicMaterial({ color: "#ffe4a0", transparent: true, opacity: 0, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending, fog: false }));
+    m.geometry.translate(.5, 0, 0); m.position.copy(A2); m.rotation.z = Math.atan2(B2.y - A2.y, B2.x - A2.x); m.scale.x = .001; m.renderOrder = 19; m.userData.len = len; D.g.add(m); D.segs.push(m); });
+  D.g.visible = false;
+}
+const nightCol = new THREE.Color("#070c1a"), dayCol = new THREE.Color();
+function updateDipper(dt, now, t) {
+  const D = dipper; const want = D.full ? 1 : D.active && pray && pray.k === "chilseong" && !inRoom ? pray.done / Math.max(1, pray.total) : D.active ? D.shown : 0;
+  D.shown += (Math.max(want, D.active ? D.shown : 0) - D.shown) * Math.min(1, dt * 2.5);
+  if (!D.active) D.shown = Math.max(0, D.shown - dt * .4);
+  D.g.visible = D.shown > .002;
+  if (!D.g.visible) return;
+  const n = D.stars.length, flash = D.flashAt ? Math.max(0, 1 - (now - D.flashAt) / 2500) : 0;
+  D.stars.forEach((st, i) => { const k = clamp((D.shown * n - i) / .6, 0, 1), tw = .85 + Math.sin(t * 3 + i * 1.7) * .15;
+    st.s.material.opacity = k * .9; st.s.scale.setScalar((k * 2.6 + flash * 3.5) * tw); st.core.material.opacity = k; st.core.scale.setScalar(k * .7 * tw + flash * .9); st.lb.material.opacity = k * .9; });
+  // 선은 별이 다 떠오른 순서대로 이어져요 (국자 → 손잡이)
+  const segTo = [1, 2, 3, 0, 4, 5, 6];
+  D.segs.forEach((m, i) => { const b = segTo[i], start = (b === 0 ? 3 : b) / n, k = clamp((D.shown - start + .03) / (.9 / n), 0, 1);
+    m.scale.x = Math.max(.001, m.userData.len * k); m.material.opacity = k * (.75 + flash * .25); });
+  // 하늘이 서서히 밤으로
+  if (D.active || D.shown > .01) { dayCol.copy(scene.background); scene.background.lerp(nightCol, Math.min(1, dt * .6 * (D.active ? 1 : 0))); scene.fog.color.copy(scene.background); }
+}
+
 /* 계조암: 법당 뒤로 솟은 화강암 바위 무리와 그 위의 흔들바위 */
 const rockingStone = (() => {
   const C = { x: 0, z: -38 };
@@ -930,7 +1135,7 @@ const PTS = { pung: 1, rice: 5, giwa: 5, emo: 0, mok: 1, bow: 3, incense: 3, bel
 const MISSION_POOL = [
   ["mok", 30, "목탁 30번 치기"], ["bow", 30, "절 30번 올리기"], ["tap", 1, "탑돌이 한 바퀴"], ["greet", 3, "합장 인사 3번"],
   ["incense", 1, "향 피우기"], ["tea", 1, "공양간에서 차 마시기"], ["wish", 1, "소원 연등 달기"], ["visit:walk", 1, "산책길 걷기"],
-  ["chat", 1, "누군가에게 말 걸기"], ["bead", 108, "염주 한 바퀴 돌리기"], ["pray", 1, "산신각에서 기도하기"], ["bell", 3, "범종 3번 치기"], ["visit:peak", 1, "달빛봉 정상 오르기"], ["yaho", 1, "정상에서 야호 외치기"], ["rice", 1, "부처님께 공양미 올리기"], ["giwa", 1, "기와에 소원 적기"]
+  ["chat", 1, "누군가에게 말 걸기"], ["bead", 108, "염주 한 바퀴 돌리기"], ["pray", 1, "법당이나 달빛봉에서 기도 1독"], ["bell", 3, "범종 3번 치기"], ["visit:peak", 1, "달빛봉 정상 오르기"], ["rice", 1, "부처님께 공양미 올리기"], ["giwa", 1, "기와에 소원 적기"]
 ];
 function todayMissions() {
   let h = 0; for (const ch of today) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
@@ -1240,6 +1445,7 @@ function blocked(x, z) {
 function floorY(x, z) { return (x > HB.x1 - .5 && x < HB.x2 + .5 && z > HB.z1 - .5 && z < HB.z2 + .5) ? .55 : mh(x, z); }
 function zoneOf(x, z) {
   if (z < -13.5 && Math.abs(x) < 15.5) return "hall";
+  const rk = roomAt(x, z); if (rk) return rk === "sanshin" ? "shrine" : rk;
   if (x > 10.5 && z < -1) return "shrine";
   if (x < -10.5 && z < -1) return "kitchen";
   const md = Math.hypot(x - MOUNT.x, z - MOUNT.z);
@@ -1254,14 +1460,18 @@ const ZONES = {
   yard: { name: "마당", intro: "마당에 들어왔어요. 가고 싶은 곳을 눌러 걸어가 보세요." },
   hall: { name: "대웅전", intro: "부처님 앞이에요. 목탁을 치고 절을 올려 보세요." },
   pagoda: { name: "석탑", intro: "석탑을 천천히 돌며 소원을 떠올려 보세요." },
-  shrine: { name: "산신각·칠성각", intro: "산신께는 산의 기운을, 칠성께는 별의 기운을 빌어요." },
+  shrine: { name: "산신각", intro: "산신각이에요. 들어가서 산왕경을 함께 읽어 보세요." },
+  chilseong: { name: "칠성각", intro: "칠성각이에요. 들어가서 칠성경을 함께 읽어 보세요." },
+  gwaneum: { name: "관음전", intro: "관음전이에요. 들어가서 반야심경을 함께 읽어 보세요." },
+  jijang: { name: "지장전", intro: "지장전이에요. 먼저 떠나신 분들을 위해 기도해요." },
+  room: { name: "법당", intro: "" },
   kitchen: { name: "공양간", intro: "오늘의 공양을 골라 보세요. 차도 한 잔 있어요." },
   walk: { name: "산책길", intro: "물소리 들리는 숲길이에요. 서쪽으로 가면 달빛봉이 있어요." },
   mountain: { name: "산길", intro: "디딤돌을 따라 한 걸음씩 올라가 보세요." },
   peak: { name: "정상", intro: "정상이에요! 달빛암이 한눈에 내려다보여요." },
   shop: { name: "기념품 가게", intro: "수행하며 모은 복전으로 기념품을 골라 보세요." }
 };
-const GOTO = { shop: [9.5, 6.2], hall: [0, -16.8], pagoda: [0, 3.2], shrine: [15, -2.6], kitchen: [-15, -1.2], walk: [0, 16], yard: [0, 8], mountain: [TRAIL[0].x + 1.2, TRAIL[0].z] };
+const GOTO = { shop: [9.5, 6.2], hall: [0, -16.8], pagoda: [0, 3.2], shrine: [15, -2.6], chilseong: [26, -3.4], gwaneum: [-26, -3.4], jijang: [26, -14.4], kitchen: [-15, -1.2], walk: [0, 16], yard: [0, 8], mountain: [TRAIL[0].x + 1.2, TRAIL[0].z] };
 
 /* =========================================================
    카메라 조작
@@ -1340,12 +1550,14 @@ function actionsFor(z) {
   if (z === "hall") return [A(player?.sitting ? "🧍" : "🧘", player?.sitting ? "일어나기" : "방석 앉기", doSit, !player?.sitting), A(autoBow ? "⏸️" : "🙇", autoBow ? "멈추기" : "계속 절하기", toggleAutoBow, true), A("🪵", "목탁", doMok), A("🕯️", "향", doIncense), A("🍚", "공양미", doRice), greetA, beadA];
   const giwaA = A("🏯", "기와 소원", openGiwa);
   if (z === "pagoda") return [A("🗼", "탑돌이", doTapdori, true), wishA, giwaA, greetA, beadA];
-  if (z === "shrine") return [A("⛰️", "산신 기도", () => doPray("산신"), true), A("✨", "칠성 기도", () => doPray("칠성"), true), A("🕯️", "초 켜기", doCandle), greetA];
+  if (z === "shrine") return [A("🚪", "산신각 들어가기", () => enterRoom("sanshin"), true), A("🕯️", "초 켜기", doCandle), greetA];
+  if (ROOMS[z]) return [A("🚪", `${ROOMS[z].name} 들어가기`, () => enterRoom(z), true), greetA, beadA];
+  if (z === "room") return [A(pray && pray.timer ? "⏸️" : "🙏", pray && pray.timer ? "멈추기" : "기도하기", togglePray, true), A("🙇", "절", doBow), A("🪵", "목탁", doMok), A("🚪", "나가기", leaveRoom)];
   if (z === "kitchen") return [A("🍚", "공양 고르기", () => { renderMenu(); openPanel("menuPanel"); }, true), A("🍵", "차 마시기", doTea, true), greetA, beadA];
   if (z === "shop") return [A("🛍️", "가게 둘러보기", openShop, true), greetA, beadA];
   if (z === "walk") return [A("🌊", "계곡 소리", doNature, true), A("⛰️", "달빛봉 오르기", doClimb, true), greetA, beadA];
   if (z === "mountain") return [A(autoPath?.climb ? "⏸️" : "⛰️", autoPath?.climb ? "멈추기" : "정상까지 오르기", doClimb, true), A("🌬️", "바람 소리", doNature), greetA, beadA];
-  if (z === "peak") return [A("📣", "야호!", doYaho, true), A("🌄", "경치 보기", doView, true), A("⬇️", "내려가기", doDescend), greetA, wishA];
+  if (z === "peak") return [A(pray && pray.timer ? "⏸️" : "✨", pray && pray.timer ? "기도 멈추기" : "칠성기도", () => { pray = pray && pray.k === "chilseong" ? pray : null; togglePray(); }, true), A("🌄", "경치 보기", doView), A("⬇️", "내려가기", doDescend), greetA, wishA];
   return [A("🔔", "범종 치기", doBell), A("🎐", "풍경", doPung), greetA, wishA, giwaA, beadA];
 }
 function renderActions() {
@@ -1355,10 +1567,10 @@ function renderActions() {
   $("placeTag").textContent = ZONES[zone].name;
   document.querySelectorAll("#places button").forEach((b) => b.classList.toggle("here", b.dataset.z === zone));
 }
-const placeNames = { hall: "대웅전", pagoda: "석탑", shrine: "산신각", kitchen: "공양간", walk: "산책길", mountain: "달빛봉", shop: "기념품" };
+const placeNames = { hall: "대웅전", pagoda: "석탑", shrine: "산신각", chilseong: "칠성각", gwaneum: "관음전", jijang: "지장전", kitchen: "공양간", walk: "산책길", mountain: "달빛봉", shop: "기념품" };
 for (const [z, n] of Object.entries(placeNames)) {
   const b = document.createElement("button"); b.type = "button"; b.dataset.z = z; b.textContent = n;
-  b.onclick = () => { standUp(); pendingSeat = null; const [x, zz] = GOTO[z]; player.pos.set(x, 0, zz); player.target.set(x, 0, zz); autoPath = null; camYaw = z === "walk" ? Math.PI : z === "mountain" ? Math.PI / 2 : 0; lastMoveTx = 0; sendPresence(); if (z === "hall") enterHallView(); };
+  b.onclick = () => { if (inRoom) { stopPray(); inRoom = null; $("prayBox").hidden = true; player.sitting = false; } standUp(); pendingSeat = null; const [x, zz] = GOTO[z]; player.pos.set(x, 0, zz); player.target.set(x, 0, zz); autoPath = null; camYaw = z === "walk" ? Math.PI : z === "mountain" ? Math.PI / 2 : 0; lastMoveTx = 0; sendPresence(); if (z === "hall") enterHallView(); };
   $("places").appendChild(b);
 }
 
@@ -1795,6 +2007,7 @@ $("giwaBtn").addEventListener("click", async () => {
   $("giwaNote").textContent = "기와를 올렸어요. 법당 앞 너럭바위 기와 단에서 볼 수 있어요.";
   setTimeout(() => toast("🏯 기와에 소원을 적어 올렸어요", zone === "yard" ? null : { label: "보러 가기", fn: () => { $("giwaPanel").hidden = true; goGiwa(); } }), 300);
 });
+$("prayToggle").addEventListener("click", () => { ac(); togglePray(); });
 $("giwaInput").addEventListener("keydown", (e) => { if (e.key === "Enter") $("giwaBtn").click(); });
 function goGiwa() { if (!player) return; standUp(); pendingSeat = null; autoPath = null; player.pos.set(GIWA.x, 0, GIWA.z + 2.2); player.target.copy(player.pos); camYaw = 0; lastMoveTx = 0; sendPresence(); }
 async function loadGiwa() {
@@ -1820,7 +2033,8 @@ const online = () => !!sb;
 /* 신호 아끼기: 접속 명단(presence)은 들어올 때와 30초마다 한 번만,
    걷기는 목적지가 바뀔 때만, 동작은 그때그때 짧은 메시지(broadcast)로 보내요. */
 let lastMoveTx = 0, lastTarget = { x: 1e9, z: 1e9 }, presence = {};
-const posPayload = () => ({ k: myKey, l: me.look, lv: levelOf(me.pts), s: player.sitting ? 1 : 0, x: +player.pos.x.toFixed(2), z: +player.pos.z.toFixed(2), tx: +player.target.x.toFixed(2), tz: +player.target.z.toFixed(2) });
+const posPayload = () => { const P = inRoom && roomReturn ? roomReturn : player.pos, T = inRoom && roomReturn ? roomReturn : player.target;
+  return { k: myKey, l: me.look, lv: levelOf(me.pts), s: player.sitting && !inRoom ? 1 : 0, x: +P.x.toFixed(2), z: +P.z.toFixed(2), tx: +T.x.toFixed(2), tz: +T.z.toFixed(2) }; };
 function trackMe() { if (roomCh && player) roomCh.track({ nick: me.nick.slice(0, 8), ...posPayload(), at: Date.now() }).catch(() => {}); }
 setInterval(trackMe, 30000);
 setInterval(() => {
@@ -2067,10 +2281,17 @@ function tick() {
     if (pendingSeat && !moved && Math.hypot(player.pos.x - pendingSeat.x, player.pos.z - pendingSeat.z) < .3) { pendingSeat = null; sitDown(); }
     if (moved && now - lastMoveSent > 250) { lastMoveSent = now; sendPresence(); }
     animateMonk(player, dt, now);
-    const z = zoneOf(player.pos.x, player.pos.z);
-    if (z !== zone) { const prev = zone; zone = z; renderActions(); say(ZONES[zone].intro); gain(`visit:${z}`); if (z === "peak") reachPeak(); if (z === "hall") enterHallView(prev); }
+    const z = inRoom ? "room" : zoneOf(player.pos.x, player.pos.z);
+    if (z !== zone) { const prev = zone; if (prev === "peak" && z !== "peak") { if (pray && pray.timer) stopPray(); pray = null; dipper.active = false; dipper.full = false; $("prayBox").hidden = true; applyTimeOfDay(); } zone = z; renderActions(); say(ZONES[zone].intro); gain(`visit:${z}`); if (z === "peak") reachPeak(); if (z === "hall") enterHallView(prev); }
     // 대웅전 안에서는 동자승 뒤쪽 위에서 부처님을 함께 바라보는 구도로 바꿔요
-    if (zone === "hall") {
+    if (inRoom) { // 개인 법당: 동자승 뒤에서 탱화와 불단을 바라봐요
+      const yaw = clamp(camYaw, -.6, .6), cp = clamp(camPitch, .1, .7);
+      const cw = new THREE.Vector3(RO.x + Math.sin(yaw) * 2.6, 1.55 + cp * 1.4, RO.z + 3.1 - Math.abs(Math.sin(yaw)) * .6);
+      camTarget.lerp(new THREE.Vector3(RO.x, 1.75, RO.z - 2.6), Math.min(1, dt * 6)); camera.position.lerp(cw, Math.min(1, dt * 6));
+    } else if (zone === "peak" && dipper.active) {
+      const top = mh(player.pos.x, player.pos.z), cw = new THREE.Vector3(player.pos.x + 1.2, top + 2.4, player.pos.z + 4.2);
+      camTarget.lerp(dipper.g.position.clone().add(new THREE.Vector3(0, 4.5, 0)), Math.min(1, dt * 1.5)); camera.position.lerp(cw, Math.min(1, dt * 2));
+    } else if (zone === "hall") {
       // 대웅전: 끌어서 사방을 둘러보고, 두 손가락으로 확대 · 축소. 카메라는 법당 벽과 천장 안쪽에만 머물러요
       // 동자승 바로 뒤 눈높이에서 바라보는 방향으로 법당을 둘러봐요
       const fx = -Math.sin(camYaw), fz = -Math.cos(camYaw), cp = clamp(camPitch, .12, 1.0);
@@ -2093,18 +2314,19 @@ function tick() {
       for (const t of camHide) { const px = t.position.x, pz = t.position.z, k = clamp(((px - ax) * vx + (pz - az) * vz) / L, 0, 1), dx = ax + vx * k - px, dz = az + vz * k - pz, r = 2.3 * t.scale.x; t.visible = dx * dx + dz * dz > r * r; } }
     if (hallG.userData.sign) hallG.userData.sign.visible = zone !== "hall";
     mountMesh.userData.far.visible = zone !== "peak" && zone !== "mountain";
-    player.label.visible = zone !== "hall" && camera.position.distanceTo(player.root.position) > 2.6;
-    const fovWant = zone === "hall" ? 70 : 55;
+    player.label.visible = zone !== "hall" && !inRoom && camera.position.distanceTo(player.root.position) > 2.6;
+    const fovWant = zone === "hall" ? 70 : inRoom ? 62 : 55;
     if (Math.abs(camera.fov - fovWant) > .1) { camera.fov += (fovWant - camera.fov) * Math.min(1, dt * 4); camera.updateProjectionMatrix(); }
   } else {
     camera.position.set(Math.sin(t * .05) * 22, 9, Math.cos(t * .05) * 22 - 4); camera.lookAt(0, 2, -8);
   }
   for (const [, o] of others) { moveMonk(o.monk, dt, 3.6); animateMonk(o.monk, dt, now); }
-  updateNpcs(dt, now);
+  updateNpcs(dt, now); updateDipper(dt, now, t);
   // 효과
   const inc = Date.now() < incenseUntil; incense.visible = inc;
   if (inc) smoke.forEach((s) => { s.userData.t = (s.userData.t + dt * .3) % 1; const k = s.userData.t; s.position.set(Math.sin(k * 9) * .1, .6 + k * 1.6, 0); s.scale.setScalar(.6 + k * 1.8); s.material.opacity = Math.sin(k * Math.PI) * .35; });
   candles.forEach((f, i) => { f.scale.x = 1 + Math.sin(t * 13 + i) * .12; });
+  if (inRoom) { roomCandles.forEach((f, i) => { f.scale.x = 1 + Math.sin(t * 11 + i * 2) * .14; }); roomLight.intensity = 8.5 + Math.sin(t * 7) * .8; roomStars.rotation.y = t * .01; }
   hallLight.intensity = 16 + Math.sin(t * 7) * 1.5;
   const cdl = Date.now() < candleUntil; shrineFlame.visible = cdl; shrineLight.intensity = cdl ? 5 + Math.sin(t * 9) : 0;
   const glow = (sevenStars.userData.glowUntil || 0) > Date.now(); sevenStars.children.forEach((s, i) => s.scale.setScalar(glow ? 1.6 + Math.sin(t * 4 + i) * .4 : 1));
@@ -2143,7 +2365,7 @@ function applyTimeOfDay() {
 }
 applyTimeOfDay(); setInterval(applyTimeOfDay, 60000);
 
-buildNpcs();
+buildNpcs(); initDipper();
 renderLanterns(me.localWishes);
 for (let i = 0; i < Math.min(me.rice || 0, RICE_SPOTS.length); i++) addRiceBag(false);
 renderGiwa(me.localGiwa);

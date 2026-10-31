@@ -162,3 +162,17 @@ body.rec .rec-exit{display:block;position:fixed;right:0;top:0;width:80px;height:
 .room-names{grid-column:1/-1;list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:6px;max-height:40vh;overflow:auto}
 .room-names li{background:rgba(0,0,0,.25);border-radius:999px;padding:5px 11px;font-size:.84rem}
 .room-names li:first-child{color:var(--lantern)}
+
+.pray-box{position:fixed;left:50%;transform:translateX(-50%);top:calc(var(--st) + 132px);width:min(420px,calc(100% - 24px));z-index:9;background:rgba(16,21,29,.62);backdrop-filter:blur(8px);border:1px solid var(--glass-line);border-radius:20px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;text-align:center}
+.pray-head{display:flex;flex-direction:column;gap:2px}.pray-head b{font-family:var(--display);font-size:1rem}.pray-head small{color:var(--mute);font-size:.76rem}
+.pray-lines{display:flex;flex-direction:column;gap:4px;min-height:7.4em}
+.pray-lines .pl{color:rgba(236,230,216,.4);font-size:.9rem;font-family:var(--display);line-height:1.35}
+.pray-lines .pl.cur{color:var(--ink);font-size:1.28rem;font-weight:700}
+.pray-lines .pl.head{color:var(--lantern);font-size:.82rem;letter-spacing:.1em}
+.pray-lines .pl.cur.head{font-size:1rem}
+.pray-lines .pl span.done{color:var(--gold,#f5c542)}
+.pray-lines .pl span.now{color:#fff;text-shadow:0 0 12px rgba(255,214,120,.9)}
+.pray-box .primary{padding:10px 14px}
+.fade-out{position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;transition:opacity .35s;z-index:40}.fade-out.on{opacity:1}
+body.rec .pray-box{display:none!important}
+.pray-box.compact{padding:8px 12px;gap:4px}.pray-box.compact .pray-lines{min-height:4.6em}.pray-box.compact .pl:first-child,.pray-box.compact .pl:last-child{display:none}.pray-box.compact .primary{display:none}
