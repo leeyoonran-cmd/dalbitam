@@ -833,14 +833,14 @@ ROOM_KEYS.forEach((k) => findSound(`pray_${k}`));
 /* 달빛봉 칠성기도: 기도가 진행되는 만큼 하늘에 북두칠성이 하나씩 떠오르고 선으로 이어져요 */
 const dipper = { active: false, shown: 0, flashAt: 0, full: false, stars: [], segs: [], g: new THREE.Group() };
 function initDipper() {
-  const D = dipper, C = new THREE.Vector3(MOUNT.x, 26, MOUNT.z - 34); D.g.position.copy(C); scene.add(D.g);
+  const D = dipper, C = new THREE.Vector3(MOUNT.x - 2.4, 26, MOUNT.z - 34); D.g.position.copy(C); scene.add(D.g);
   // 탐랑 · 거문 · 녹존 · 문곡 · 염정 · 무곡 · 파군 (국자 끝에서 손잡이 끝으로)
   const P2 = [[890, 220], [860, 360], [690, 380], [620, 250], [500, 280], [380, 260], [250, 230]].map(([x, y]) => new THREE.Vector3((x - 570) / 44, -(y - 300) / 44, 0));
   const names = ["탐랑", "거문", "녹존", "문곡", "염정", "무곡", "파군"];
   const starMat = () => new THREE.SpriteMaterial({ map: glowTex, color: "#fff4cf", transparent: true, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending, fog: false, opacity: 0 });
   P2.forEach((p, i) => { const s = new THREE.Sprite(starMat()); s.position.copy(p); s.scale.setScalar(.01); s.renderOrder = 20; D.g.add(s);
     const core = new THREE.Sprite(starMat()); core.material.color.set("#ffffff"); core.position.copy(p); core.scale.setScalar(.01); core.renderOrder = 21; D.g.add(core);
-    const lb = textSprite(names[i], { size: 34, color: "#fff2c4", bg: "rgba(10,16,32,.55)", pad: 10 }); lb.material.fog = false; lb.material.opacity = 0; lb.position.copy(p).add(new THREE.Vector3(0, -.85, 0)); lb.scale.multiplyScalar(.75); lb.renderOrder = 22; D.g.add(lb);
+    const lb = textSprite(names[i], { size: 34, color: "#fff2c4", bg: "rgba(10,16,32,.55)", pad: 10 }); lb.material.fog = false; lb.material.opacity = 0; lb.position.copy(p).add(new THREE.Vector3(0, -1.05, 0)); lb.scale.multiplyScalar(1.5); lb.renderOrder = 22; D.g.add(lb);
     D.stars.push({ s, core, lb }); });
   [[0, 1], [1, 2], [2, 3], [3, 0], [3, 4], [4, 5], [5, 6]].forEach(([a, b]) => { const A2 = P2[a], B2 = P2[b], len = A2.distanceTo(B2);
     const m = new THREE.Mesh(new THREE.PlaneGeometry(1, .07), new THREE.MeshBasicMaterial({ color: "#ffe4a0", transparent: true, opacity: 0, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending, fog: false }));
