@@ -307,8 +307,9 @@ const blockers = []; // {x1,x2,z1,z2}
 const block = (x1, x2, z1, z2) => blockers.push({ x1, x2, z1, z2 });
 
 /* 전각 만들기 */
+const camSolidGroups = []; // 카메라가 뚫고 들어가면 안 되는 건물들
 function hall({ w, d, h, x, z, open = false, sign = "" }) {
-  const g = new THREE.Group(); g.position.set(x, 0, z); scene.add(g);
+  const g = new THREE.Group(); g.position.set(x, 0, z); scene.add(g); camSolidGroups.push(g);
   box(w + 1, .5, d + 1, mat.stone, 0, .25, 0, g); // 기단
   box(w, .05, d, mat.floor, 0, .52, 0, g);
   const cols = Math.max(3, Math.round(w / 3.2));
@@ -605,7 +606,7 @@ block(-3.75, -2.2, BUDDHA_Z + 1.2, BUDDHA_Z + 2.1); block(2.2, 3.75, BUDDHA_Z + 
 
 /* 기와 불사: 법당 앞 너럭바위 위 기와 단에 소원을 적은 기와가 쌓여요 */
 const GIWA = { x: -5.2, z: -12.6, cols: 8, rows: 3 };
-const giwaGroup = new THREE.Group(); giwaGroup.position.set(GIWA.x, 0, GIWA.z); scene.add(giwaGroup);
+const giwaGroup = new THREE.Group(); giwaGroup.position.set(GIWA.x, 0, GIWA.z); scene.add(giwaGroup); camSolidGroups.push(giwaGroup);
 const giwaTiles = new THREE.Group(); giwaGroup.add(giwaTiles);
 for (let r = 0; r < GIWA.rows; r++) { const h = .35 + r * .42; box(4.3, h, .55, mat.wood, 0, h / 2, -r * .55, giwaGroup); }
 { const sg = textSprite("기와 불사 · 소원 기와", { size: 34, color: "#f3e6c4", bg: "#3b2414", pad: 14 }); sg.material.depthTest = true; sg.scale.multiplyScalar(.75); sg.position.set(0, 2.55, -.6); giwaGroup.add(sg);
@@ -733,7 +734,7 @@ for (let i = 0; i < 18; i++) { const r = new THREE.Mesh(new THREE.DodecahedronGe
   const c = new THREE.Mesh(new THREE.SphereGeometry(1.8, 10, 8), mat.leaf); c.position.y = 3.4; t.add(c); block(x - .4, x + .4, z - .4, z + .4); });
 [[-4, 4.5], [4, 4.5]].forEach(([x, z]) => { box(.5, 1, .5, mat.stone, x, .5, z); box(.7, .5, .7, mat.stone, x, 1.25, z); const l = new THREE.Mesh(new THREE.SphereGeometry(.15, 8, 6), mat.flame); l.position.set(x, 1.25, z + .36); scene.add(l); block(x - .4, x + .4, z - .4, z + .4); });
 // 범종각 (서남쪽)
-{ const g = new THREE.Group(); g.position.set(-9, 0, 7); scene.add(g);
+{ const g = new THREE.Group(); g.position.set(-9, 0, 7); scene.add(g); camSolidGroups.push(g);
   [[-1.3, -1.3], [1.3, -1.3], [-1.3, 1.3], [1.3, 1.3]].forEach(([x, z]) => cyl(.15, .18, 3.2, mat.pillar, x, 1.6, z, 8, g));
   const r = new THREE.Mesh(new THREE.ConeGeometry(2.6, 1.4, 4), mat.roofTile); r.rotation.y = Math.PI / 4; r.position.y = 3.9; g.add(r);
   const bell = new THREE.Mesh(new THREE.CylinderGeometry(.55, .8, 1.5, 16), M("#5a5a4a", { metalness: .7, roughness: .4 })); bell.position.y = 2.2; g.add(bell);
@@ -741,7 +742,7 @@ for (let i = 0; i < 18; i++) { const r = new THREE.Mesh(new THREE.DodecahedronGe
 
 /* 기념품 가게 (마당 동쪽) */
 {
-  const g = new THREE.Group(); g.position.set(9.5, 0, 3.4); scene.add(g);
+  const g = new THREE.Group(); g.position.set(9.5, 0, 3.4); scene.add(g); camSolidGroups.push(g);
   box(3.4, .9, .9, mat.wood, 0, .45, .7, g);
   box(3.6, .08, 1.0, mat.wood, 0, .93, .7, g);
   box(3.4, 2.4, .15, mat.wall, 0, 1.2, -.3, g);
@@ -1810,6 +1811,18 @@ function enter() {
 }
 
 /* =========================================================
+   카메라 충돌
+   ========================================================= */
+let camMeshes = null; const camRay = new THREE.Raycaster(); const _cd = new THREE.Vector3();
+function pullCamera(target, cw) {
+  if (!camMeshes) { camMeshes = []; camSolidGroups.forEach((g) => g.traverse((o) => { if (!o.isMesh || o.isSprite) return; const gp = o.geometry.parameters || {}; if (o.geometry.type === "CylinderGeometry" && gp.radiusTop < .3) return; camMeshes.push(o); })); }
+  _cd.subVectors(cw, target); const len = _cd.length(); if (len < .5) return;
+  camRay.set(target, _cd.divideScalar(len)); camRay.far = len; camRay.near = .2;
+  const hit = camRay.intersectObjects(camMeshes, false)[0];
+  if (hit) cw.copy(target).addScaledVector(_cd, Math.max(1.2, hit.distance - .35));
+}
+
+/* =========================================================
    매 프레임
    ========================================================= */
 function resize() { const w = window.innerWidth, h = window.innerHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
@@ -1854,13 +1867,16 @@ function tick() {
       const front = performance.now() < frontUntil, cy = front ? player.root.rotation.y : camYaw, cd = front ? 4.2 : camDist, cp = front ? .22 : camPitch;
       const cw = new THREE.Vector3(camTarget.x + Math.sin(cy) * Math.cos(cp) * cd, camTarget.y + Math.sin(cp) * cd, camTarget.z + Math.cos(cy) * Math.cos(cp) * cd);
       cw.y = Math.max(cw.y, mh(cw.x, cw.z) + 1);
+      pullCamera(camTarget, cw);
       if (front || camera.userData.lerp) { camera.position.lerp(cw, Math.min(1, dt * 5)); camera.userData.lerp = front || camera.position.distanceTo(cw) > .05; } else camera.position.copy(cw);
     }
     camera.lookAt(camTarget);
-    for (const t of camHide) { const dx = t.position.x - camera.position.x, dz = t.position.z - camera.position.z; t.visible = dx * dx + dz * dz > 7; }
+    // 카메라와 동자승 사이를 가리는 나무는 잠시 숨겨요
+    { const ax = camera.position.x, az = camera.position.z, bx = player.pos.x, bz = player.pos.z, vx = bx - ax, vz = bz - az, L = vx * vx + vz * vz || 1;
+      for (const t of camHide) { const px = t.position.x, pz = t.position.z, k = clamp(((px - ax) * vx + (pz - az) * vz) / L, 0, 1), dx = ax + vx * k - px, dz = az + vz * k - pz, r = 2.3 * t.scale.x; t.visible = dx * dx + dz * dz > r * r; } }
     if (hallG.userData.sign) hallG.userData.sign.visible = zone !== "hall";
     mountMesh.userData.far.visible = zone !== "peak" && zone !== "mountain";
-    player.label.visible = zone !== "hall";
+    player.label.visible = zone !== "hall" && camera.position.distanceTo(player.root.position) > 3.2;
     const fovWant = zone === "hall" ? 70 : 55;
     if (Math.abs(camera.fov - fovWant) > .1) { camera.fov += (fovWant - camera.fov) * Math.min(1, dt * 4); camera.updateProjectionMatrix(); }
   } else {
