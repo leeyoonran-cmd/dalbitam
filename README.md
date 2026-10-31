@@ -12,6 +12,8 @@
 | config.js | **헬렌 님이 고칠 파일** (Supabase 주소와 키) |
 | supabase.sql | 소원 연등 저장소를 만드는 명령 |
 | supabase-giwa.sql | 기와 불사(소원 기와) 저장소를 만드는 명령 |
+| supabase-visits.sql | 방문 기록(방문자 수 · 머문 시간)과 통계 비밀번호 |
+| stats.html | 헬렌 님만 보는 방문 통계 페이지 (dalbitam.vercel.app/stats.html) |
 | supabase-lantern.sql | 연등 종류(황금등·지혜등…)와 108배 불 켜기 칸을 추가하는 명령 (supabase.sql 다음에 한 번 실행) |
 
 ## 1단계. Supabase 만들기 (실시간 접속 + 연등 저장)

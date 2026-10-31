@@ -937,6 +937,7 @@ if (!me.daily || me.daily.day !== today) me.daily = { day: today, c: {}, done: [
 const MISSIONS = todayMissions();
 let lastLevel = levelOf(me.pts);
 function gain(kind, n = 1) {
+  if (typeof visitAct === "function") visitAct(kind);
   const key = kind; me.daily.c[key] = (me.daily.c[key] || 0) + n;
   const pv = (PTS[kind.split(":")[0]] ?? 0) * n; me.pts += pv; me.coin += pv;
   MISSIONS.forEach(([k, goal, title]) => {
@@ -1919,6 +1920,25 @@ async function joinRoom(n) {
 function countRooms() { if (!lobby) return; const st = lobby.presenceState(); for (let i = 1; i <= CONFIG.roomCount; i++) roomCounts[i] = 0; for (const metas of Object.values(st)) { const r = metas[metas.length - 1]?.room; if (roomCounts[r] !== undefined) roomCounts[r]++; } }
 function pickRoom() { countRooms(); for (let i = 1; i <= CONFIG.roomCount; i++) if ((roomCounts[i] || 0) < CONFIG.roomCap) return i; return CONFIG.roomCount; }
 
+/* ---------- 방문 기록: 몇 명이 왔고 얼마나 머물렀는지 (법명 말고는 저장하지 않아요) ---------- */
+const visit = { id: null, acts: {}, bow0: 0, timer: 0, off: false };
+const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => { const r = Math.random() * 16 | 0; return (c === "x" ? r : (r & 3) | 8).toString(16); }));
+function visitRef() { try { const u = new URL(location.href).searchParams.get("utm_source"); if (u) return u.slice(0, 40); const r = document.referrer ? new URL(document.referrer).hostname.replace(/^www\./, "") : ""; if (/instagram/i.test(navigator.userAgent)) return "instagram"; return r.slice(0, 40); } catch { return ""; } }
+async function visitStart() {
+  if (!sb || visit.off) return;
+  visit.id = uuid(); visit.bow0 = me.bow; visit.acts = {};
+  const { error } = await sb.rpc("visit_start", { p_id: visit.id, p_visitor: myKey, p_nick: me.nick.slice(0, 8), p_ref: visitRef(), p_mobile: /Mobi|Android|iPhone/i.test(navigator.userAgent) });
+  if (error) { visit.off = true; visit.id = null; return; } // 표를 아직 안 만들었으면 조용히 쉬어요
+  clearInterval(visit.timer); visit.timer = setInterval(visitPing, 20000);
+}
+async function visitPing() {
+  if (!sb || !visit.id || document.hidden) return;
+  const { data, error } = await sb.rpc("visit_ping", { p_id: visit.id, p_bows: Math.max(0, me.bow - visit.bow0), p_acts: visit.acts });
+  if (!error && data === false) visitStart(); // 오래 자리를 비웠다 돌아오면 새 방문으로 세요
+}
+document.addEventListener("visibilitychange", () => { if (!document.hidden) visitPing(); });
+function visitAct(name) { const k = name.split(":")[0]; if (!visit.id || !/^[a-z]+$/.test(k)) return; visit.acts[k] = (visit.acts[k] || 0) + 1; }
+
 async function connect() {
   if (!CONFIG.supabaseUrl || !CONFIG.supabaseAnonKey) { solo(); return; }
   try {
@@ -1930,7 +1950,7 @@ async function connect() {
   const start = () => { if (started) return; started = true; joinRoom(pickRoom()); };
   lobby.on("presence", { event: "sync" }, () => { countRooms(); if (!$("roomPanel").hidden) renderRooms(); start(); });
   lobby.subscribe((s) => { if (s === "SUBSCRIBED") setTimeout(start, 1200); if (s === "CHANNEL_ERROR" || s === "TIMED_OUT") { if (!started) solo("연결이 불안정해 혼자 수행 모드로 열었어요."); } });
-  loadGiwa();
+  loadGiwa(); visitStart();
   // 소원 연등
   let res = await sb.from("wishes").select("id,text,nick,kind,lit,created_at").order("created_at", { ascending: false }).limit(42);
   if (res.error) { lanternSchemaOld = true; res = await sb.from("wishes").select("text,nick,created_at").order("created_at", { ascending: false }).limit(42); }

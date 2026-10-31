@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>달빛암 방문 통계</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@700&family=Gowun+Dodum&display=swap">
+<style>
+:root{--bg:#121a28;--card:rgba(255,255,255,.05);--line:rgba(255,255,255,.1);--ink:#ece6d8;--mute:#9aa3b2;--lantern:#f2a65a;--gold:#f5c542}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Gowun Dodum","Apple SD Gothic Neo",sans-serif;padding:20px 16px 48px}
+main{max-width:860px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+h1{font-family:"Gowun Batang",serif;margin:0;font-size:1.6rem}
+h2{font-size:1rem;margin:0 0 10px;color:var(--mute);font-weight:400}
+.top{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.muted{color:var(--mute);font-size:.85rem;margin:0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px}
+.tile small{color:var(--mute);font-size:.8rem}
+.tile b{display:block;font-size:1.8rem;font-family:"Gowun Batang",serif;color:var(--lantern);font-variant-numeric:tabular-nums;margin-top:4px}
+.tile span{font-size:.78rem;color:var(--mute)}
+.bars{display:flex;align-items:flex-end;gap:6px;height:160px}
+.bar{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px;min-width:0;height:100%}
+.bar i{display:block;width:100%;max-width:38px;background:var(--lantern);border-radius:6px 6px 2px 2px;min-height:2px}
+.bar em{font-style:normal;font-size:.72rem;color:var(--ink);font-variant-numeric:tabular-nums}
+.bar small{font-size:.68rem;color:var(--mute);white-space:nowrap}
+.list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.list li{display:flex;justify-content:space-between;gap:8px;font-size:.88rem;padding:7px 10px;border-radius:10px;background:rgba(0,0,0,.2)}
+.list li span:last-child{color:var(--mute);font-variant-numeric:tabular-nums;white-space:nowrap}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:640px){.two{grid-template-columns:1fr}}
+table{width:100%;border-collapse:collapse;font-size:.84rem}
+th,td{text-align:left;padding:7px 6px;border-bottom:1px solid var(--line)}
+th{color:var(--mute);font-weight:400}
+td.n{text-align:right;font-variant-numeric:tabular-nums}
+.tablewrap{overflow-x:auto}
+input,select,button{font:inherit;color:var(--ink);background:rgba(0,0,0,.3);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+button.primary{background:var(--lantern);color:#2a1a0c;border:0;font-weight:700}
+.login{display:flex;gap:8px;flex-wrap:wrap}
+.login input{flex:1;min-width:180px}
+.err{color:#ff8a7a}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main>
+  <div class="top">
+    <div><h1>🌙 달빛암 방문 통계</h1><p class="muted" id="sub">헬렌 님만 보는 페이지예요.</p></div>
+    <div id="ctrl" hidden><select id="days"><option value="1">오늘</option><option value="7" selected>최근 7일</option><option value="30">최근 30일</option><option value="90">최근 90일</option></select> <button id="refresh" type="button">새로고침</button></div>
+  </div>
+
+  <section id="loginBox" class="card">
+    <h2>비밀번호</h2>
+    <div class="login"><input id="pass" type="password" placeholder="통계 비밀번호" autocomplete="current-password"><button id="go" class="primary" type="button">보기</button></div>
+    <p class="muted" id="loginMsg">Supabase에 넣은 방문 기록 SQL 안의 비밀번호를 입력하세요. 이 기기에 기억돼요.</p>
+  </section>
+
+  <div id="dash" hidden>
+    <div class="tiles" id="tiles"></div>
+    <section class="card" style="margin-top:16px"><h2>하루 방문자 수</h2><div class="bars" id="bars"></div></section>
+    <div class="two" style="margin-top:16px">
+      <section class="card"><h2>어디서 왔나요</h2><ul class="list" id="refs"></ul></section>
+      <section class="card"><h2>무엇을 했나요</h2><ul class="list" id="acts"></ul></section>
+    </div>
+    <section class="card" style="margin-top:16px"><h2>최근 방문</h2><div class="tablewrap"><table><thead><tr><th>시간</th><th>법명</th><th>유입</th><th class="n">머문 시간</th><th class="n">절</th></tr></thead><tbody id="recent"></tbody></table></div></section>
+    <p class="muted" style="margin-top:12px">방문 하나 = 들어와서 나갈 때까지. 5분 넘게 자리를 비웠다 돌아오면 새 방문으로 세요. 방문자 = 기기 기준 사람 수.</p>
+  </div>
+</main>
+<script type="module">
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/+esm";
+import { CONFIG } from "./config.js";
+const $ = (id) => document.getElementById(id);
+const sb = createClient(CONFIG.supabaseUrl, CONFIG.supabaseAnonKey);
+const get = (k) => { try { return localStorage.getItem(k) || ""; } catch { return ""; } };
+const put = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
+const dur = (s) => { s = Math.round(+s || 0); if (s < 60) return `${s}초`; const m = Math.floor(s / 60); if (m < 60) return `${m}분 ${s % 60 ? (s % 60) + "초" : ""}`.trim(); return `${Math.floor(m / 60)}시간 ${m % 60}분`; };
+const ACT = { bow: "절", mok: "목탁", wish: "소원 연등", giwa: "기와 소원", rice: "공양미", incense: "향", bell: "범종", tap: "탑돌이", pray: "기도", candle: "초", meal: "공양", tea: "차", greet: "합장", chat: "대화", bead: "염주 알", pung: "풍경", climb: "달빛봉 등산", yaho: "야호", visit: "장소 이동" };
+let pass = get("dalbitam-stats");
+async function load() {
+  const { data, error } = await sb.rpc("visit_stats", { p_pass: pass, p_days: +$("days").value });
+  if (error) { $("loginBox").hidden = false; $("loginMsg").innerHTML = '<span class="err">아직 방문 기록 표가 없어요. Supabase에서 supabase-visits.sql 을 먼저 실행해 주세요.</span>'; return; }
+  if (!data) { $("loginBox").hidden = false; $("dash").hidden = true; $("ctrl").hidden = true; if (pass) $("loginMsg").innerHTML = '<span class="err">비밀번호가 맞지 않아요.</span>'; return; }
+  put("dalbitam-stats", pass); $("loginBox").hidden = true; $("dash").hidden = false; $("ctrl").hidden = false;
+  $("sub").textContent = `${{ 1: "오늘", 7: "최근 7일", 30: "최근 30일", 90: "최근 90일" }[data.days] || data.days + "일"} · ${new Date().toLocaleString("ko-KR")} 기준`;
+  const T = [["방문자", data.visitors, "명 (기기 기준)"], ["방문 횟수", data.visits, "번"], ["오늘 방문자", data.today, "명"], ["지금 접속", data.now, "명"],
+    ["평균 머문 시간", dur(data.avg_secs), ""], ["중간값", dur(data.median_secs), "절반은 이보다 짧게 머물러요"], ["가장 오래", dur(data.max_secs), ""], ["5분 이상 머문 방문", data.stayed_5m, `번 (${data.visits ? Math.round(100 * data.stayed_5m / data.visits) : 0}%)`],
+    ["108배 완주", data.bow108, "번"], ["다시 온 사람", data.returning, "명"], ["휴대폰 비율", data.mobile_pct + "%", ""]];
+  $("tiles").innerHTML = ""; T.forEach(([k, v, u]) => { const d = document.createElement("div"); d.className = "tile"; d.innerHTML = `<small></small><b></b><span></span>`; d.children[0].textContent = k; d.children[1].textContent = typeof v === "number" ? v.toLocaleString() : v; d.children[2].textContent = u; $("tiles").appendChild(d); });
+  const pd = data.per_day || [], mx = Math.max(1, ...pd.map((x) => x.visitors)); $("bars").innerHTML = "";
+  if (!pd.length) $("bars").innerHTML = '<p class="muted">아직 기록이 없어요.</p>';
+  pd.forEach((x) => { const b = document.createElement("div"); b.className = "bar"; b.title = `평균 ${dur(x.avg_secs)}`; b.innerHTML = `<em>${x.visitors}</em><i style="height:${Math.max(2, 100 * x.visitors / mx)}%"></i><small>${x.day}</small>`; $("bars").appendChild(b); });
+  const list = (id, rows) => { const ul = $(id); ul.innerHTML = ""; if (!rows.length) { ul.innerHTML = '<li><span class="muted">아직 기록이 없어요</span><span></span></li>'; return; } rows.forEach(([a, b]) => { const li = document.createElement("li"); const s1 = document.createElement("span"), s2 = document.createElement("span"); s1.textContent = a; s2.textContent = b; li.append(s1, s2); ul.appendChild(li); }); };
+  list("refs", (data.refs || []).map((r) => [r.ref, `${r.n}번`]));
+  list("acts", Object.entries(data.acts || {}).filter(([k]) => ACT[k]).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([k, n]) => [ACT[k], `${(+n).toLocaleString()}번`]));
+  const tb = $("recent"); tb.innerHTML = "";
+  (data.recent || []).forEach((r) => { const tr = document.createElement("tr"); [r.at, r.nick || "-", r.ref || "직접", dur(r.secs), r.bows].forEach((v, i) => { const td = document.createElement("td"); td.textContent = v; if (i > 2) td.className = "n"; tr.appendChild(td); }); tb.appendChild(tr); });
+}
+$("go").onclick = () => { pass = $("pass").value.trim(); load(); };
+$("pass").addEventListener("keydown", (e) => { if (e.key === "Enter") $("go").click(); });
+$("days").onchange = load; $("refresh").onclick = load;
+if (pass) load();
+setInterval(() => { if (!$("dash").hidden) load(); }, 60000);
+</script>
+</body>
+</html>
