@@ -1666,11 +1666,24 @@ function updateCave(dt, t) {
   const c = new THREE.Mesh(new THREE.SphereGeometry(1.8, 10, 8), mat.leaf); c.position.y = 3.4; t.add(c); block(x - .4, x + .4, z - .4, z + .4); });
 [[-4, 4.5], [4, 4.5]].forEach(([x, z]) => { box(.5, 1, .5, mat.stone, x, .5, z); box(.7, .5, .7, mat.stone, x, 1.25, z); const l = new THREE.Mesh(new THREE.SphereGeometry(.15, 8, 6), mat.flame); l.position.set(x, 1.25, z + .36); scene.add(l); block(x - .4, x + .4, z - .4, z + .4); });
 // 범종각 (서남쪽)
+const bellPivot = new THREE.Group(); bellPivot.userData.t0 = 0;
 { const g = new THREE.Group(); g.position.set(-9, 0, 7); scene.add(g); camSolidGroups.push(g);
   [[-1.3, -1.3], [1.3, -1.3], [-1.3, 1.3], [1.3, 1.3]].forEach(([x, z]) => cyl(.15, .18, 3.2, mat.pillar, x, 1.6, z, 8, g));
   box(3.1, .25, 3.1, mat.green, 0, 3.25, 0, g);
   koreanRoof(2.4, 2.4, 1.3, g, 3.35, { lift: .45 }).forEach((e) => addPung(g, e));
-  const bell = new THREE.Mesh(new THREE.CylinderGeometry(.55, .8, 1.5, 16), M("#5a5a4a", { metalness: .7, roughness: .4 })); bell.position.y = 2.2; g.add(bell);
+  // 종을 매다는 고리(정자 천장에서 내려옴) + 흔들리는 축
+  bellPivot.position.y = 3.12; g.add(bellPivot);
+  const bell = new THREE.Mesh(new THREE.CylinderGeometry(.55, .8, 1.5, 16), M("#5a5a4a", { metalness: .7, roughness: .4 })); bell.position.y = -.92; bellPivot.add(bell);
+  { const bl = new THREE.PointLight("#ffd9a0", 7, 5, 1.5); bl.position.set(1.1, 2.1, 1.1); g.add(bl); } // 처마 밑 어두운 종을 은은하게
+  // 실제 범종 3D 스캔(assets/bell.glb)이 있으면 그 모델로 바꿔요
+  new GLTFLoader().load("assets/bell.glb", (gltf) => {
+    const m = gltf.scene; const bb = new THREE.Box3().setFromObject(m), size = bb.getSize(new THREE.Vector3());
+    m.scale.setScalar(1.75 / Math.max(size.y, .001));
+    const bb2 = new THREE.Box3().setFromObject(m), c = bb2.getCenter(new THREE.Vector3());
+    m.position.set(-c.x, -bb2.max.y + .02, -c.z); m.rotation.y = Math.PI / 2;
+    m.traverse((o) => { if (o.isMesh && o.material) { o.material.metalness = .55; o.material.roughness = .55; o.material.needsUpdate = true; } });
+    bellPivot.remove(bell); bellPivot.add(m);
+  }, undefined, () => {});
   block(-10.6, -7.4, 5.4, 8.6); }
 
 /* 기념품 가게 (마당 동쪽) */
@@ -2457,7 +2470,7 @@ function doRice() {
   toast(`🍚 공양미 한 되를 올렸어요 (복전 -${RICE_COST})`);
 }
 function doIncense() { incenseUntil = Date.now() + 90000; act("incense"); say("향 연기가 천천히 피어올라요."); }
-function doBell() { const bx = -9, bz = 7; if (player.pos.distanceTo(new THREE.Vector3(bx, 0, bz)) > 5) { player.target.set(bx + 2.4, 0, bz); } sfx.bell(); act("bell"); say(); bubble(player, "데엥…"); }
+function doBell() { bellPivot.userData.t0 = performance.now(); const bx = -9, bz = 7; if (player.pos.distanceTo(new THREE.Vector3(bx, 0, bz)) > 5) { player.target.set(bx + 2.4, 0, bz); } sfx.bell(); act("bell"); say(); bubble(player, "데엥…"); }
 function doTapdori() {
   if (autoPath) return; const pts = []; const r = 5.1; const start = Math.atan2(player.pos.x - PAGODA.x, player.pos.z - PAGODA.z);
   for (let i = 0; i <= 36; i++) { const a = start - (i / 36) * Math.PI * 2; pts.push({ x: PAGODA.x + Math.sin(a) * r, z: PAGODA.z + Math.cos(a) * r }); }
@@ -3226,6 +3239,7 @@ function tick() {
   for (const p of pungs) { const u = p.userData, e = now - (u.t0 || 0), k = u.amp ? Math.exp(-e / 1400) : 0; if (k < .01) u.amp = 0; const a = u.amp * k;
     p.rotation.z = Math.sin(t * 1.3 + u.ph) * .05 + (a ? a * Math.sin(e / 140) : 0); p.rotation.x = Math.sin(t * .9 + u.ph) * .03 + (a ? a * .4 * Math.cos(e / 170) : 0);
     u.fish.rotation.y = Math.sin(t * 1.1 + u.ph) * .6 + (a ? a * 2 * Math.sin(e / 120) : 0); }
+  { const e = now - bellPivot.userData.t0, k = bellPivot.userData.t0 ? Math.exp(-e / 1800) : 0; bellPivot.rotation.z = k > .01 ? .07 * k * Math.sin(e / 260) : 0; }
   rockingStone.rotation.z = Math.sin(t * .9) * .025; rockingStone.rotation.x = Math.sin(t * .63) * .012;
   lanternGroup.children.forEach((l, i) => {
     l.rotation.z = Math.sin(t * .8 + i) * .06;
