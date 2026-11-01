@@ -6,7 +6,9 @@
 const store = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch {} } };
 const qs = new URLSearchParams(location.search).get("lang");
 if (qs === "en" || qs === "ko") store.set("dalbitam-lang", qs);
-const LANG = (qs === "en" || qs === "ko") ? qs : store.get("dalbitam-lang") || ((navigator.language || "ko").toLowerCase().startsWith("ko") ? "ko" : "en");
+// 휴대폰 · 컴퓨터 언어 목록에 한국어가 하나라도 있거나, 한국 시간대면 한국어로 열어요 (영어 OS를 쓰는 한국 사람도 많아서)
+const koEnv = (() => { try { const ls = [...(navigator.languages || []), navigator.language || ""].map((l) => l.toLowerCase()); if (ls.some((l) => l.startsWith("ko"))) return true; return /Seoul/.test(Intl.DateTimeFormat().resolvedOptions().timeZone || ""); } catch { return true; } })();
+const LANG = (qs === "en" || qs === "ko") ? qs : store.get("dalbitam-lang") || (koEnv ? "ko" : "en");
 window.LANG = LANG;
 document.documentElement.lang = LANG;
 window.setLang = (l) => { store.set("dalbitam-lang", l); const u = new URL(location.href); u.searchParams.set("lang", l); location.href = u.toString(); };
