@@ -1629,9 +1629,11 @@ const cave = { candles: [], smoke: [], tiger: null, lit: 0 };
     [[740, 190], [790, 186]].forEach(([ex, ey]) => { x.beginPath(); x.arc(ex, ey, 9, 0, 7); x.fill(); });
     x.globalCompositeOperation = "source-over";
   });
-  cave.tiger = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 2.1), new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending }));
-  cave.tiger.position.set(0, 2.0, -3.2); cave.tiger.renderOrder = 5; caveG.add(cave.tiger);
-  const s = textSprite("山神", { size: 40, color: "#e8d9b0", bg: "rgba(0,0,0,0)", pad: 4 }); s.material.depthTest = true; s.scale.multiplyScalar(.4); s.position.set(0, 3.25, -3.0); caveG.add(s);
+  cave.tiger = new THREE.Mesh(new THREE.PlaneGeometry(3.6, 1.94), new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
+  // 민화풍 백호 그림 (하늘색 줄무늬 · 구름 · 소나무). 그림을 못 불러오면 위의 실루엣을 써요
+  new THREE.TextureLoader().load("assets/tiger.webp", (t) => { t.colorSpace = THREE.SRGBColorSpace; const mt = cave.tiger.material; mt.map = t; mt.blending = THREE.NormalBlending; mt.needsUpdate = true; cave.tigerArt = true; });
+  cave.tiger.position.set(0, 2.05, -2.5); cave.tiger.renderOrder = 5; caveG.add(cave.tiger);
+  const s = textSprite("山神", { size: 40, color: "#e8d9b0", bg: "rgba(0,0,0,0)", pad: 4 }); s.material.depthTest = true; s.scale.multiplyScalar(.4); s.position.set(0, 3.2, -2.6); caveG.add(s);
   const gl = new THREE.PointLight("#ffbf7a", 0, 8, 1.6); gl.position.set(0, 1.6, -1.2); caveG.add(gl); cave.light = gl;
   const amb = new THREE.HemisphereLight("#d8e2f0", "#3a3024", .5); caveG.add(amb);
 }
@@ -1653,9 +1655,9 @@ function updateCave(dt, t) {
   const e = cave.lit ? (Date.now() - cave.lit) / 1000 : 0;
   cave.light.intensity = cave.lit ? 6 + Math.sin(t * 9) * .6 + Math.sin(t * 13) * .4 : .4;
   cave.smoke.forEach((s) => { s.userData.t = (s.userData.t + dt * .18) % 1; const k = s.userData.t; s.position.set(Math.sin(k * 6 + t) * .12 * k, 1.45 + k * 1.6, -2.05 - k * .3); s.scale.setScalar(.6 + k * 2.2); s.material.opacity = e > 1.4 ? Math.min(1, (e - 1.4) / 2) * .28 * (1 - k) : 0; });
-  const want = e > 3.5 ? Math.min(1, (e - 3.5) / 5) * (.62 + Math.sin(t * .8) * .1) : 0;
+  const want = e > 3.5 ? Math.min(1, (e - 3.5) / 6) * ((cave.tigerArt ? .82 : .62) + Math.sin(t * .8) * .08) : 0;
   cave.tiger.material.opacity += (want - cave.tiger.material.opacity) * Math.min(1, dt * 1.5);
-  cave.tiger.position.x = Math.sin(t * .25) * .12; cave.tiger.position.y = 2.0 + Math.sin(t * .5) * .03;
+  cave.tiger.position.x = Math.sin(t * .25) * .12; cave.tiger.position.y = 2.05 + Math.sin(t * .5) * .03;
 }
 
 // 마당 둘레 나무와 석등
