@@ -67,7 +67,7 @@ const D = {
   "추가하면 휴대폰 홈 화면에 달빛암 아이콘이 생기고, 누르면 앱처럼 전체 화면으로 열려요.": "Adds a Dalbitam icon to your home screen that opens full-screen like an app.",
   "일부 소리는 길이를 자르고 음량을 맞춰 사용했어요. 출처: gongu.copyright.or.kr": "Some sounds were trimmed and level-matched. Source: gongu.copyright.or.kr",
   // 수행 · 등급
-  "미션 하나에 복전 🪙30, 세 개 모두 마치면 🪙50. 미션은 매일 자정에 바뀌어요.": "🪙30 per mission, 🪙50 for all three. Missions change at midnight.",
+  "미션 하나를 마치면 공덕이 오르고, 세 개 모두 마치면 추가 공덕을 얻습니다.": "Each mission raises your merit; finish all three for bonus merit.", "미션은 매일 자정에 바뀝니다.": "Missions change every midnight.",
   "등급이 오르면 이름 앞에 등급이 붙고 털모자 · 삿갓 · 연꽃 소품이 열려요. 스님부터는 머리 뒤에 후광이 생기고, 큰스님 · 도인이 되면 더 밝게 빛나요.": "Ranking up adds a title to your name and unlocks a beanie, straw hat and lotus. From Monk you get a halo, which glows brighter for Great Monk and Sage.",
   "동자": "Novice", "행자": "Postulant", "수행자": "Practitioner", "스님": "Monk", "큰스님": "Great Monk", "도인": "Sage", "· 공덕": "· merit",
   "목탁 30번 치기": "Strike the moktak 30 times", "절 30번 올리기": "Bow 30 times", "탑돌이 한 바퀴": "Circle the pagoda once", "합장 인사 3번": "Bow to others 3 times",
@@ -135,7 +135,7 @@ const D = {
   "바다 연등": "Sea lantern", "🌊 바다 연등": "🌊 Sea lantern", "바다 연등을 달았어요. 파도 소리 들리는 바닷가 연등 줄에 걸렸어요.": "Your sea lantern now hangs on the beach line by the waves.",
   "소동자": "Little Novice", "대동자": "Senior Novice", "소행자": "Junior Postulant", "대행자": "Senior Postulant", "하급행자": "Practitioner I", "중급행자": "Practitioner II", "상급행자": "Practitioner III",
   "법사": "Dharma Teacher", "선사": "Zen Master", "대선사": "Great Zen Master", "고승": "Eminent Monk", "대고승": "Great Eminent Monk", "조사": "Patriarch", "진인": "True Sage",
-  "달빛암에 머무는 시간과 수행이 쌓일수록 등급이 올라요. 뒤로 갈수록 오래 걸려서, 30일을 꼬박 머물면 최고 등급 도인이 돼요.": "Your rank rises as your time and practice here add up. Higher ranks take longer; 30 full days makes you a Sage.", "장경판전": "Janggyeong Panjeon", "장경판전 · 팔만대장경": "Tripitaka Koreana library", "월지": "Wolji Pond", "월지 · 달이 비치는 연못": "Wolji · pond of the moon",
+  "목탁 · 절 · 기도 · 미션으로 공덕을 쌓을수록 게이지가 차오르고 다음 단계로 올라가요.": "As you build merit with the moktak, bows, prayer and missions, the gauge fills and you rise to the next rank.", "장경판전": "Janggyeong Panjeon", "장경판전 · 팔만대장경": "Tripitaka Koreana library", "월지": "Wolji Pond", "월지 · 달이 비치는 연못": "Wolji · pond of the moon",
   "경판 읽기": "Read a woodblock", "📜 한 장 더": "📜 One more", "연못 바라보기": "Gaze at the pond", "연꽃등 띄우기": "Float a lotus lamp",
   "팔만대장경을 모신 서고예요. 살창 사이로 바람이 드나들어요. 경판을 한 장 꺼내 읽어 보세요.": "The hall of the Tripitaka Koreana. Wind flows through the slatted windows. Take out a woodblock and read.",
   "정자가 물에 비치는 고요한 연못이에요. 가만히 바라보거나 연꽃등을 띄워 보세요.": "A still pond reflecting its pavilions. Gaze quietly or float a lotus lamp.",

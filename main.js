@@ -22,7 +22,7 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
 };
 const today = new Date().toDateString();
-const me = Object.assign({ time: 0, day: today, look: "0-0-0", pts: 0, coin: null, owned: [], daily: null, nick: "", mok: 0, bow: 0, tap: 0, bead: 0, pray: 0, localWishes: [] }, store.get("sansa3d", {}));
+const me = Object.assign({ day: today, look: "0-0-0", pts: 0, coin: null, owned: [], daily: null, nick: "", mok: 0, bow: 0, tap: 0, bead: 0, pray: 0, localWishes: [] }, store.get("sansa3d", {}));
 if (me.coin === null || me.coin === undefined) me.coin = me.pts || 0;
 if (!Array.isArray(me.owned)) me.owned = [];
 if (me.day !== today) { me.day = today; me.mok = 0; me.bow = 0; }
@@ -1659,15 +1659,19 @@ function textSprite(text, { size = 40, color = "#ece6d8", bg = "rgba(16,21,29,.7
 /* ---------- 수행 등급 · 공덕 · 매일 미션 ---------- */
 /* 수행 등급: 달빛암에 머문 1초마다 1점 (+ 수행으로 얻은 공덕). 세제곱 곡선이라 뒤로 갈수록 오래 걸려요.
    30일을 꼬박 머물면 2,592,000점으로 최고 등급 '도인'이 돼요. 대계급 6개 · 세부 호칭 15단계 */
-const TITLES = [["동자", 0], ["행자", 12001], ["수행자", 96001], ["스님", 324001], ["큰스님", 768001], ["도인", 1500001]];
-const SUBRANKS = [["소동자", 0, 0], ["대동자", 6001, 0], ["소행자", 12001, 1], ["대행자", 54001, 1], ["하급행자", 96001, 2], ["중급행자", 205001, 2], ["상급행자", 264001, 2],
-  ["법사", 324001, 3], ["선사", 472001, 3], ["대선사", 620001, 3], ["고승", 768001, 4], ["대고승", 1012001, 4], ["조사", 1256001, 4], ["진인", 1500001, 5], ["도인", 2046001, 5]];
-const XP_MAX = 2592000;
+const TITLES = [["동자", 0], ["행자", 120], ["수행자", 960], ["스님", 3240], ["큰스님", 7680], ["도인", 15000]];
+const SUBRANKS = [["소동자", 0, 0], ["대동자", 60, 0], ["소행자", 120, 1], ["대행자", 540, 1], ["하급행자", 960, 2], ["중급행자", 2050, 2], ["상급행자", 2640, 2],
+  ["법사", 3240, 3], ["선사", 4720, 3], ["대선사", 6200, 3], ["고승", 7680, 4], ["대고승", 10120, 4], ["조사", 12560, 4], ["진인", 15000, 5], ["도인", 20460, 5]];
 const levelOf = (p) => { let l = 0; TITLES.forEach(([, need], i) => { if (p >= need) l = i; }); return l; };
 const subOf = (p) => { let i = 0; SUBRANKS.forEach(([, need], k) => { if (p >= need) i = k; }); return i; };
-const XP = () => (me.time || 0) + (me.pts || 0);
-// 예전 등급표(공덕 100 · 300 · 800 …)로 오른 등급은 그대로 지켜 줘요
-if (!me.rankV2) { const old = [0, 100, 300, 800, 2000, 5000]; let ol = 0; old.forEach((n, i) => { if ((me.pts || 0) >= n) ol = i; }); me.time = Math.max(me.time || 0, TITLES[ol][1] - (me.pts || 0)); me.rankV2 = 1; }
+const XP = () => (me.pts || 0) + (me.bonus || 0);
+// 등급은 수행(목탁 · 절 · 미션 …)으로 쌓인 공덕으로만 올라요. 예전에 오른 대계급은 그대로 지켜 줘요
+if (me.rankV3 !== 1) {
+  let ol = 0;
+  if (me.rankV2) { const v2 = [0, 12001, 96001, 324001, 768001, 1500001], x = (me.time || 0) + (me.pts || 0); v2.forEach((n, i) => { if (x >= n) ol = i; }); }
+  else { [0, 100, 300, 800, 2000, 5000].forEach((n, i) => { if ((me.pts || 0) >= n) ol = i; }); }
+  me.bonus = Math.max(0, TITLES[ol][1] - (me.pts || 0)); delete me.time; me.rankV3 = 1;
+}
 const fmtDur = (sec) => { sec = Math.max(0, Math.round(sec)); const d = Math.floor(sec / 86400), h = Math.floor((sec % 86400) / 3600), m = Math.floor((sec % 3600) / 60); return d ? `${d}일 ${h}시간` : h ? `${h}시간 ${m}분` : `${m}분`; };
 const labelText = (nick, lv) => `${TITLES[clamp(lv | 0, 0, TITLES.length - 1)][0]} ${nick || "스님"}`;
 const PTS = { pung: 1, rice: 5, giwa: 5, emo: 0, mok: 1, bow: 3, incense: 3, bell: 2, tap: 10, pray: 5, candle: 3, meal: 3, tea: 2, greet: 2, wish: 5, bead: 1, chat: 1, visit: 0, climb: 10, yaho: 1, feed: 3, release: 5, seapray: 5, zazen: 15, verse: 3, lotus: 3, pondview: 1 };
@@ -1717,12 +1721,10 @@ function updateHud() {
   $("hudBar").style.width = pct + "%";
   $("hudMission").textContent = `오늘의 수행 ${me.daily.done.length}/3`;
 }
-// 화면을 보고 있는 동안 1초마다 공덕 1점
-let xpSaveT = 0;
-setInterval(() => { if (!player || document.visibilityState !== "visible") return; me.time = (me.time || 0) + 1; if (++xpSaveT % 15 === 0) save(); updateHud(); if (xpSaveT % 5 === 0) checkLevel(); }, 1000);
 function renderMissionPanel() {
   const xp = XP(), lv = levelOf(xp), si = subOf(xp), next = SUBRANKS[si + 1];
-  $("missionLevel").textContent = next ? `지금 ${SUBRANKS[si][0]} · 다음 ${next[0]}` : `지금 ${SUBRANKS[si][0]} · 최고 등급`;
+  $("missionLevel").textContent = `${TITLES[SUBRANKS[si][2]][0]} · ${SUBRANKS[si][0]}`;
+  $("rankBar").style.width = (next ? Math.min(100, ((xp - SUBRANKS[si][1]) / (next[1] - SUBRANKS[si][1])) * 100) : 100) + "%";
   const ul = $("missionList"); ul.innerHTML = "";
   MISSIONS.forEach(([k, goal, title]) => {
     const li = document.createElement("li"); const done = me.daily.done.includes(k); const c = Math.min(goal, me.daily.c[k] || 0);

@@ -242,3 +242,6 @@ html[lang=en] .en-only{display:block}
 @keyframes mePulse{from{transform:scale(1);opacity:.9}to{transform:scale(3);opacity:0}}
 .title-list li.now{color:var(--lantern);font-weight:700}
 .title-list li small{opacity:.6;font-size:.75em}
+.rank-now{margin:2px 0 6px;font-family:"Gowun Batang",serif;font-size:1.05rem;color:var(--lantern)}
+.rank-bar{height:8px;border-radius:999px;background:rgba(255,255,255,.1);overflow:hidden;margin-bottom:12px}
+.rank-bar i{display:block;height:100%;background:linear-gradient(90deg,#c9932f,#f5c542);border-radius:999px;transition:width .6s}
