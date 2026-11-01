@@ -1731,7 +1731,7 @@ function renderMissionPanel() {
   });
   const tl = $("titleList"); tl.innerHTML = "";
   SUBRANKS.forEach(([name, need, major], i) => { const li = document.createElement("li"); li.className = (i <= si ? "got" : "") + (i === si ? " now" : "");
-    li.textContent = `${TITLES[major][0]} · ${name} · ${need.toLocaleString()}`; const sm = document.createElement("small"); sm.textContent = need ? ` (약 ${fmtDur(need)})` : ""; li.appendChild(sm); tl.appendChild(li); });
+    li.textContent = `${TITLES[major][0]} · ${name}`; tl.appendChild(li); });
 }
 
 /* ---------- 법복 꾸미기 ---------- */
