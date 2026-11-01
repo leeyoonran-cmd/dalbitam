@@ -245,3 +245,40 @@ html[lang=en] .en-only{display:block}
 .rank-now{margin:2px 0 6px;font-family:"Gowun Batang",serif;font-size:1.05rem;color:var(--lantern)}
 .rank-bar{height:8px;border-radius:999px;background:rgba(255,255,255,.1);overflow:hidden;margin-bottom:12px}
 .rank-bar i{display:block;height:100%;background:linear-gradient(90deg,#c9932f,#f5c542);border-radius:999px;transition:width .6s}
+/* 템플스테이 */
+.ts-card h3{margin:16px 0 8px;font-size:.95rem;color:var(--lantern)}
+.ts-goals{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.ts-goals button{background:rgba(255,255,255,.06);border:1px solid var(--glass-line);border-radius:14px;padding:10px 4px;color:var(--ink);font:inherit;font-weight:700;display:flex;flex-direction:column;gap:2px;align-items:center}
+.ts-goals button small{font-weight:400;font-size:.72rem;color:var(--mute)}
+.ts-goals button.on{border-color:var(--lantern);background:rgba(245,197,66,.14)}
+.ts-goals button.locked{opacity:.45}
+.ts-label{display:block;margin:12px 0 6px;font-size:.82rem;color:var(--mute)}
+#tsVow{width:100%;box-sizing:border-box;min-height:64px;border-radius:12px;border:1px solid var(--glass-line);background:rgba(0,0,0,.25);color:var(--ink);padding:10px;font:inherit;resize:none;margin-bottom:10px}
+#tsStart{width:100%}
+.ts-badges{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.ts-badge{text-align:center;padding:10px 4px;border-radius:14px;background:rgba(255,255,255,.05);font-size:.78rem;color:var(--mute)}
+.ts-badge b{display:block;font-size:1.6rem;filter:grayscale(1);opacity:.4}
+.ts-badge.got{color:var(--ink);background:rgba(245,197,66,.12)}.ts-badge.got b{filter:none;opacity:1}
+.ts-report{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.ts-report div{background:rgba(255,255,255,.05);border-radius:12px;padding:8px 10px;font-size:.78rem;color:var(--mute)}
+.ts-report div b{display:block;font-size:1.05rem;color:var(--ink)}
+.ts-log{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px;max-height:160px;overflow:auto}
+.ts-log li{background:rgba(255,255,255,.05);border-radius:10px;padding:8px 10px;font-size:.82rem}
+.ts-log li small{display:block;color:var(--mute);font-size:.72rem}
+.ts-tut{margin-top:14px}.ts-tut summary{cursor:pointer;color:var(--lantern);font-weight:700}
+.ts-tut ol{padding-left:18px;font-size:.84rem;line-height:1.6}.ts-tut li b{display:block}
+.ts-hud{position:fixed;left:50%;top:calc(var(--vvt,0px) + 120px);transform:translateX(-50%);z-index:25;width:min(340px,calc(100% - 32px));text-align:center;background:rgba(10,14,22,.62);border:1px solid rgba(245,197,66,.35);border-radius:18px;padding:12px 14px;backdrop-filter:blur(6px)}
+.ts-hud[hidden]{display:none}
+.ts-word{margin:0;font-family:"Gowun Batang",serif;font-size:2rem;color:#f5c542;letter-spacing:.2em;transition:opacity .3s}
+.ts-line{margin:2px 0 8px;font-size:.84rem;color:var(--ink);min-height:1.2em}
+.ts-path{display:flex;align-items:center;gap:8px}.ts-path-bar{flex:1;height:8px;border-radius:999px;background:rgba(255,255,255,.12);overflow:hidden}
+.ts-path-bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#c9932f,#f5c542);transition:width .5s}
+.ts-path span{font-size:.78rem;color:var(--mute);min-width:76px;text-align:right}
+.ts-stage{margin:6px 0 4px;font-size:.78rem;color:#bfe8ff}
+.ts-hud-btns{display:flex;gap:8px;justify-content:center}.ts-hud-btns button{background:rgba(255,255,255,.08);border:1px solid var(--glass-line);color:var(--ink);border-radius:999px;padding:4px 12px;font:inherit;font-size:.78rem}
+.ts-lamp{position:fixed;inset:0;z-index:90;background:radial-gradient(circle at 50% 42%,rgba(255,200,90,.35),rgba(6,8,14,.92) 60%);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center}
+.ts-lamp[hidden]{display:none}
+.ts-lamp-glow{width:150px;height:170px;border-radius:50% 50% 46% 46%;background:radial-gradient(circle at 50% 40%,#fff6d6,#f5c542 45%,#c9761f 80%);box-shadow:0 0 80px 30px rgba(255,200,90,.55);animation:lampPulse 2.4s ease-in-out infinite}
+@keyframes lampPulse{50%{box-shadow:0 0 120px 50px rgba(255,200,90,.7);transform:scale(1.04)}}
+.ts-lamp-title{margin:28px 0 8px;font-family:"Gowun Batang",serif;font-size:1.5rem;color:#fff3dc}
+.ts-lamp-vow{margin:0 0 22px;color:#f4ead6;line-height:1.7;max-width:320px}

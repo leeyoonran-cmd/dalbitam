@@ -212,6 +212,52 @@
 </div>
 
 <!-- 소원 연등 -->
+<div id="tsPanel" class="panel" hidden>
+  <div class="panel-card ts-card">
+    <div class="panel-head"><h2>🏯 달빛암 템플스테이</h2><button class="close" data-close type="button" aria-label="닫기">✕</button></div>
+    <p class="muted">절은 운동이 아니라 비우고, 바라고, 감사하는 시간이에요. 한 번 절할 때마다 마음 한 가지를 떠올려요.</p>
+    <h3>오늘의 정진</h3>
+    <div class="ts-goals" id="tsGoals">
+      <button type="button" data-g="108">108배<small>마음 다지기</small></button>
+      <button type="button" data-g="1000">1000배<small>정진</small></button>
+      <button type="button" data-g="3000">3000배<small id="ts3000Note">🌙 밤 9시부터</small></button>
+    </div>
+    <label class="ts-label" for="tsVow">나의 발원문 · 바라는 것, 감사한 것, 내려놓고 싶은 것</label>
+    <textarea id="tsVow" maxlength="80" rows="2" placeholder="예: 가족 모두 건강하기를, 지난 일을 내려놓기를"></textarea>
+    <button id="tsStart" type="button" class="primary">🙇 정진 시작하기</button>
+    <p class="muted" id="tsNote"></p>
+    <h3>수행 뱃지</h3>
+    <div class="ts-badges" id="tsBadges"></div>
+    <h3>수행 리포트</h3>
+    <div class="ts-report" id="tsReport"></div>
+    <h3>성취등 방명록</h3>
+    <ul class="ts-log" id="tsLog"></ul>
+    <details class="ts-tut"><summary>🧘 무릎을 지키는 바른 절 자세</summary>
+      <ol>
+        <li><b>합장하고 바로 서기</b> 발뒤꿈치를 붙이고 발끝은 살짝 벌려요. 어깨 힘을 빼고 숨을 들이쉬어요.</li>
+        <li><b>무릎은 천천히</b> 허리를 곧게 편 채 무릎을 굽혀요. 쿵 하고 떨어지지 않게, 방석 위에 무릎을 살며시 내려놓아요.</li>
+        <li><b>손 먼저 짚기</b> 양손을 무릎 앞 바닥에 먼저 짚어 몸무게를 나눠요. 발가락은 세워 두면 일어날 때 무릎 부담이 줄어요.</li>
+        <li><b>이마를 낮추며 내쉬기</b> 엉덩이를 발뒤꿈치 쪽으로 보내고 이마를 바닥에 대요. 손바닥을 귀 옆에서 하늘로 살짝 들어 올려요(접족례).</li>
+        <li><b>발가락 힘으로 일어나기</b> 세운 발가락과 허벅지 힘으로 일어나며 숨을 들이쉬어요. 손으로 바닥을 세게 밀지 않아요.</li>
+        <li><b>쉬어 가기</b> 100배마다 물 한 모금, 무릎이 아프면 바로 멈춰요. 무릎이 약하면 두꺼운 방석을 쓰세요.</li>
+      </ol>
+      <button id="tsDemo" type="button" class="ghost-btn">🙇 천천히 따라 해 보기</button>
+    </details>
+  </div>
+</div>
+<div id="tsHud" class="ts-hud" hidden>
+  <p class="ts-word" id="tsWord">감사</p>
+  <p class="ts-line" id="tsLine"></p>
+  <div class="ts-path"><div class="ts-path-bar"><i id="tsBar"></i></div><span id="tsCount">0 / 108</span></div>
+  <p class="ts-stage" id="tsStage"></p>
+  <div class="ts-hud-btns"><button id="tsPause" type="button">⏸ 쉬기</button><button id="tsStop" type="button">그만하기</button></div>
+</div>
+<div id="tsLamp" class="ts-lamp" hidden>
+  <div class="ts-lamp-glow"></div>
+  <p class="ts-lamp-title" id="tsLampTitle">성취등을 밝혔어요</p>
+  <p class="ts-lamp-vow" id="tsLampVow"></p>
+  <button id="tsLampClose" type="button" class="primary">🙏 회향하기</button>
+</div>
 <div id="mapPanel" class="panel" hidden>
   <div class="panel-card map-card">
     <div class="panel-head"><h2>달빛암 지도</h2><button class="close" data-close type="button" aria-label="닫기">✕</button></div>

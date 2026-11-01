@@ -2238,7 +2238,7 @@ let pendingMeal = null, eating = null;
 const A = (icon, label, fn, hot) => ({ icon, label, fn, hot });
 function actionsFor(z) {
   const greetA = A("🙏", "합장", () => greet(null)), beadA = A("📿", "염주", openBeads), wishA = A("🏮", "소원 연등", () => openWish("yard"));
-  if (z === "hall") return [A(player?.sitting ? "🧍" : "🧘", player?.sitting ? "일어나기" : "방석 앉기", doSit, !player?.sitting), A(autoBow ? "⏸️" : "🙇", autoBow ? "멈추기" : "계속 절하기", toggleAutoBow, true), A("🪵", "목탁", doMok), A("🕯️", "향", doIncense), A("🍚", "공양미", doRice), A(loopEls.yebul && !loopEls.yebul.paused ? "⏹️" : "🎐", loopEls.yebul && !loopEls.yebul.paused ? "예불 끄기" : "예불 듣기", toggleYebul), greetA, beadA];
+  if (z === "hall") return [A("🏯", "템플스테이", openTemplestay, true), A(player?.sitting ? "🧍" : "🧘", player?.sitting ? "일어나기" : "방석 앉기", doSit, !player?.sitting), A(autoBow ? "⏸️" : "🙇", autoBow ? "멈추기" : "계속 절하기", toggleAutoBow, true), A("🪵", "목탁", doMok), A("🕯️", "향", doIncense), A("🍚", "공양미", doRice), A(loopEls.yebul && !loopEls.yebul.paused ? "⏹️" : "🎐", loopEls.yebul && !loopEls.yebul.paused ? "예불 끄기" : "예불 듣기", toggleYebul), greetA, beadA];
   const giwaA = A("🏯", "기와 소원", openGiwa);
   if (z === "pagoda") return [A("🗼", "탑돌이", doTapdori, true), wishA, giwaA, greetA, beadA];
   if (z === "shrine") return [A("🚪", "산신각 들어가기", () => enterRoom("sanshin"), true), A("🕯️", "초 켜기", doCandle), greetA];
@@ -2315,7 +2315,7 @@ function act(name, extra = {}) { sendPresence({ act: name, ...extra }); if (PTS[
 function doMok() { sfx.mok(); playAnim(player, "mok"); me.mok++; save(); if (me.mok % 10 === 0) say(); bubble(player, `똑 · ${me.mok}`); act("mok"); }
 function doBow() {
   if (player.anim === "bow") return;
-  sfx.soft(); playAnim(player, "bow"); me.bow++; save(); act("bow"); npcsBowAlong();
+  sfx.soft(); playAnim(player, "bow"); me.bow++; save(); act("bow"); npcsBowAlong(); tsOnBow();
   bubble(player, `${me.bow}배`);
   if (me.bow === 108) {
     say("오늘 108배를 모두 마쳤어요. 정말 수고했어요."); sfx.bell(); me.coin += 108; save(); updateHud(); toast("🪙 108배 완료! 복전 108닢을 받았어요. 기념품 가게에 들러 보세요");
@@ -2341,12 +2341,82 @@ function doSit() {
   const st = nearestFreeSeat(); if (!st) { toast("빈 방석이 없어요"); return; }
   player.target.set(st.x, 0, st.z); pendingSeat = st; autoPath = null;
 }
-function stopAutoBow() { if (autoBow) { clearInterval(autoBow); autoBow = null; renderActions(); } }
+function stopAutoBow() { if (autoBow) { clearInterval(autoBow); autoBow = null; renderActions(); if (!$("tsHud").hidden) renderTsHud(); } }
 function toggleAutoBow() {
   if (autoBow) { stopAutoBow(); return; }
-  doBow(); autoBow = setInterval(() => { if (!player) return stopAutoBow(); doBow(); if (me.bow % 108 === 0) stopAutoBow(); }, 1900);
-  renderActions(); say("천천히 절을 올리는 중이에요. 멈추려면 한 번 더 눌러요.");
+  doBow(); autoBow = setInterval(() => { if (!player) return stopAutoBow(); doBow(); if (me.bow % 108 === 0 && !(me.ts.cur && !$("tsHud").hidden)) stopAutoBow(); }, 1900);
+  renderActions(); say("천천히 절을 올리는 중이에요. 멈추려면 한 번 더 눌러요."); if (!$("tsHud").hidden) renderTsHud();
 }
+
+/* =========================================================
+   달빛암 템플스테이: 1절 1발원 · 순례길 · 뱃지 · 수행 리포트 · 3000배 성취등 (3000배는 밤 9시부터)
+   ========================================================= */
+const TS_WORDS = [["감사", "오늘 숨 쉬고 있음에 감사합니다"], ["지혜", "흔들릴 때 바르게 볼 수 있기를"], ["건강", "몸과 마음이 두루 편안하기를"], ["용서", "나를 아프게 한 일을 내려놓습니다"],
+  ["자비", "모든 생명이 괴로움에서 벗어나기를"], ["비움", "욕심 하나를 내려놓습니다"], ["인내", "조급한 마음을 쉬게 합니다"], ["겸손", "고개 숙여 배웁니다"],
+  ["평안", "가족 모두 평안하기를"], ["참회", "지난 잘못을 돌아봅니다"], ["사랑", "곁에 있는 사람을 더 아끼기를"], ["발원", "나의 바람이 모두에게 이롭기를"]];
+const TS_ROUTE = ["달빛암 일주문", "해인사 홍류동 계곡", "해인사 백련암 오르는 길", "통도사 무풍한송로", "통도사 금강계단", "오대산 월정사 전나무숲", "상원사 가는 길", "송광사 우화각", "선암사 승선교", "화엄사 각황전",
+  "불국사 청운교", "석굴암 오르는 길", "부석사 무량수전", "봉정사 극락전", "법주사 팔상전", "마곡사 개울길", "대흥사 두륜산 길", "미황사 달마산", "낙산사 홍련암", "휴휴암 연등길",
+  "신흥사 설악 길", "백담사 계곡", "봉암사 희양산", "운문사 솔바람길", "청량사 바위길", "범어사 금정산", "쌍계사 십리벚꽃길", "보리암 금산", "도갑사 월출산", "달빛암 금강굴"];
+const TS_BADGES = [[108, "🪷", "108배 완주"], [1000, "🏮", "1000배 정진"], [3000, "🐉", "3000배 전설"]];
+const TS_KCAL = 1.5; // 1배당 추정 소모 열량 (체중 60kg 기준, 사람마다 달라요)
+me.ts = me.ts || { total: 0, secs: 0, badges: [], log: [], cur: null };
+let tsGoal = 108, tsPaused = false, tsTick = null;
+const isNight = () => { const h = new Date().getHours(); return h >= 21 || h < 5; };
+function openTemplestay() { renderTs(); openPanel("tsPanel"); }
+function renderTs() {
+  const night = isNight();
+  if (tsGoal === 3000 && !night) tsGoal = 108;
+  document.querySelectorAll("#tsGoals button").forEach((b) => { const g = +b.dataset.g; b.classList.toggle("on", g === tsGoal); b.classList.toggle("locked", g === 3000 && !night); });
+  $("ts3000Note").textContent = night ? "🌙 야간 정진" : "🌙 밤 9시부터";
+  const cur = me.ts.cur; $("tsStart").textContent = cur ? `🙇 이어서 정진하기 (${cur.count}/${cur.goal})` : "🙇 정진 시작하기";
+  if (cur && !$("tsVow").value) $("tsVow").value = cur.vow || "";
+  $("tsNote").textContent = cur ? "멈췄던 정진을 이어서 할 수 있어요. 목표를 바꾸면 새로 시작해요." : "3000배는 밤 9시부터 시작할 수 있어요. 고요한 밤, 천천히 정진해요.";
+  const bx = $("tsBadges"); bx.innerHTML = ""; TS_BADGES.forEach(([n, ic, name]) => { const d = document.createElement("div"); d.className = "ts-badge" + (me.ts.badges.includes(n) ? " got" : ""); d.innerHTML = `<b>${ic}</b>`; d.append(name); bx.appendChild(d); });
+  const R = $("tsReport"), mins = Math.round(me.ts.secs / 60), best = me.ts.log.length ? Math.max(...me.ts.log.map((l) => l.goal)) : 0;
+  const rate = cur ? Math.round(cur.count / cur.goal * 100) : me.ts.log.length ? 100 : 0;
+  R.innerHTML = ""; [["누적 절", `${me.ts.total.toLocaleString()}배`], ["누적 정진 시간", mins >= 60 ? `${Math.floor(mins / 60)}시간 ${mins % 60}분` : `${mins}분`], ["소모 열량 (추정)", `${Math.round(me.ts.total * TS_KCAL).toLocaleString()}kcal`], ["지금 정진 달성률", `${rate}%`], ["가장 큰 정진", best ? `${best}배` : "-"], ["밝힌 성취등", `${me.ts.log.length}개`]].forEach(([k, v]) => { const d = document.createElement("div"); d.append(k); const b = document.createElement("b"); b.textContent = v; d.appendChild(b); R.appendChild(d); });
+  const L = $("tsLog"); L.innerHTML = ""; if (!me.ts.log.length) { const li = document.createElement("li"); li.textContent = "아직 밝힌 성취등이 없어요. 정진을 마치면 발원문과 함께 등이 켜져요."; L.appendChild(li); }
+  me.ts.log.slice(0, 20).forEach((l) => { const li = document.createElement("li"); li.textContent = `${l.goal >= 3000 ? "🐉" : l.goal >= 1000 ? "🏮" : "🪷"} ${l.vow || "발원문 없이 정진"}`; const sm = document.createElement("small"); sm.textContent = `${l.date} · ${l.goal}배`; li.appendChild(sm); L.appendChild(li); });
+}
+document.querySelectorAll("#tsGoals button").forEach((b) => b.addEventListener("click", () => { const g = +b.dataset.g; if (g === 3000 && !isNight()) { toast("🌙 3000배는 밤 9시부터 시작할 수 있어요"); return; } tsGoal = g; renderTs(); }));
+$("tsStart").onclick = () => startTs();
+$("tsDemo").onclick = () => { $("tsPanel").hidden = true; goPlace("hall"); setTimeout(() => { showFront(); doBow(); say("손 먼저 짚고, 이마를 낮추며 내쉬고, 발가락 힘으로 일어나며 들이쉬어요."); }, 900); };
+function startTs() {
+  const vow = $("tsVow").value.trim().slice(0, 80);
+  if (BANNED.some((b) => vow.includes(b))) { $("tsNote").textContent = "고운 말로 적어 주세요."; return; }
+  let cur = me.ts.cur; if (!cur || cur.goal !== tsGoal) { if (tsGoal === 3000 && !isNight()) { toast("🌙 3000배는 밤 9시부터 시작할 수 있어요"); return; } cur = me.ts.cur = { goal: tsGoal, count: 0, vow, start: Date.now() }; } else cur.vow = vow || cur.vow;
+  save(); $("tsPanel").hidden = true; tsPaused = false; goPlace("hall");
+  setTimeout(() => { if (!player.sitting) doSit(); $("tsHud").hidden = false; renderTsHud(); say(cur.vow ? `발원: ${cur.vow}` : "한 번 절할 때마다 마음 한 가지를 떠올려요."); setTimeout(() => { if (!autoBow && me.ts.cur) toggleAutoBow(); }, 2600); }, 700);
+  clearInterval(tsTick); tsTick = setInterval(() => { if (autoBow && !tsPaused && document.visibilityState === "visible") { me.ts.secs++; if (me.ts.secs % 20 === 0) save(); } }, 1000);
+}
+function renderTsHud(word) {
+  const cur = me.ts.cur; if (!cur) return;
+  const w = word || TS_WORDS[(cur.count) % TS_WORDS.length];
+  $("tsWord").textContent = w[0]; $("tsLine").textContent = w[1];
+  $("tsBar").style.width = Math.min(100, cur.count / cur.goal * 100) + "%"; $("tsCount").textContent = `${cur.count.toLocaleString()} / ${cur.goal.toLocaleString()}`;
+  const stage = Math.min(TS_ROUTE.length - 1, Math.floor(cur.count / 100)), next = TS_ROUTE[stage + 1];
+  $("tsStage").textContent = cur.goal <= 108 ? `🛤 ${TS_ROUTE[0]} → ${TS_ROUTE[1]}` : `🛤 ${TS_ROUTE[stage]}${next && (stage + 1) * 100 <= cur.goal ? ` · 다음: ${next} (${(stage + 1) * 100}배)` : ""}`;
+  $("tsPause").textContent = autoBow ? "⏸ 쉬기" : "▶ 이어서";
+}
+function tsOnBow() {
+  const cur = me.ts.cur; if (!cur || $("tsHud").hidden) return;
+  cur.count++; me.ts.total++; save(); renderTsHud();
+  if (cur.count % 100 === 0 && cur.goal > 108 && cur.count < cur.goal) { const st = TS_ROUTE[Math.min(TS_ROUTE.length - 1, cur.count / 100)]; toast(`🛤 ${cur.count}배 · ${st}에 도착했어요`); sfx.soft(); }
+  if (cur.count >= cur.goal) finishTs();
+}
+function finishTs() {
+  const cur = me.ts.cur; stopAutoBow(); clearInterval(tsTick); $("tsHud").hidden = true;
+  const d = new Date(), date = `${d.getFullYear()}.${d.getMonth() + 1}.${d.getDate()}`;
+  me.ts.log.unshift({ goal: cur.goal, vow: cur.vow, date }); me.ts.log = me.ts.log.slice(0, 50);
+  const newBadges = TS_BADGES.filter(([n]) => cur.goal >= n && !me.ts.badges.includes(n)); newBadges.forEach(([n]) => me.ts.badges.push(n));
+  me.ts.cur = null; me.pts += Math.round(cur.goal / 3); me.coin += Math.round(cur.goal / 3); save(); checkLevel(); sfx.bell(); setTimeout(() => sfx.bell(), 2400);
+  $("tsLampTitle").textContent = cur.goal >= 3000 ? "🐉 3000배 · 디지털 성취등을 밝혔어요" : `${cur.goal}배 정진을 마치고 등을 밝혔어요`;
+  $("tsLampVow").textContent = cur.vow ? `“${cur.vow}”` : "비운 마음 자리에 작은 빛이 켜졌어요.";
+  $("tsLamp").hidden = false; newBadges.forEach(([, ic, name], i) => setTimeout(() => toast(`${ic} ${name} 뱃지를 얻었어요!`), 800 + i * 900));
+}
+$("tsLampClose").onclick = () => { $("tsLamp").hidden = true; say("정진의 공덕을 모든 이에게 회향합니다. 수고 많으셨어요."); setTimeout(() => toast("🙏 정진 인증 카드를 만들어 보세요", { label: "📸 공유", fn: () => shareCard("bow") }), 1200); };
+$("tsPause").onclick = () => { if (autoBow) { stopAutoBow(); tsPaused = true; say("잠시 쉬어요. 물 한 모금 마시고 무릎을 풀어 주세요."); } else { tsPaused = false; toggleAutoBow(); } renderTsHud(); };
+$("tsStop").onclick = () => { stopAutoBow(); clearInterval(tsTick); $("tsHud").hidden = true; save(); say(`정진을 멈췄어요. 템플스테이에서 이어서 할 수 있어요 (${me.ts.cur ? me.ts.cur.count : 0}배).`); };
 
 // 풍경: 누르면 흔들리며 맑게 울려요
 function ringPung(pg, mine) {
