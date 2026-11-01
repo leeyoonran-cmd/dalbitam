@@ -36,9 +36,7 @@
     <p class="lead">목탁 한 번, 숨 한 번.<br>잠시 마음을 내려놓고 쉬어 가세요.</p>
     <label for="nickInput">법명</label>
     <div class="row"><input id="nickInput" maxlength="8" placeholder="예: 고요" autocomplete="off"><button id="nickDice" type="button" class="ghost-btn dice" aria-label="법명 새로 짓기">🎲</button></div>
-    <div id="gateLook" class="look-box"></div>
     <button id="enterBtn" type="button" class="primary">입장하기</button>
-    <button id="installBtn" type="button" class="ghost-btn">📲 앱처럼 홈 화면에 추가하기</button>
     <p class="hint">눌러 이동 · 끌어서 둘러보기 · 두 손가락으로 확대</p>
   </div>
 </div>
@@ -153,6 +151,7 @@
 <div id="lookPanel" class="panel" hidden>
   <div class="panel-card">
     <div class="panel-head"><h2>법복 꾸미기</h2><button class="close" data-close type="button" aria-label="닫기">✕</button></div>
+    <div class="look-row"><small>법명</small><div class="row"><input id="nickEdit" maxlength="8" autocomplete="off"><button id="nickDice2" type="button" class="ghost-btn dice" aria-label="법명 새로 짓기">🎲</button><button id="nickSave" type="button" class="primary">바꾸기</button></div></div>
     <p class="muted">고른 모습은 같은 법당 사람들에게도 그대로 보여요.</p>
     <div id="lookBody" class="look-box"></div>
   </div>
@@ -161,7 +160,7 @@
 <!-- 자연 소리 -->
 <div id="soundPanel" class="panel" hidden>
   <div class="panel-card">
-    <div class="panel-head"><h2>자연 소리</h2><button class="close" data-close type="button" aria-label="닫기">✕</button></div>
+    <div class="panel-head"><h2>설정 · 자연 소리</h2><button class="close" data-close type="button" aria-label="닫기">✕</button></div>
     <div class="sliders">
       <label for="vWind">바람</label><input type="range" id="vWind" min="0" max="100" value="0">
       <label for="vWater">계곡물</label><input type="range" id="vWater" min="0" max="100" value="0">
@@ -171,6 +170,7 @@
     </div>
     <div class="stats" id="stats"></div>
     <button id="recBtn" type="button" class="ghost-btn">🎬 촬영 모드 (화면 글자 숨기기)</button>
+    <button id="installBtn" type="button" class="ghost-btn">📲 앱처럼 홈 화면에 추가하기</button>
   </div>
 </div>
 

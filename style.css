@@ -8,7 +8,7 @@
   color-scheme:dark;
 }
 *{box-sizing:border-box}
-html,body{margin:0;height:100%;overflow:hidden;background:var(--night);color:var(--ink);font-family:var(--body);-webkit-tap-highlight-color:transparent;overscroll-behavior:none}
+html,body{margin:0;height:100%;overflow:hidden;position:fixed;inset:0;width:100%;background:var(--night);color:var(--ink);font-family:var(--body);-webkit-tap-highlight-color:transparent;overscroll-behavior:none}
 #world{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
 button{font:inherit;color:inherit;cursor:pointer;border:0}
 button:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--lantern);outline-offset:2px}
@@ -24,13 +24,13 @@ input{font:inherit;color:var(--ink);background:rgba(0,0,0,.3);border:1px solid v
 .primary{background:var(--lantern);color:#2a1a0c;font-weight:700;border-radius:14px;padding:13px 18px}
 .hint{font-size:.78rem;color:var(--mute);margin:8px 0 0}
 
-.top{position:fixed;left:0;right:0;top:0;z-index:10;display:flex;justify-content:space-between;gap:8px;padding:calc(var(--st) + 10px) var(--sr) 0 var(--sl);pointer-events:none}
+.top{position:fixed;left:0;right:0;top:var(--vvt,0px);z-index:12;display:flex;justify-content:space-between;gap:8px;padding:calc(var(--st) + 10px) var(--sr) 0 var(--sl);pointer-events:none}
 .chip-group{display:flex;gap:6px}
 .chip{pointer-events:auto;background:var(--glass);border:1px solid var(--glass-line);backdrop-filter:blur(10px);border-radius:999px;padding:8px 13px;font-size:.88rem;white-space:nowrap}
 .chip.plain{pointer-events:none;font-variant-numeric:tabular-nums}
 .chip.on{background:var(--dancheong);border-color:var(--dancheong)}
-.place-tag{position:fixed;left:50%;top:calc(var(--st) + 58px);transform:translateX(-50%);z-index:9;font-family:var(--display);font-size:.95rem;background:var(--glass);border:1px solid var(--glass-line);border-radius:999px;padding:4px 14px;pointer-events:none}
-.toasts{position:fixed;left:var(--sl);right:var(--sr);top:calc(var(--st) + 122px);z-index:11;display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none}
+.place-tag{position:fixed;left:50%;top:calc(var(--st) + var(--vvt,0px) + 58px);transform:translateX(-50%);z-index:9;font-family:var(--display);font-size:.95rem;background:var(--glass);border:1px solid var(--glass-line);border-radius:999px;padding:4px 14px;pointer-events:none}
+.toasts{position:fixed;left:var(--sl);right:var(--sr);top:calc(var(--st) + var(--vvt,0px) + 122px);z-index:11;display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none}
 .toast{pointer-events:auto;background:var(--glass);backdrop-filter:blur(10px);border:1px solid var(--glass-line);border-radius:999px;padding:6px 8px 6px 14px;font-size:.85rem;display:flex;align-items:center;gap:8px;animation:tfade 5s forwards;max-width:100%}
 .toast span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .toast button{background:var(--lantern);color:#2a1a0c;border-radius:999px;padding:4px 10px;font-size:.78rem;font-weight:700}
@@ -104,7 +104,7 @@ input[type=range]{padding:0;accent-color:var(--lantern);background:none;border:0
 .gate-card .look-box{margin:2px 0 6px}
 
 .ghost-btn{background:transparent;border:1px solid var(--glass-line);border-radius:14px;padding:11px 16px;color:var(--ink)}
-.hud{position:fixed;left:var(--sl);top:calc(var(--st) + 56px);z-index:10;display:flex;flex-direction:column;align-items:flex-start;gap:4px;background:var(--glass);border:1px solid var(--glass-line);backdrop-filter:blur(10px);border-radius:14px;padding:7px 11px;font-size:.78rem;min-width:118px;text-align:left}
+.hud{position:fixed;left:var(--sl);top:calc(var(--st) + var(--vvt,0px) + 56px);z-index:10;display:flex;flex-direction:column;align-items:flex-start;gap:4px;background:var(--glass);border:1px solid var(--glass-line);backdrop-filter:blur(10px);border-radius:14px;padding:7px 11px;font-size:.78rem;min-width:118px;text-align:left}
 .hud-top b{color:var(--lantern);font-family:var(--display)}
 .hud-top{font-variant-numeric:tabular-nums}
 .hud-bar{display:block;width:100%;height:4px;border-radius:4px;background:rgba(255,255,255,.12);overflow:hidden}
@@ -188,3 +188,8 @@ body.rec .pray-box{display:none!important}
 .bead-ring.custom .bead.yk-letter{border-radius:16%;width:12%;background:#f6f1e6;color:#2a1a0c;font-weight:800;font-size:clamp(.9rem,4.5vw,1.4rem);margin:0;height:auto;aspect-ratio:1}
 .bead-ring.custom .bead.yk-zod{width:19%;height:auto;aspect-ratio:1;margin:0;font-size:clamp(1.3rem,7vw,2.2rem)}
 .bead-ring.custom .bead.yk-zod.hanja{font-size:clamp(1.2rem,6vw,2rem)}
+
+/* 개인 법당 기도문: 작고 은은하게 */
+.pray-box.compact{top:calc(var(--st) + var(--vvt,0px) + 118px);width:min(340px,calc(100% - 40px));background:rgba(12,16,24,.42);border-color:rgba(236,230,216,.1);padding:7px 12px}
+.pray-box.compact .pray-head b{font-size:.84rem;font-weight:400;opacity:.85}.pray-box.compact .pray-head small{font-size:.7rem}
+.pray-box.compact .pray-lines{min-height:3.4em;gap:2px}.pray-box.compact .pl{font-size:.78rem}.pray-box.compact .pl.cur{font-size:1.02rem}
