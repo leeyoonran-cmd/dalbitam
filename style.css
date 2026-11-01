@@ -193,3 +193,5 @@ body.rec .pray-box{display:none!important}
 .pray-box.compact{top:calc(var(--st) + var(--vvt,0px) + 118px);width:min(340px,calc(100% - 40px));background:rgba(12,16,24,.42);border-color:rgba(236,230,216,.1);padding:7px 12px}
 .pray-box.compact .pray-head b{font-size:.84rem;font-weight:400;opacity:.85}.pray-box.compact .pray-head small{font-size:.7rem}
 .pray-box.compact .pray-lines{min-height:3.4em;gap:2px}.pray-box.compact .pl{font-size:.78rem}.pray-box.compact .pl.cur{font-size:1.02rem}
+
+.credits{font-size:.78rem;color:var(--mute)}.credits summary{cursor:pointer;padding:6px 0}.credits ul{margin:4px 0 6px;padding-left:18px;display:flex;flex-direction:column;gap:4px}

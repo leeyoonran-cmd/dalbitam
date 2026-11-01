@@ -97,7 +97,15 @@ function playRec(name, v = 1, loop = false) {
   const c = ac(), s = c.createBufferSource(), g = c.createGain(); s.buffer = buf; s.loop = loop; g.gain.value = v;
   s.connect(g).connect(master); s.start(); return { s, g };
 }
-function preloadRecs() { ["moktak", "bell"].forEach(loadRec); ["chant", "nature"].forEach(findSound); }
+function preloadRecs() { ["moktak", "bell", "pung"].forEach(loadRec); ["chant", "nature", "yebul"].forEach(findSound); }
+// 녹음 파일의 한 부분만 잠깐 (풍경처럼 긴 녹음에서 한 번 흔들리는 소리만)
+function playRecSlice(name, off, dur, v = 1) {
+  const buf = rec[name]; if (!buf) return false;
+  const c = ac(), s = c.createBufferSource(), g = c.createGain(), t = c.currentTime; s.buffer = buf;
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(v, t + .03); g.gain.setValueAtTime(v, t + dur * .55); g.gain.linearRampToValueAtTime(0, t + dur);
+  s.connect(g).connect(master); s.start(t, Math.min(off, buf.duration - dur), dur + .05); return true;
+}
+const PUNG_ON = [.16, 1.32, 3.16, 4.82, 7.4, 8.54, 9.88, 11.6, 12.9, 14.0]; // 풍경 녹음 속 흔들림 시작점
 
 /* ---------- 휴대폰 소리 문제 해결 ----------
    아이폰은 무음 모드일 때 웹에서 만든 소리를 꺼 버려요.
@@ -165,7 +173,7 @@ const sfx = {
   },
   soft() { tone(523, 1.2, .07 * vol.fx); tone(784, 1.2, .04 * vol.fx, "sine", .15); },
   bead() { tone(1300, .07, .06 * vol.fx, "triangle"); },
-  pung() { const b = rand(1750, 2050); [[b, .16, 3.2], [b * 2.76, .06, 1.8], [b * 5.4, .025, .9], [b * 1.003, .1, 3.4]].forEach(([f, v, d], i) => tone(f, d, v * Math.max(vol.fx, .5), "sine", i ? .005 : 0)); },
+  pung(soft) { if (playRecSlice("pung", PUNG_ON[Math.random() * PUNG_ON.length | 0], soft ? 2.2 : 3.2, (soft ? .45 : 1) * Math.max(vol.fx, .5))) return; const b = rand(1750, 2050); [[b, .16, 3.2], [b * 2.76, .06, 1.8], [b * 5.4, .025, .9], [b * 1.003, .1, 3.4]].forEach(([f, v, d], i) => tone(f, d, v * Math.max(vol.fx, .5), "sine", i ? .005 : 0)); },
   chime() { tone(rand(1700, 2600), 2.2, .12 * vol.chime); tone(rand(2600, 3200), 1.5, .05 * vol.chime, "sine", .03); },
   bird() { const c = ac(), t = c.currentTime, o = c.createOscillator(), g = c.createGain(), b = rand(2400, 3800);
     o.frequency.setValueAtTime(b, t); o.frequency.exponentialRampToValueAtTime(b * 1.4, t + .08); o.frequency.exponentialRampToValueAtTime(b * .9, t + .16);
@@ -192,7 +200,7 @@ setInterval(() => {
   if (!ctx || !player) return;
   const nearWalk = zoneOf(player.pos.x, player.pos.z) === "walk";
   if (vol.bird && Math.random() < .3 * vol.bird + (nearWalk ? .25 : .05)) { sfx.bird(); setTimeout(sfx.bird, 170); }
-  if (vol.chime && Math.random() < .2 * vol.chime + .05) { sfx.chime(); const p = pungs[Math.random() * pungs.length | 0]; if (p && !p.userData.amp) { p.userData.amp = .22; p.userData.t0 = performance.now(); } }
+  if (vol.chime && Math.random() < .2 * vol.chime + .05) { if (rec.pung) sfx.pung(true); else sfx.chime(); const p = pungs[Math.random() * pungs.length | 0]; if (p && !p.userData.amp) { p.userData.amp = .22; p.userData.t0 = performance.now(); } }
 }, 1500);
 
 let chantTimer = null, chantRec = null, natureRec = null;
@@ -1622,7 +1630,7 @@ let pendingMeal = null, eating = null;
 const A = (icon, label, fn, hot) => ({ icon, label, fn, hot });
 function actionsFor(z) {
   const greetA = A("🙏", "합장", () => greet(null)), beadA = A("📿", "염주", openBeads), wishA = A("🏮", "소원 연등", () => openPanel("wishPanel"));
-  if (z === "hall") return [A(player?.sitting ? "🧍" : "🧘", player?.sitting ? "일어나기" : "방석 앉기", doSit, !player?.sitting), A(autoBow ? "⏸️" : "🙇", autoBow ? "멈추기" : "계속 절하기", toggleAutoBow, true), A("🪵", "목탁", doMok), A("🕯️", "향", doIncense), A("🍚", "공양미", doRice), greetA, beadA];
+  if (z === "hall") return [A(player?.sitting ? "🧍" : "🧘", player?.sitting ? "일어나기" : "방석 앉기", doSit, !player?.sitting), A(autoBow ? "⏸️" : "🙇", autoBow ? "멈추기" : "계속 절하기", toggleAutoBow, true), A("🪵", "목탁", doMok), A("🕯️", "향", doIncense), A("🍚", "공양미", doRice), A(loopEls.yebul && !loopEls.yebul.paused ? "⏹️" : "🎐", loopEls.yebul && !loopEls.yebul.paused ? "예불 끄기" : "예불 듣기", toggleYebul), greetA, beadA];
   const giwaA = A("🏯", "기와 소원", openGiwa);
   if (z === "pagoda") return [A("🗼", "탑돌이", doTapdori, true), wishA, giwaA, greetA, beadA];
   if (z === "shrine") return [A("🚪", "산신각 들어가기", () => enterRoom("sanshin"), true), A("🕯️", "초 켜기", doCandle), greetA];
@@ -1690,7 +1698,7 @@ function toggleAutoBow() {
 
 // 풍경: 누르면 흔들리며 맑게 울려요
 function ringPung(pg, mine) {
-  pg.userData.amp = mine ? .75 : .35; pg.userData.t0 = performance.now(); sfx.pung(); if (mine) setTimeout(() => sfx.pung(), 380 + Math.random() * 200);
+  pg.userData.amp = mine ? .75 : .35; pg.userData.t0 = performance.now(); sfx.pung(); if (mine && !rec.pung) setTimeout(() => sfx.pung(), 380 + Math.random() * 200);
   if (mine) { gain("pung"); if (!ringPung.told) { ringPung.told = true; say("땡그랑— 처마 끝 풍경 소리가 맑게 퍼져요."); } }
 }
 function doPung() {
@@ -1706,6 +1714,13 @@ function doClick() {
   if (navigator.vibrate) navigator.vibrate(6);
   if (player) { bubble(player, `딸깍 ${me.click.toLocaleString()}`); const b = player.acc?.userData.btn; if (b) { b.position.y = .06; setTimeout(() => (b.position.y = .08), 90); } }
   if (me.click % 108 === 0) { say(`딸깍 ${me.click}번. 마음이 한결 가벼워졌어요.`); sfx.soft(); }
+}
+// 선운사 저녁 예불 녹음 (범종 · 목어 · 운판 · 목탁)
+function toggleYebul() {
+  const el = loopEls.yebul;
+  if (el && !el.paused) { el.pause(); renderActions(); return; }
+  if (!soundUrl.yebul) { findSound("yebul").then((u) => { if (u) toggleYebul(); else toast("예불 소리를 불러오지 못했어요"); }); return; }
+  loopAudio("yebul", .85 * vol.fx); say("저녁 예불 소리예요. 범종 · 목어 · 운판 · 목탁이 차례로 울려요."); renderActions();
 }
 const RICE_COST = 10;
 function doRice() {
