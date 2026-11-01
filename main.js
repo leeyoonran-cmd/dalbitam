@@ -3,6 +3,7 @@ import { CONFIG } from "./config.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
+import { Reflector } from "three/addons/objects/Reflector.js";
 
 /* =========================================================
    달빛암 — 3D 온라인 절
@@ -788,8 +789,39 @@ function setupRoom(k) {
   roomTang.material.map = tangTex(k); roomTang.material.needsUpdate = true;
   roomLight.color.set(r.light); roomStars.visible = k === "chilseong";
   // 불단 위 작은 금동 부처님 (대웅전 부처님과 같은 모습, 모양만 빌려 와서 가볍게)
-  if (!roomBuddha) { roomBuddha = statue.clone(true); roomBuddha.scale.setScalar(.36); roomBuddha.position.set(0, -.4, 0); }
-  roomStatue.clear(); roomStatue.add(roomBuddha);
+  roomStatue.clear(); roomStatue.add(statueFor(k));
+}
+// 전각마다 모신 분이 달라요: 산신각 석가모니불 · 칠성각 치성광여래 · 관음전 백자 관세음보살 · 지장전 지장보살
+const statueCache = {};
+const PORCELAIN = new THREE.MeshStandardMaterial({ color: "#f6f2ea", roughness: .28, metalness: 0, envMapIntensity: .6 });
+function crownOn(g, top, m) { const c = new THREE.Group(); c.position.y = top - .55;
+  const band = new THREE.Mesh(new THREE.CylinderGeometry(.42, .46, .22, 20, 1, true), m); c.add(band);
+  for (let i = 0; i < 5; i++) { const a = (i - 2) * .55; const f = new THREE.Mesh(new THREE.ConeGeometry(.12, .42, 6), m); f.position.set(Math.sin(a) * .44, .25, Math.cos(a) * .44); f.rotation.x = .25; c.add(f); }
+  const gem = new THREE.Mesh(new THREE.SphereGeometry(.07, 10, 8), new THREE.MeshStandardMaterial({ color: "#c23a2c", emissive: "#5a1010", roughness: .3 })); gem.position.set(0, .12, .47); c.add(gem); g.add(c); return c; }
+function statueFor(k) {
+  if (statueCache[k]) return statueCache[k];
+  const g = new THREE.Group(), b = statue.clone(true); g.add(b);
+  const top = new THREE.Box3().setFromObject(b).max.y;
+  if (k === "gwaneum") { // 하얀 백자 관음상: 보관 · 정병
+    b.traverse((o) => { if (o.isMesh) o.material = PORCELAIN; }); crownOn(g, top, PORCELAIN);
+    const vase = new THREE.Mesh(new THREE.LatheGeometry([[0, 0], [.16, 0], [.22, .22], [.09, .48], [.11, .6], [0, .6]].map(([x, y]) => new THREE.Vector2(x, y)), 14), PORCELAIN); vase.position.set(.95, 2.0, .9); g.add(vase);
+    const willow = new THREE.Mesh(new THREE.CylinderGeometry(.015, .015, .7, 5), M("#6b8a4a")); willow.position.set(.95, 2.9, .9); willow.rotation.z = .3; g.add(willow);
+  } else if (k === "jijang") { // 지장보살: 석장 (고리 달린 지팡이) · 붉은 여의주
+    const staff = new THREE.Group(); staff.position.set(1.15, 1.2, .7); g.add(staff);
+    staff.add(new THREE.Mesh(new THREE.CylinderGeometry(.04, .04, 4.2, 8), GOLD_DARK)); staff.children[0].position.y = 2.1;
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(.32, .04, 8, 24), GOLD); ring.position.y = 4.3; staff.add(ring);
+    for (let i = 0; i < 6; i++) { const r = new THREE.Mesh(new THREE.TorusGeometry(.08, .02, 6, 12), GOLD); const a = i / 6 * Math.PI * 2; r.position.set(Math.cos(a) * .32, 4.3 + Math.sin(a) * .32, .03); staff.add(r); }
+    const pearl = new THREE.Mesh(new THREE.SphereGeometry(.18, 16, 12), new THREE.MeshStandardMaterial({ color: "#ff8a5a", emissive: "#a83a1a", emissiveIntensity: .6, roughness: .2 })); pearl.position.set(-.55, 2.3, 1.05); g.add(pearl);
+  } else if (k === "chilseong") { // 치성광여래: 광배에 북두칠성
+    const stars = [[-.9, 0], [-.55, .25], [-.15, .2], [.2, .35], [.45, .75], [.95, .7], [1.05, .2]];
+    stars.forEach(([x, y]) => { const st = new THREE.Mesh(new THREE.SphereGeometry(.09, 10, 8), new THREE.MeshBasicMaterial({ color: "#fff4c8" })); st.position.set(x * 1.3, top + .3 + y, -.6); g.add(st); });
+  }
+  g.scale.setScalar(.36); g.position.set(0, -.4, 0); statueCache[k] = g; return g;
+}
+// 대웅전 삼존불: 가운데 석가모니불, 양옆에 보관을 쓴 협시보살 (문수 · 보현)
+function addAttendants() {
+  [-1, 1].forEach((sd) => { const g = new THREE.Group(), b = statue.clone(true); g.add(b); const top = new THREE.Box3().setFromObject(b).max.y; crownOn(g, top, GOLD);
+    g.scale.setScalar(BS * .58); g.position.set(sd * 6.2, .55, BUDDHA_Z + .6); g.rotation.y = -sd * .12; scene.add(g); block(sd * 6.2 - 1.6, sd * 6.2 + 1.6, BUDDHA_Z - 1, BUDDHA_Z + 2); });
 }
 // 법당 안에 있는 동안 바깥 세상은 그리지 않아요 (뒤 배경 끊김 · 렉 방지)
 const worldHidden = [];
@@ -1354,6 +1386,115 @@ function doWave() {
   loopAudio("wave", .7 * Math.max(.3, vol.water || .5)); say("파도 소리를 들으며 숨을 맞춰 보세요. 들숨에 밀려오고, 날숨에 쓸려 가요."); renderActions();
 }
 
+/* =========================================================
+   해인사 장경판전 (유네스코 세계유산 1995): 살창으로 바람과 빛이 드나드는 경판 서고
+   ========================================================= */
+const JG = { x: 34, z: -34, w: 14, d: 4.6 };
+{
+  const g = new THREE.Group(); g.position.set(JG.x, 0, JG.z); scene.add(g); camSolidGroups.push(g);
+  const oldWood = M("#8a6a48", { roughness: .95 }), darkWood = M("#4a3524", { roughness: .9 });
+  box(JG.w + .8, .45, JG.d + .8, mat.stone, 0, .22, 0, g);
+  box(JG.w, .08, JG.d, M("#d9d2c2", { roughness: 1 }), 0, .47, 0, g); // 흙바닥 (숯 · 횟가루 · 소금)
+  const H = 3.4, cols = 8;
+  for (let i = 0; i <= cols; i++) { const x = -JG.w / 2 + i * JG.w / cols; [-JG.d / 2, JG.d / 2].forEach((z) => cyl(.15, .17, H, oldWood, x, .45 + H / 2, z, 10, g)); }
+  // 살창: 아래 창은 크고 위 창은 작게 (앞뒤가 반대) — 바람이 서고 안을 돌아 나가요
+  const slat = (cx, y, z, w, h) => { box(w, .08, .1, oldWood, cx, y + h / 2, z, g); box(w, .08, .1, oldWood, cx, y - h / 2, z, g); for (let k = 0; k <= Math.round(w / .16); k++) box(.05, h, .06, oldWood, cx - w / 2 + k * w / Math.round(w / .16), y, z, g); };
+  for (let i = 0; i < cols; i++) { const cx = -JG.w / 2 + (i + .5) * JG.w / cols, cw = JG.w / cols - .35;
+    // 앞면: 아래 창 작게, 위 창 크게
+    box(cw, .7, .12, M("#efe6d2"), cx, .95, JG.d / 2, g); slat(cx, 1.6, JG.d / 2, cw * .7, .55); box(cw, .5, .12, M("#efe6d2"), cx, 2.15, JG.d / 2, g); slat(cx, 2.9, JG.d / 2, cw * .9, 1.0);
+    // 뒷면: 반대로
+    slat(cx, 1.3, -JG.d / 2, cw * .9, 1.0); box(cw, .7, .12, M("#efe6d2"), cx, 2.2, -JG.d / 2, g); slat(cx, 2.95, -JG.d / 2, cw * .7, .55); }
+  box(.14, H, JG.d, M("#efe6d2"), -JG.w / 2, .45 + H / 2, 0, g); box(.14, H, JG.d, M("#efe6d2"), JG.w / 2, .45 + H / 2, 0, g);
+  // 안쪽 판가 (경판 꽂힌 나무 선반) — 살창 사이로 검은 경판들이 보여요
+  const boardTex = canvasTex(256, 128, (x, w, h) => { x.fillStyle = "#211a14"; x.fillRect(0, 0, w, h); for (let i = 0; i < 64; i++) { x.fillStyle = `rgba(${60 + Math.random() * 30},${48 + Math.random() * 20},${36 + Math.random() * 15},1)`; x.fillRect(i * 4, Math.random() * 6, 3.4, h - Math.random() * 10); } x.fillStyle = "rgba(255,240,210,.18)"; for (let i = 0; i < 64; i += 2) x.fillRect(i * 4 + 1, h * .4, 2, 6); }, 4, 1);
+  for (const z of [-1.2, 1.0]) { const shelf = new THREE.Group(); shelf.position.z = z; g.add(shelf);
+    for (let r = 0; r < 5; r++) { box(JG.w - .8, .06, .8, darkWood, 0, .7 + r * .62, 0, shelf); const b = new THREE.Mesh(new THREE.BoxGeometry(JG.w - .9, .5, .7), new THREE.MeshStandardMaterial({ map: boardTex, roughness: .8 })); b.position.y = .98 + r * .62; shelf.add(b); }
+    for (let i = 0; i <= 6; i++) box(.12, 3.2, .9, darkWood, -JG.w / 2 + .4 + i * (JG.w - .8) / 6, 2.0, 0, shelf); }
+  box(JG.w + .2, .3, .3, M("#6b5238"), 0, .45 + H, JG.d / 2, g); box(JG.w + .2, .3, .3, M("#6b5238"), 0, .45 + H, -JG.d / 2, g);
+  koreanRoof(JG.w / 2 + .6, JG.d / 2 + .9, 1.6, g, .45 + H + .1, { lift: .3 }).forEach((e) => addPung(g, e));
+  const s = textSprite("藏經板殿", { size: 46, color: "#d9b44a", bg: "#2a1612", pad: 18 }); s.material.depthTest = true; s.scale.multiplyScalar(.42); s.position.set(0, .45 + H - .25, JG.d / 2 + .25); g.add(s);
+  const lb = textSprite("장경판전 · 팔만대장경", { size: 34, color: "#f3e6c4", bg: "rgba(40,30,20,.6)", pad: 12 }); lb.material.depthTest = true; lb.scale.multiplyScalar(.75); lb.position.set(0, 6.6, 0); g.add(lb);
+  block(JG.x - JG.w / 2 - .5, JG.x + JG.w / 2 + .5, JG.z - JG.d / 2 - .5, JG.z + JG.d / 2 + .5);
+}
+// 경판 한 장 꺼내 읽기: 마음을 쉬게 하는 부처님 말씀 (법구경 · 경전 구절)
+const VERSES = [
+  ["心爲法本", "마음이 모든 것의 근본이에요. 맑은 마음으로 말하고 행하면, 행복이 그림자처럼 따라와요.", "법구경 2"],
+  ["以慈止怨", "미움은 미움으로 그치지 않아요. 미움은 오직 자비로만 그쳐요. 이것은 영원한 진리예요.", "법구경 5"],
+  ["一句寂靜", "쓸모없는 천 마디 말보다, 듣고 마음이 고요해지는 한 마디가 더 나아요.", "법구경 100"],
+  ["自勝爲上", "싸움터에서 천 명을 이기는 것보다, 자기 자신을 이기는 것이 가장 큰 승리예요.", "법구경 103"],
+  ["深淵澄靜", "깊은 호수가 맑고 고요하듯, 지혜로운 이는 가르침을 듣고 마음이 맑고 고요해져요.", "법구경 82"],
+  ["如石不動", "단단한 바위가 바람에 흔들리지 않듯, 지혜로운 이는 칭찬과 비난에 흔들리지 않아요.", "법구경 81"],
+  ["知足最富", "건강은 가장 큰 이익이고, 만족은 가장 큰 재산이에요.", "법구경 204"],
+  ["滴水滿甁", "물방울이 떨어져 항아리를 채우듯, 작은 선행이 조금씩 쌓여 큰 복이 돼요.", "법구경 122"],
+  ["自燈明", "자기 자신을 등불로 삼고, 진리를 등불로 삼아 걸어가세요.", "대반열반경"],
+  ["但觀現在", "지나간 일을 좇지 말고, 오지 않은 일을 미리 걱정하지 마세요. 지금 이 순간을 살아요.", "일야현자경"],
+  ["呼吸如是", "숨이 들어오면 들어오는 줄 알고, 숨이 나가면 나가는 줄 알아요. 그것으로 충분해요.", "안반수의경"],
+  ["諸行無常", "모든 것은 변해요. 힘든 마음도 지나가요. 흘러가게 두어도 괜찮아요.", "대반열반경"],
+];
+function readVerse() {
+  const v = VERSES[(me.verse = ((me.verse ?? Math.floor(Math.random() * VERSES.length)) + 1) % VERSES.length)]; save();
+  $("verseHan").textContent = v[0]; $("verseText").textContent = v[1]; $("verseSrc").textContent = "— " + v[2];
+  $("verseCard").hidden = false; sfx.soft(); playAnim(player, "bow"); act("verse");
+}
+$("verseClose").onclick = () => { $("verseCard").hidden = true; };
+$("verseNext").onclick = () => readVerse();
+
+/* =========================================================
+   경주 동궁과 월지 (유네스코 세계유산 2000): 정자가 물에 비치는 고요한 연못
+   ========================================================= */
+const WJ = { x: 31, z: 5.6, w: 15, d: 8.4 };
+const woljiG = new THREE.Group(); scene.add(woljiG);
+const lotusLamps = [];
+let woljiMirror = null;
+{
+  // 물 (거울처럼 하늘과 정자를 비춰요)
+  const geo = new THREE.PlaneGeometry(WJ.w, WJ.d);
+  try {
+    woljiMirror = new Reflector(geo, { clipBias: .003, textureWidth: 512, textureHeight: 384, color: "#6f8a92" });
+    woljiMirror.rotation.x = -Math.PI / 2; woljiMirror.position.set(WJ.x, .02, WJ.z); woljiG.add(woljiMirror);
+  } catch { const wm = new THREE.Mesh(geo, mat.water); wm.rotation.x = -Math.PI / 2; wm.position.set(WJ.x, .02, WJ.z); woljiG.add(wm); }
+  const tint = new THREE.Mesh(new THREE.PlaneGeometry(WJ.w, WJ.d), new THREE.MeshBasicMaterial({ color: "#1d3a44", transparent: true, opacity: .28, depthWrite: false })); tint.rotation.x = -Math.PI / 2; tint.position.set(WJ.x, .03, WJ.z); woljiG.add(tint);
+  // 돌로 쌓은 호안 (가장자리)
+  const edgeM = M("#8e8a80", { roughness: .95 });
+  for (let i = 0; i < 2; i++) { box(WJ.w + 1.2, .45, .6, edgeM, WJ.x, .1, WJ.z + (i ? 1 : -1) * (WJ.d / 2 + .3), woljiG); box(.6, .45, WJ.d, edgeM, WJ.x + (i ? 1 : -1) * (WJ.w / 2 + .3), .1, WJ.z, woljiG); }
+  // 물속 바위 (사진처럼 두세 개)
+  [[WJ.x - 2.5, WJ.z + 1.2, .9, 1.2], [WJ.x + 3.2, WJ.z + 2.4, .6, .8], [WJ.x + 1, WJ.z - 1.6, .5, .6]].forEach(([x, z, s, sy]) => { const r = new THREE.Mesh(new THREE.DodecahedronGeometry(1, 0), M("#55524c", { roughness: .9 })); r.scale.set(s, s * sy, s * .8); r.position.set(x, s * sy * .4, z); r.rotation.y = rand(0, 6); woljiG.add(r); });
+  // 연잎
+  const padM = M("#3f6b3a", { roughness: .7, side: THREE.DoubleSide });
+  for (let i = 0; i < 26; i++) { const p = new THREE.Mesh(new THREE.CircleGeometry(rand(.25, .45), 14, .3, Math.PI * 1.85), padM); p.rotation.set(-Math.PI / 2, 0, rand(0, 6)); p.position.set(WJ.x + rand(-WJ.w / 2 + 1, -1.5), .05, WJ.z + rand(-WJ.d / 2 + .7, WJ.d / 2 - .7)); woljiG.add(p); }
+  // 정자 두 채 (물가에 기둥을 세워 걸쳐 지은 누각)
+  const pav = (x, z, w, d, ry) => { const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = ry; woljiG.add(g); camSolidGroups.push(g);
+    box(w + .6, .5, d + .6, edgeM, 0, .25, 0, g);
+    [[-1, -1], [1, -1], [-1, 1], [1, 1], [0, -1], [0, 1]].forEach(([a, b]) => cyl(.12, .13, 2.3, mat.pillar, a * w / 2, 1.65, b * d / 2, 10, g));
+    box(w + .1, .1, d + .1, mat.wood, 0, .55, 0, g); box(w + .1, .3, .14, mat.green, 0, 2.7, d / 2, g); box(w + .1, .3, .14, mat.green, 0, 2.7, -d / 2, g);
+    for (let k = -3; k <= 3; k++) box(.05, .5, .05, mat.wood, k * w / 7, .85, d / 2, g); box(w, .05, .06, mat.wood, 0, 1.1, d / 2, g);
+    koreanRoof(w / 2 + .5, d / 2 + .5, 1.2, g, 2.85, { lift: .45 }).forEach((e) => addPung(g, e));
+    const lamp = new THREE.Mesh(new THREE.SphereGeometry(.14, 10, 8), mat.flame); lamp.position.set(0, 2.3, d / 2 - .2); g.add(lamp);
+    return g; };
+  pav(WJ.x + WJ.w / 2 + .1, WJ.z - 1.7, 3.4, 2.6, -Math.PI / 2);
+  pav(WJ.x + WJ.w / 2 - .4, WJ.z + 2.6, 2.4, 2.0, -Math.PI / 2);
+  block(WJ.x - WJ.w / 2 - .6, WJ.x + WJ.w / 2 + 2, WJ.z - WJ.d / 2 - .6, WJ.z + WJ.d / 2 + .6);
+  // 물가 소나무 · 단풍
+  [[WJ.x + WJ.w / 2 + 3.4, WJ.z + .4, "#24463a"], [WJ.x + WJ.w / 2 + 2.6, WJ.z + 4.6, "#a8402c"], [WJ.x + 3, WJ.z - WJ.d / 2 - 1.4, "#24463a"], [WJ.x - 2, WJ.z + WJ.d / 2 + 1.6, "#b8552c"], [WJ.x + WJ.w / 2 + 2.8, WJ.z - 4.4, "#b8552c"]].forEach(([x, z, c]) => {
+    const t = new THREE.Group(); t.position.set(x, 0, z); woljiG.add(t); camHide.push(t); cyl(.16, .24, 2.2, mat.trunk, 0, 1.1, 0, 6, t);
+    const cl = new THREE.Mesh(new THREE.SphereGeometry(1.4, 10, 8), M(c)); cl.scale.y = .7; cl.position.y = 2.8; t.add(cl); block(x - .4, x + .4, z - .4, z + .4); });
+  const lb = textSprite("월지 · 달이 비치는 연못", { size: 34, color: "#f3e6c4", bg: "rgba(40,30,20,.6)", pad: 12 }); lb.material.depthTest = true; lb.scale.multiplyScalar(.75); lb.position.set(WJ.x + WJ.w / 2, 5.2, WJ.z + .5); woljiG.add(lb);
+}
+function floatLotus() {
+  const g = new THREE.Group(); const c = ["#f6a7b8", "#fff2c4", "#f6c27a"][lotusLamps.length % 3];
+  for (let i = 0; i < 8; i++) { const p = new THREE.Mesh(new THREE.SphereGeometry(.12, 8, 6), new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: .6 })); const a = i / 8 * Math.PI * 2; p.scale.set(.6, 1.1, .35); p.position.set(Math.cos(a) * .12, .1, Math.sin(a) * .12); p.rotation.set(0, -a, .5); g.add(p); }
+  const f = new THREE.Mesh(new THREE.SphereGeometry(.05, 8, 6), mat.flame); f.position.y = .16; g.add(f);
+  g.position.set(WJ.x + rand(-1, 1), .05, WJ.z + WJ.d / 2 - .6); g.userData = { vx: rand(-.15, .15), vz: -rand(.08, .18), ph: rand(0, 6) }; woljiG.add(g); lotusLamps.push(g);
+  if (lotusLamps.length > 12) woljiG.remove(lotusLamps.shift());
+  sfx.soft(); act("lotus"); say("연꽃등을 연못에 띄웠어요. 작은 불빛이 천천히 흘러가요.");
+}
+function updateWolji(dt, t) {
+  if (!woljiG.visible) return;
+  if (woljiMirror && player) woljiMirror.visible = Math.hypot(player.pos.x - WJ.x, player.pos.z - WJ.z) < 30 && !inRoom && !inGrotto;
+  for (const l of lotusLamps) { const u = l.userData; l.position.x = clamp(l.position.x + u.vx * dt, WJ.x - WJ.w / 2 + .5, WJ.x + WJ.w / 2 - .5); l.position.z = clamp(l.position.z + u.vz * dt, WJ.z - WJ.d / 2 + .5, WJ.z + WJ.d / 2 - .5); if (Math.abs(l.position.z - (WJ.z - WJ.d / 2 + .5)) < .01) u.vz = Math.abs(u.vz); if (Math.abs(l.position.z - (WJ.z + WJ.d / 2 - .5)) < .01) u.vz = -Math.abs(u.vz); l.rotation.y += dt * .2; l.position.y = .05 + Math.sin(t * 1.3 + u.ph) * .015; }
+}
+function doPondView() { camYaw = -Math.PI / 2 - .35; camPitch = .2; camDist = 10; say("물에 비친 정자와 하늘을 가만히 바라보세요. 물결이 잦아들듯 마음도 잦아들어요."); act("pondview"); }
+
 // 마당 둘레 나무와 석등
 [[-12, 6], [12, 6], [-10, -12], [10, -12], [-13, 1], [13, 1]].forEach(([x, z]) => {
   const t = new THREE.Group(); t.position.set(x, 0, z); scene.add(t); camHide.push(t); cyl(.22, .3, 2.4, mat.trunk, 0, 1.2, 0, 6, t);
@@ -1456,11 +1597,11 @@ function textSprite(text, { size = 40, color = "#ece6d8", bg = "rgba(16,21,29,.7
 const TITLES = [["동자", 0], ["행자", 100], ["수행자", 300], ["스님", 800], ["큰스님", 2000], ["도인", 5000]];
 const levelOf = (p) => { let l = 0; TITLES.forEach(([, need], i) => { if (p >= need) l = i; }); return l; };
 const labelText = (nick, lv) => `${TITLES[clamp(lv | 0, 0, TITLES.length - 1)][0]} ${nick || "스님"}`;
-const PTS = { pung: 1, rice: 5, giwa: 5, emo: 0, mok: 1, bow: 3, incense: 3, bell: 2, tap: 10, pray: 5, candle: 3, meal: 3, tea: 2, greet: 2, wish: 5, bead: 1, chat: 1, visit: 0, climb: 10, yaho: 1, feed: 3, release: 5, seapray: 5, zazen: 15 };
+const PTS = { pung: 1, rice: 5, giwa: 5, emo: 0, mok: 1, bow: 3, incense: 3, bell: 2, tap: 10, pray: 5, candle: 3, meal: 3, tea: 2, greet: 2, wish: 5, bead: 1, chat: 1, visit: 0, climb: 10, yaho: 1, feed: 3, release: 5, seapray: 5, zazen: 15, verse: 3, lotus: 3, pondview: 1 };
 const MISSION_POOL = [
   ["mok", 30, "목탁 30번 치기"], ["bow", 30, "절 30번 올리기"], ["tap", 1, "탑돌이 한 바퀴"], ["greet", 3, "합장 인사 3번"],
   ["incense", 1, "향 피우기"], ["tea", 1, "공양간에서 차 마시기"], ["wish", 1, "소원 연등 달기"], ["visit:walk", 1, "산책길 걷기"],
-  ["chat", 1, "누군가에게 말 걸기"], ["bead", 108, "염주 한 바퀴 돌리기"], ["pray", 1, "법당이나 달빛봉에서 기도 1독"], ["bell", 3, "범종 3번 치기"], ["visit:peak", 1, "달빛봉 정상 오르기"], ["rice", 1, "부처님께 공양미 올리기"], ["giwa", 1, "기와에 소원 적기"], ["feed", 1, "바닷가 물고기에게 먹이 주기"], ["visit:sea", 1, "연등길 따라 바닷가 가기"], ["zazen", 1, "석굴암에서 좌선 한 번"]
+  ["chat", 1, "누군가에게 말 걸기"], ["bead", 108, "염주 한 바퀴 돌리기"], ["pray", 1, "법당이나 달빛봉에서 기도 1독"], ["bell", 3, "범종 3번 치기"], ["visit:peak", 1, "달빛봉 정상 오르기"], ["rice", 1, "부처님께 공양미 올리기"], ["giwa", 1, "기와에 소원 적기"], ["feed", 1, "바닷가 물고기에게 먹이 주기"], ["visit:sea", 1, "연등길 따라 바닷가 가기"], ["zazen", 1, "석굴암에서 좌선 한 번"], ["verse", 1, "장경판전에서 경판 한 장 읽기"], ["lotus", 1, "월지에 연꽃등 띄우기"]
 ];
 function todayMissions() {
   let h = 0; for (const ch of today) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
@@ -1789,6 +1930,8 @@ function blocked(x, z) {
 function floorY(x, z) { return (x > HB.x1 - .5 && x < HB.x2 + .5 && z > HB.z1 - .5 && z < HB.z2 + .5) ? .55 : mh(x, z); }
 function zoneOf(x, z) {
   if (Math.hypot(x - SG.door.x, z - SG.door.z) < 3.6) return "seokgul";
+  if (Math.abs(x - JG.x) < JG.w / 2 + 1 && z > JG.z + JG.d / 2 && z < JG.z + JG.d / 2 + 7) return "janggyeong";
+  if (x > WJ.x - WJ.w / 2 - 3.5 && x < WJ.x + WJ.w / 2 + 2 && z > WJ.z - WJ.d / 2 - 2 && z < WJ.z + WJ.d / 2 + 2) return "wolji";
   if (z < -41.5) return Math.hypot(x - SEA.altarX, z - SEA.altarZ) < 5.5 ? "searock" : "sea";
   if (x > 16.2 && x < 21.5 && z < -12) return "seapath";
   if (z < -13.5 && Math.abs(x) < 15.5) return "hall";
@@ -1816,13 +1959,15 @@ const ZONES = {
   mountain: { name: "산길", intro: "디딤돌을 따라 한 걸음씩 올라가 보세요." },
   peak: { name: "정상", intro: "정상이에요! 달빛암이 한눈에 내려다보여요." },
   shop: { name: "기념품 가게", intro: "수행하며 모은 복전으로 기념품을 골라 보세요." },
+  janggyeong: { name: "장경판전", intro: "팔만대장경을 모신 서고예요. 살창 사이로 바람이 드나들어요. 경판을 한 장 꺼내 읽어 보세요." },
+  wolji: { name: "월지", intro: "정자가 물에 비치는 고요한 연못이에요. 가만히 바라보거나 연꽃등을 띄워 보세요." },
   seokgul: { name: "석굴암", intro: "흙으로 덮인 둥근 석굴이에요. 들어가서 본존불 앞에 앉아 숨을 골라 보세요." },
   grotto: { name: "석굴암", intro: "하얀 화강암 부처님이 고요히 바다 쪽을 바라보세요. 좌선하기를 누르고 숨을 따라 쉬어 보세요." },
   seapath: { name: "연등길", intro: "하얀 연등이 줄지어 걸린 길이에요. 따라 내려가면 바다가 나와요." },
   sea: { name: "달빛 바닷가", intro: "파도 소리가 들려요. 바위 앞 제단에서 기도하고, 물고기에게 먹이도 줘 보세요." },
   searock: { name: "연화바위", intro: "바다를 마주한 큰 바위 앞이에요. 초를 켜고 절을 올리거나, 물고기 떼에게 먹이를 줘 보세요." }
 };
-const GOTO = { shop: [9.5, 6.2], hall: [0, -16.8], pagoda: [0, 3.2], shrine: [21, -2.4], chilseong: [34, -3.2], gwaneum: [-34, -3.2], jijang: [34, -17.2], kitchen: [-21, -1.2], walk: [0, 16], yard: [0, 8], sea: [SEA.altarX, -53.6], seokgul: [SG.door.x, SG.door.z + 2.6], mountain: [TRAIL[0].x + 1.2, TRAIL[0].z] };
+const GOTO = { shop: [9.5, 6.2], hall: [0, -16.8], pagoda: [0, 3.2], shrine: [21, -2.4], chilseong: [34, -3.2], gwaneum: [-34, -3.2], jijang: [34, -17.2], kitchen: [-21, -1.2], walk: [0, 16], yard: [0, 8], sea: [SEA.altarX, -53.6], seokgul: [SG.door.x, SG.door.z + 2.6], janggyeong: [JG.x, JG.z + JG.d / 2 + 3.4], wolji: [WJ.x - WJ.w / 2 - 1.8, WJ.z], mountain: [TRAIL[0].x + 1.2, TRAIL[0].z] };
 
 /* =========================================================
    카메라 조작
@@ -1907,6 +2052,8 @@ function actionsFor(z) {
   if (z === "kitchen") return [A("🍚", "공양 고르기", () => { renderMenu(); openPanel("menuPanel"); }, true), A("🍵", "차 마시기", doTea, true), greetA, beadA];
   if (z === "shop") return [A("🛍️", "가게 둘러보기", openShop, true), greetA, beadA];
   if (z === "grotto") return [A(breath.on ? "⏸️" : "🧘", breath.on ? "좌선 멈추기" : "좌선하기", startZazen, true), A("🙇", "절", doBow), A("🪵", "목탁", doMok), A("🚪", "나가기", leaveGrotto)];
+  if (z === "janggyeong") return [A("📜", "경판 읽기", readVerse, true), greetA, beadA];
+  if (z === "wolji") return [A("🌙", "연못 바라보기", doPondView, true), A("🪷", "연꽃등 띄우기", floatLotus, true), greetA, beadA];
   if (z === "seokgul") return [A("🚪", "석굴암 들어가기", enterGrotto, true), greetA, beadA];
   if (z === "searock" || z === "sea") { const wv = loopEls.wave && !loopEls.wave.paused; return [...(z === "searock" ? [A("🕯️", "바다 기도", doSeaPray, true), A("🙇", "절", doBow)] : []), A("🍙", "물고기 밥 주기", doFeed, true), A("🐟", "방생하기", doRelease), A(wv ? "⏹️" : "🌊", wv ? "파도 소리 끄기" : "파도 소리", doWave), greetA, wishA]; }
   if (z === "seapath") return [A("🏮", "소원 연등", () => openPanel("wishPanel"), true), greetA, beadA];
@@ -1922,10 +2069,10 @@ function renderActions() {
   $("placeTag").textContent = ZONES[zone].name;
   document.querySelectorAll("#places button").forEach((b) => b.classList.toggle("here", b.dataset.z === zone));
 }
-const placeNames = { hall: "대웅전", pagoda: "석탑", shrine: "산신각", chilseong: "칠성각", gwaneum: "관음전", jijang: "지장전", kitchen: "공양간", walk: "산책길", seokgul: "석굴암", sea: "바닷가", mountain: "달빛봉", shop: "기념품" };
+const placeNames = { hall: "대웅전", pagoda: "석탑", shrine: "산신각", chilseong: "칠성각", gwaneum: "관음전", jijang: "지장전", kitchen: "공양간", walk: "산책길", seokgul: "석굴암", janggyeong: "장경판전", wolji: "월지", sea: "바닷가", mountain: "달빛봉", shop: "기념품" };
 for (const [z, n] of Object.entries(placeNames)) {
   const b = document.createElement("button"); b.type = "button"; b.dataset.z = z; b.textContent = n;
-  b.onclick = () => { if (inGrotto) { stopZazen(false); hideWorld(false); grottoG.visible = false; inGrotto = false; if (player.aura) player.aura.visible = true; player.sitting = false; } if (inRoom) { stopPray(); hideWorld(false); if (player.aura) player.aura.visible = true; inRoom = null; $("prayBox").hidden = true; player.sitting = false; } standUp(); pendingSeat = null; const [x, zz] = GOTO[z]; player.pos.set(x, 0, zz); player.target.set(x, 0, zz); autoPath = null; camYaw = z === "walk" ? Math.PI : z === "mountain" ? Math.PI / 2 : 0; if (z === "sea") { camDist = 10; camPitch = .48; } if (z === "seokgul") { camDist = 8.5; camPitch = .42; camYaw = .45; } camTarget.set(x, 1.6, zz); lastMoveTx = 0; sendPresence(); if (z === "hall") enterHallView(); };
+  b.onclick = () => { if (inGrotto) { stopZazen(false); hideWorld(false); grottoG.visible = false; inGrotto = false; if (player.aura) player.aura.visible = true; player.sitting = false; } if (inRoom) { stopPray(); hideWorld(false); if (player.aura) player.aura.visible = true; inRoom = null; $("prayBox").hidden = true; player.sitting = false; } standUp(); pendingSeat = null; const [x, zz] = GOTO[z]; player.pos.set(x, 0, zz); player.target.set(x, 0, zz); autoPath = null; camYaw = z === "walk" ? Math.PI : z === "mountain" ? Math.PI / 2 : 0; if (z === "sea") { camDist = 10; camPitch = .48; } if (z === "seokgul") { camDist = 8.5; camPitch = .42; camYaw = .45; } if (z === "janggyeong") { camDist = 8; camPitch = .3; camYaw = .95; } if (z === "wolji") { camDist = 8; camPitch = .3; camYaw = -Math.PI / 2 - .25; } camTarget.set(x, 1.6, zz); lastMoveTx = 0; sendPresence(); if (z === "hall") enterHallView(); };
   $("places").appendChild(b);
 }
 
@@ -2773,7 +2920,7 @@ function tick() {
     if (fa && now - fa < 4000) { const p = (now - fa) / 4000; const s = 1 + Math.sin(p * Math.PI * 6) * .25 * (1 - p); l.scale.set(s, 1.2 * s, s); if (l.userData.halo) l.userData.halo.scale.setScalar(1.6 + (1 - p) * 2.4); }
     else if (l.userData.halo) l.userData.halo.material.opacity = (kindOf(w) === "gold" ? .7 : .45) + Math.sin(t * 2 + i) * .08;
   });
-  updateSea(dt, t);
+  updateSea(dt, t); updateWolji(dt, t);
   stream.material.color.setHSL(.55, .4, .27 + Math.sin(t * 2) * .02);
   renderer.render(scene, camera);
   requestAnimationFrame(tick);
@@ -2796,7 +2943,7 @@ function applyTimeOfDay() {
 }
 applyTimeOfDay(); setInterval(applyTimeOfDay, 60000);
 
-buildNpcs(); initDipper();
+buildNpcs(); initDipper(); try { addAttendants(); } catch (e) { console.warn(e); }
 renderLanterns(me.localWishes);
 for (let i = 0; i < Math.min(me.rice || 0, RICE_SPOTS.length); i++) addRiceBag(false);
 renderGiwa(me.localGiwa);

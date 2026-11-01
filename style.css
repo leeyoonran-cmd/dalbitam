@@ -215,3 +215,11 @@ html[lang=en] .en-only{display:block}
 .breath-ring.big{transform:scale(2.1)}
 .breath-text{margin:56px 0 0;font-family:"Gowun Batang",serif;font-size:20px;color:#fff3dc;text-shadow:0 1px 8px rgba(0,0,0,.6);letter-spacing:.2em}
 .breath-count{margin:4px 0 0;font-size:12px;color:rgba(255,243,220,.7)}
+/* 장경판전 경판 카드 */
+.verse-card{position:fixed;left:50%;top:calc(var(--vvt,0px) + 40%);transform:translate(-50%,-50%);z-index:60;width:min(340px,calc(100% - 32px));display:flex;flex-direction:column;gap:10px}
+.verse-card[hidden]{display:none}
+.verse-board{background:linear-gradient(180deg,#3a2a1c,#241911);border:2px solid #5a4430;border-radius:6px;padding:22px 20px 16px;box-shadow:0 10px 30px rgba(0,0,0,.55),inset 0 0 30px rgba(0,0,0,.5);text-align:center}
+.verse-han{margin:0 0 12px;font-family:"Gowun Batang",serif;font-size:34px;letter-spacing:.3em;color:#e9d9b4;text-shadow:0 2px 0 #120c08,0 -1px 0 rgba(255,240,210,.15)}
+.verse-text{margin:0;font-family:"Gowun Batang",serif;font-size:16px;line-height:1.75;color:#f4ead6}
+.verse-src{margin:10px 0 0;font-size:12px;color:rgba(244,234,214,.6)}
+.verse-card .row{display:flex;gap:8px}.verse-card .row>*{flex:1}
