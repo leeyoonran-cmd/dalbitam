@@ -22,7 +22,7 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
 };
 const today = new Date().toDateString();
-const me = Object.assign({ day: today, look: "0-0-0", pts: 0, coin: null, owned: [], daily: null, nick: "", mok: 0, bow: 0, tap: 0, bead: 0, pray: 0, localWishes: [] }, store.get("sansa3d", {}));
+const me = Object.assign({ time: 0, day: today, look: "0-0-0", pts: 0, coin: null, owned: [], daily: null, nick: "", mok: 0, bow: 0, tap: 0, bead: 0, pray: 0, localWishes: [] }, store.get("sansa3d", {}));
 if (me.coin === null || me.coin === undefined) me.coin = me.pts || 0;
 if (!Array.isArray(me.owned)) me.owned = [];
 if (me.day !== today) { me.day = today; me.mok = 0; me.bow = 0; }
@@ -301,6 +301,20 @@ const HAIR = new THREE.MeshStandardMaterial({ color: "#26314a", metalness: .3, r
 mat.gold = GOLD;
 
 const box = (w, h, d, m, x, y, z, parent = scene) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); o.position.set(x, y, z); parent.add(o); return o; };
+/* 연꽃등: 꽃잎 세 겹 + 초록 받침 (풍선처럼 둥근 공 대신) */
+const LOTUS = (() => {
+  const petal = new THREE.SphereGeometry(1, 10, 8); petal.scale(.1, .24, .05); petal.translate(0, .22, 0);
+  const parts = [];
+  [[.05, .25, 8, .1, 0], [.13, .62, 8, .02, Math.PI / 8], [.2, 1.0, 10, -.06, 0], [.25, 1.35, 10, -.12, Math.PI / 10]].forEach(([r, tilt, n, y, off]) => {
+    for (let i = 0; i < n; i++) { const g = petal.clone(); g.rotateX(tilt); g.translate(0, y, r); g.rotateY(off + i / n * Math.PI * 2); parts.push(g); } });
+  const core = new THREE.SphereGeometry(.13, 10, 8); core.translate(0, .1, 0); parts.push(core);
+  const petals = mergeGeometries(parts);
+  const sep = new THREE.CylinderGeometry(.26, .06, .1, 12); sep.translate(0, -.14, 0);
+  const leafRing = []; for (let i = 0; i < 8; i++) { const l = new THREE.SphereGeometry(1, 8, 6); l.scale(.1, .03, .22); l.translate(0, -.12, .26); l.rotateY(i / 8 * Math.PI * 2 + .2); leafRing.push(l); }
+  const sepals = mergeGeometries([sep, ...leafRing]);
+  const geo = mergeGeometries([petals, sepals], true);
+  return { geo, white: mergeGeometries([petals.clone(), sepals.clone()]), leaf: new THREE.MeshStandardMaterial({ color: "#3f7a46", roughness: .7, emissive: "#0f2a14", emissiveIntensity: .3 }) };
+})();
 const cyl = (rt, rb, h, m, x, y, z, seg = 12, parent = scene) => { const o = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, seg), m); o.position.set(x, y, z); parent.add(o); return o; };
 
 /* 땅과 산 */
@@ -1151,8 +1165,45 @@ function renderGiwa(list) {
 
 /* 석탑 (마당 가운데) */
 const PAGODA = { x: 0, z: 0 };
-{ let y = 0; [[3, .6], [2.3, 1.2], [2.9, .3], [1.8, 1], [2.4, .25], [1.4, .9], [1.9, .22], [1, .7], [1.4, .2]].forEach(([s, h], i) => { box(s, h, s, i % 2 ? mat.stone : mat.darkStone, 0, y + h / 2, 0); y += h; });
-  cyl(.12, .12, 1.4, mat.darkStone, 0, y + .7, 0); block(-1.7, 1.7, -1.7, 1.7); }
+/* 석탑: 불국사 석가탑처럼 이층 기단 위에 삼층 탑신, 꼭대기 상륜부까지 (높이 약 10m) */
+{
+  const g = new THREE.Group(); g.position.set(PAGODA.x, 0, PAGODA.z); scene.add(g); camSolidGroups.push(g);
+  const granTex = canvasTex(256, 256, (x, w, h) => { noise(x, w, h, "#b9b3a6", .2, 9000, 3); for (let i = 0; i < 14; i++) { x.fillStyle = `rgba(60,58,50,${Math.random() * .12})`; x.beginPath(); x.ellipse(Math.random() * w, Math.random() * h, 20 + Math.random() * 40, 8 + Math.random() * 20, Math.random() * 3, 0, 7); x.fill(); } }, 1, 1);
+  const P = new THREE.MeshStandardMaterial({ map: granTex, color: "#ffffff", roughness: .92 }), PD = new THREE.MeshStandardMaterial({ map: granTex, color: "#9a958a", roughness: .95 });
+  const bx = (w, h, d, y, m = P) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); o.position.y = y; g.add(o); return o; };
+  // 기둥 새김 (우주 · 탱주): 면마다 살짝 튀어나온 돌기둥
+  const pillars = (w, h, y, n) => { for (let s4 = 0; s4 < 4; s4++) { const a = s4 * Math.PI / 2; for (let k = 0; k <= n; k++) { const t = -w / 2 + k * w / n; const o = new THREE.Mesh(new THREE.BoxGeometry(k === 0 || k === n ? .2 : .14, h, .06), P); o.position.set(Math.cos(a) * t - Math.sin(a) * 0 + Math.sin(a) * (w / 2 + .02), y, Math.cos(a) * (w / 2 + .02) - Math.sin(a) * t); o.rotation.y = a; g.add(o); } } };
+  let y = 0;
+  bx(6.2, .3, 6.2, .15, PD); y = .3; // 지대석
+  bx(5.4, 1.0, 5.4, y + .5); pillars(5.4, 1.0, y + .5, 4); y += 1.0; // 하층 기단
+  bx(5.8, .22, 5.8, y + .11); bx(5.0, .12, 5.0, y + .28); y += .34; // 갑석
+  bx(4.2, 1.3, 4.2, y + .65); pillars(4.2, 1.3, y + .65, 3); y += 1.3; // 상층 기단
+  bx(4.7, .24, 4.7, y + .12); bx(3.9, .1, 3.9, y + .29); y += .34;
+  // 삼층 탑신 + 옥개석 (아래는 다섯 단 받침, 위는 비스듬한 낙수면, 네 귀가 살짝 들려요)
+  const roof = (wb, y0) => { for (let k = 0; k < 5; k++) bx(wb * (.62 + k * .07), .07, wb * (.62 + k * .07), y0 + k * .07);
+    const top = y0 + .35; const slab = new THREE.Mesh(new THREE.CylinderGeometry(wb * .2, wb * .71, .42, 4, 1), P); slab.rotation.y = Math.PI / 4; slab.position.y = top + .21; g.add(slab);
+    bx(wb, .1, wb, top + .02);
+    for (let c = 0; c < 4; c++) { const a = Math.PI / 4 + c * Math.PI / 2; const tip = new THREE.Mesh(new THREE.ConeGeometry(.09, .3, 4), P); tip.position.set(Math.sin(a) * wb * .7, top + .12, Math.cos(a) * wb * .7); tip.rotation.set(Math.cos(a) * -.9, 0, Math.sin(a) * .9); g.add(tip);
+      const bell = new THREE.Mesh(new THREE.ConeGeometry(.05, .12, 8), M("#5a6a50", { metalness: .6, roughness: .5 })); bell.position.set(Math.sin(a) * wb * .68, top - .1, Math.cos(a) * wb * .68); g.add(bell); }
+    return top + .44; };
+  [[2.3, 1.75, 3.9], [1.8, .95, 3.2], [1.45, .85, 2.6]].forEach(([bw, bh, rw], i) => {
+    bx(bw + .2, .14, bw + .2, y + .07); y += .14; // 탑신 굄
+    bx(bw, bh, bw, y + bh / 2); pillars(bw, bh, y + bh / 2, 1); if (i === 0) { const door = new THREE.Mesh(new THREE.PlaneGeometry(.55, .75), new THREE.MeshStandardMaterial({ color: "#6e6a60", roughness: 1 })); door.position.set(0, y + bh / 2, bw / 2 + .035); g.add(door); }
+    y = roof(rw, y + bh); });
+  // 상륜부: 노반 · 복발 · 앙화 · 보륜 · 보개 · 수연 · 보주
+  bx(.85, .4, .85, y + .2); y += .4;
+  const bowl = new THREE.Mesh(new THREE.SphereGeometry(.42, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), P); bowl.position.y = y; g.add(bowl); y += .38;
+  const lotusCup = new THREE.Mesh(new THREE.CylinderGeometry(.42, .22, .32, 12), P); lotusCup.position.y = y + .16; g.add(lotusCup); y += .32;
+  const iron = M("#3d3f3a", { metalness: .7, roughness: .45 });
+  const spire = new THREE.Mesh(new THREE.CylinderGeometry(.06, .07, 2.6, 8), iron); spire.position.y = y + 1.3; g.add(spire);
+  for (let k = 0; k < 5; k++) { const r = new THREE.Mesh(new THREE.TorusGeometry(.3 - k * .03, .06, 8, 20), iron); r.rotation.x = Math.PI / 2; r.position.y = y + .2 + k * .26; g.add(r); }
+  const canopy = new THREE.Mesh(new THREE.ConeGeometry(.42, .22, 8), iron); canopy.position.y = y + 1.55; g.add(canopy);
+  const flame = new THREE.Mesh(new THREE.ConeGeometry(.16, .5, 8), iron); flame.position.y = y + 1.95; g.add(flame);
+  [0, 1].forEach((k) => { const j = new THREE.Mesh(new THREE.SphereGeometry(.12 - k * .03, 12, 10), iron); j.position.y = y + 2.3 + k * .22; g.add(j); });
+  // 탑 앞 배례석 (절하는 돌)
+  const bae = new THREE.Mesh(new THREE.BoxGeometry(1.6, .14, .8), P); bae.position.set(0, .07, 4.1); g.add(bae);
+  block(PAGODA.x - 3.1, PAGODA.x + 3.1, PAGODA.z - 3.1, PAGODA.z + 3.1);
+}
 const pagodaLamp = new THREE.PointLight("#ffcf8a", 6, 12, 2); pagodaLamp.position.set(0, 1, 5); scene.add(pagodaLamp);
 
 /* 산신각 · 칠성각 (동쪽) */
@@ -1246,6 +1297,7 @@ for (let i = 0; i < 18; i++) { const r = new THREE.Mesh(new THREE.DodecahedronGe
 /* =========================================================
    달빛 바닷가 (휴휴암처럼): 대웅전 뒤로 돌아 나가면 하얀 연등길, 모래사장, 큰 바위와 물고기 떼
    ========================================================= */
+const seaSlots = [];
 const SEA = { rockX: 4, rockZ: -65, altarX: 4, altarZ: -56.4, fishX: 4, fishZ: -64.6 };
 const shoreZ = (x) => -61.2 + Math.sin(x * .13) * 1.4 + Math.sin(x * .05 + 1) * 1.1; // 물가 선
 const LPATH = [[18.6, -12], [18.6, -40], [18.6, -44], [16, -47.5], [10, -50.5], [4, -53], [SEA.altarX, -55.4]]; // 연등길 가운데 선
@@ -1312,14 +1364,19 @@ const seaG = new THREE.Group(); scene.add(seaG);
   const postM = M("#5c6168", { roughness: .6, metalness: .3 });
   const postI = new THREE.InstancedMesh(new THREE.CylinderGeometry(.03, .03, 1.25, 6), postM, posts.length), o = new THREE.Object3D();
   posts.forEach(([x, z], i) => { o.position.set(x, .62, z); o.rotation.set(0, 0, 0); o.scale.set(1, 1, 1); o.updateMatrix(); postI.setMatrixAt(i, o.matrix); }); seaG.add(postI);
-  const lampGeo = new THREE.SphereGeometry(.2, 12, 10); lampGeo.scale(1, .9, 1);
+  const lampGeo = LOTUS.white.clone(); lampGeo.scale(.72, .72, .72);
   const lampM = new THREE.MeshStandardMaterial({ color: "#fbfaf5", emissive: "#fff3d8", emissiveIntensity: .25, roughness: .7 }); SEA.lampM = lampM;
   const lampI = new THREE.InstancedMesh(lampGeo, lampM, lamps.length), tagI = new THREE.InstancedMesh(new THREE.PlaneGeometry(.11, .3), M("#f6f3ea", { side: THREE.DoubleSide }), lamps.length);
-  lamps.forEach(([x, z, r], i) => { o.position.set(x, 1.0, z); o.rotation.set(0, r, 0); o.updateMatrix(); lampI.setMatrixAt(i, o.matrix); o.position.set(x, .62, z); o.updateMatrix(); tagI.setMatrixAt(i, o.matrix); });
+  lamps.forEach(([x, z, r], i) => { o.position.set(x, 1.02, z); o.rotation.set(0, r, 0); o.updateMatrix(); lampI.setMatrixAt(i, o.matrix); o.position.set(x, .62, z); o.updateMatrix(); tagI.setMatrixAt(i, o.matrix); });
   seaG.add(lampI, tagI);
   // 난간 줄 (연등 위로 이어지는 줄)
   const ropeM = new THREE.LineBasicMaterial({ color: "#3a3d42" });
   for (const side of [-1, 1]) { const pts = []; for (let i = 0; i < LPATH.length; i++) { const [ax, az] = LPATH[Math.min(i, LPATH.length - 2)], [bx, bz] = LPATH[Math.min(i, LPATH.length - 2) + 1], L = Math.hypot(bx - ax, bz - az), nx = -(bz - az) / L, nz = (bx - ax) / L; const [px, pz] = LPATH[i]; pts.push(new THREE.Vector3(px + nx * side * 1.55, 1.22, pz + nz * side * 1.55)); } seaG.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), ropeM)); }
+  // 바다 소원 연등 줄 (바닷가를 따라 두 줄, 기둥 위 높이 걸어요)
+  for (const [dz, x0, x1] of [[6.6, -20, 0], [6.6, 8, 28], [9.4, -18, 0], [9.4, 8, 26]]) { const pts = [];
+    for (let x = x0; x <= x1 + .01; x += 1.5) { const z = shoreZ(x) + dz, y = 2.25 - Math.sin(((x - x0) / Math.max(1, x1 - x0)) * Math.PI) * .25; seaSlots.push(new THREE.Vector3(x, y, z)); pts.push(new THREE.Vector3(x, y + .42, z)); }
+    seaG.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), ropeM));
+    [x0 - .6, x1 + .6].forEach((px) => cyl(.06, .07, 2.9, postM, px, 1.45, shoreZ(px) + dz, 6, seaG)); }
   // 연등길 바닥 (돌 깔린 길)
   for (let i = 0; i < LPATH.length - 1; i++) { const [ax, az] = LPATH[i], [bx, bz] = LPATH[i + 1], L = Math.hypot(bx - ax, bz - az); const p = new THREE.Mesh(new THREE.PlaneGeometry(2.6, L + .4), M("#8d877c", { roughness: 1 })); p.rotation.order = "YXZ"; p.rotation.set(-Math.PI / 2, Math.atan2(bx - ax, bz - az), 0); p.position.set((ax + bx) / 2, .045, (az + bz) / 2); seaG.add(p); }
   // 길 입구 표지
@@ -1562,20 +1619,26 @@ const glowTex = (() => {
 const lanternGeo = new THREE.SphereGeometry(.32, 12, 10), tasselGeo = new THREE.CylinderGeometry(.02, .02, .3, 4);
 function renderLanterns(list) {
   lanternGroup.clear();
-  list.slice(0, lanternSlots.length).forEach((w, i) => {
+  const yard = list.filter((w) => w.place !== "sea").slice(0, lanternSlots.length), sea = list.filter((w) => w.place === "sea").slice(0, seaSlots.length);
+  yard.forEach((w, i) => hangLantern(w, i, lanternSlots[i]));
+  sea.forEach((w, i) => hangLantern(w, i, seaSlots[i]));
+}
+function hangLantern(w, i, slot) {
+  {
     const k = kindOf(w), color = k ? LANTERN_KINDS[k].color : lanternColors[i % lanternColors.length];
     const lit = !k || !!w.lit; // 예전 연등(종류 없음)은 원래대로 켜 둬요
     const base = new THREE.Color(color);
     const mat = new THREE.MeshStandardMaterial({ color: lit ? base : base.clone().multiplyScalar(.38), emissive: color, emissiveIntensity: lit ? (k === "gold" ? 1.35 : 1.05) : .05 });
-    const m = new THREE.Mesh(lanternGeo, mat);
-    m.scale.y = 1.2; m.position.copy(lanternSlots[i]); m.userData.wish = w; lanternGroup.add(m);
-    const tassel = new THREE.Mesh(tasselGeo, new THREE.MeshBasicMaterial({ color: lit ? color : "#5a4a3a" })); tassel.position.y = -.5; m.add(tassel);
+    const m = new THREE.Mesh(LOTUS.geo, [mat, LOTUS.leaf]);
+    m.scale.setScalar(1.3); m.position.copy(slot); m.userData.wish = w; lanternGroup.add(m);
+    const tassel = new THREE.Mesh(tasselGeo, new THREE.MeshBasicMaterial({ color: lit ? color : "#5a4a3a" })); tassel.position.y = -.36; m.add(tassel);
+    const tag = new THREE.Mesh(new THREE.PlaneGeometry(.1, .26), new THREE.MeshStandardMaterial({ color: "#f6f1e4", side: THREE.DoubleSide })); tag.position.y = -.62; m.add(tag);
     if (lit) {
       const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color, transparent: true, opacity: k === "gold" ? .75 : .5, depthWrite: false, blending: THREE.AdditiveBlending }));
       halo.scale.setScalar(k === "gold" ? 1.9 : 1.5); halo.raycast = () => {}; m.add(halo); m.userData.halo = halo;
     }
-    if (isMyWish(w) && !lit) { const tag = textSprite("내 연등", { size: 30, color: "#f3e6c4", bg: "rgba(16,21,29,.6)", pad: 10 }); tag.scale.multiplyScalar(.7); tag.position.y = .75; tag.raycast = () => {}; m.add(tag); }
-  });
+    if (isMyWish(w) && !lit) { const tag = textSprite("내 연등", { size: 30, color: "#f3e6c4", bg: "rgba(16,21,29,.6)", pad: 10 }); tag.scale.multiplyScalar(.55); tag.position.y = .6; tag.raycast = () => {}; m.add(tag); }
+  }
 }
 
 /* =========================================================
@@ -1594,8 +1657,18 @@ function textSprite(text, { size = 40, color = "#ece6d8", bg = "rgba(16,21,29,.7
   s.scale.set(w / 110, h / 110, 1); s.renderOrder = 10; return s;
 }
 /* ---------- 수행 등급 · 공덕 · 매일 미션 ---------- */
-const TITLES = [["동자", 0], ["행자", 100], ["수행자", 300], ["스님", 800], ["큰스님", 2000], ["도인", 5000]];
+/* 수행 등급: 달빛암에 머문 1초마다 1점 (+ 수행으로 얻은 공덕). 세제곱 곡선이라 뒤로 갈수록 오래 걸려요.
+   30일을 꼬박 머물면 2,592,000점으로 최고 등급 '도인'이 돼요. 대계급 6개 · 세부 호칭 15단계 */
+const TITLES = [["동자", 0], ["행자", 12001], ["수행자", 96001], ["스님", 324001], ["큰스님", 768001], ["도인", 1500001]];
+const SUBRANKS = [["소동자", 0, 0], ["대동자", 6001, 0], ["소행자", 12001, 1], ["대행자", 54001, 1], ["하급행자", 96001, 2], ["중급행자", 205001, 2], ["상급행자", 264001, 2],
+  ["법사", 324001, 3], ["선사", 472001, 3], ["대선사", 620001, 3], ["고승", 768001, 4], ["대고승", 1012001, 4], ["조사", 1256001, 4], ["진인", 1500001, 5], ["도인", 2046001, 5]];
+const XP_MAX = 2592000;
 const levelOf = (p) => { let l = 0; TITLES.forEach(([, need], i) => { if (p >= need) l = i; }); return l; };
+const subOf = (p) => { let i = 0; SUBRANKS.forEach(([, need], k) => { if (p >= need) i = k; }); return i; };
+const XP = () => (me.time || 0) + (me.pts || 0);
+// 예전 등급표(공덕 100 · 300 · 800 …)로 오른 등급은 그대로 지켜 줘요
+if (!me.rankV2) { const old = [0, 100, 300, 800, 2000, 5000]; let ol = 0; old.forEach((n, i) => { if ((me.pts || 0) >= n) ol = i; }); me.time = Math.max(me.time || 0, TITLES[ol][1] - (me.pts || 0)); me.rankV2 = 1; }
+const fmtDur = (sec) => { sec = Math.max(0, Math.round(sec)); const d = Math.floor(sec / 86400), h = Math.floor((sec % 86400) / 3600), m = Math.floor((sec % 3600) / 60); return d ? `${d}일 ${h}시간` : h ? `${h}시간 ${m}분` : `${m}분`; };
 const labelText = (nick, lv) => `${TITLES[clamp(lv | 0, 0, TITLES.length - 1)][0]} ${nick || "스님"}`;
 const PTS = { pung: 1, rice: 5, giwa: 5, emo: 0, mok: 1, bow: 3, incense: 3, bell: 2, tap: 10, pray: 5, candle: 3, meal: 3, tea: 2, greet: 2, wish: 5, bead: 1, chat: 1, visit: 0, climb: 10, yaho: 1, feed: 3, release: 5, seapray: 5, zazen: 15, verse: 3, lotus: 3, pondview: 1 };
 const MISSION_POOL = [
@@ -1611,7 +1684,7 @@ function todayMissions() {
 }
 if (!me.daily || me.daily.day !== today) me.daily = { day: today, c: {}, done: [] };
 const MISSIONS = todayMissions();
-let lastLevel = levelOf(me.pts);
+let lastLevel = levelOf(XP());
 function gain(kind, n = 1) {
   if (typeof visitAct === "function") visitAct(kind);
   const key = kind; me.daily.c[key] = (me.daily.c[key] || 0) + n;
@@ -1622,7 +1695,13 @@ function gain(kind, n = 1) {
       if (me.daily.done.length === MISSIONS.length) setTimeout(() => { toast("🌕 오늘의 수행을 모두 마쳤어요! (+50 공덕 · 🪙50)"); me.pts += 50; me.coin += 50; save(); updateHud(); }, 1200);
     }
   });
-  const lv = levelOf(me.pts);
+  checkLevel();
+}
+let lastSub = subOf(XP());
+function checkLevel() {
+  const sub = subOf(XP());
+  if (sub > lastSub) { lastSub = sub; if (SUBRANKS[sub][2] === lastLevel) { toast(`🎉 ${SUBRANKS[sub][0]}(으)로 올라갔어요!`); sfx.soft(); if (player) bubble(player, `${SUBRANKS[sub][0]} 승급!`); } }
+  const lv = levelOf(XP());
   if (lv > lastLevel) {
     lastLevel = lv; toast(`🎉 ${TITLES[lv][0]}(으)로 올라갔어요!`); sfx.bell();
     if (player) { setLabel(player, labelText(me.nick, lv), true); applyAura(player, lv); bubble(player, `${TITLES[lv][0]} 승급!`); showFront(); trackMe(); }
@@ -1631,16 +1710,19 @@ function gain(kind, n = 1) {
   save(); updateHud();
 }
 function updateHud() {
-  const lv = levelOf(me.pts), next = TITLES[lv + 1];
-  $("hudTitle").textContent = TITLES[lv][0];
-  $("hudPts").textContent = me.pts.toLocaleString(); $("hudCoin").textContent = me.coin.toLocaleString();
-  const base = TITLES[lv][1], pct = next ? Math.min(100, ((me.pts - base) / (next[1] - base)) * 100) : 100;
+  const xp = XP(), si = subOf(xp), next = SUBRANKS[si + 1];
+  $("hudTitle").textContent = SUBRANKS[si][0];
+  $("hudPts").textContent = xp.toLocaleString(); $("hudCoin").textContent = me.coin.toLocaleString();
+  const base = SUBRANKS[si][1], pct = next ? Math.min(100, ((xp - base) / (next[1] - base)) * 100) : 100;
   $("hudBar").style.width = pct + "%";
   $("hudMission").textContent = `오늘의 수행 ${me.daily.done.length}/3`;
 }
+// 화면을 보고 있는 동안 1초마다 공덕 1점
+let xpSaveT = 0;
+setInterval(() => { if (!player || document.visibilityState !== "visible") return; me.time = (me.time || 0) + 1; if (++xpSaveT % 15 === 0) save(); updateHud(); if (xpSaveT % 5 === 0) checkLevel(); }, 1000);
 function renderMissionPanel() {
-  const lv = levelOf(me.pts), next = TITLES[lv + 1];
-  $("missionLevel").textContent = next ? `${TITLES[lv][0]} · 공덕 ${me.pts.toLocaleString()} · ${next[0]}까지 ${(next[1] - me.pts).toLocaleString()}` : `${TITLES[lv][0]} · 공덕 ${me.pts.toLocaleString()} · 최고 등급`;
+  const xp = XP(), lv = levelOf(xp), si = subOf(xp), next = SUBRANKS[si + 1];
+  $("missionLevel").textContent = next ? `${SUBRANKS[si][0]} · 공덕 ${xp.toLocaleString()} · ${next[0]}까지 ${(next[1] - xp).toLocaleString()}` : `${SUBRANKS[si][0]} · 공덕 ${xp.toLocaleString()} · 최고 등급`;
   const ul = $("missionList"); ul.innerHTML = "";
   MISSIONS.forEach(([k, goal, title]) => {
     const li = document.createElement("li"); const done = me.daily.done.includes(k); const c = Math.min(goal, me.daily.c[k] || 0);
@@ -1648,7 +1730,8 @@ function renderMissionPanel() {
     const sm = document.createElement("small"); sm.textContent = `${c}/${goal}`; li.appendChild(sm); ul.appendChild(li);
   });
   const tl = $("titleList"); tl.innerHTML = "";
-  TITLES.forEach(([name, need], i) => { const li = document.createElement("li"); li.className = i <= lv ? "got" : ""; li.textContent = `${name} · ${need.toLocaleString()}`; tl.appendChild(li); });
+  SUBRANKS.forEach(([name, need, major], i) => { const li = document.createElement("li"); li.className = (i <= si ? "got" : "") + (i === si ? " now" : "");
+    li.textContent = `${TITLES[major][0]} · ${name} · ${need.toLocaleString()}`; const sm = document.createElement("small"); sm.textContent = need ? ` (약 ${fmtDur(need)})` : ""; li.appendChild(sm); tl.appendChild(li); });
 }
 
 /* ---------- 법복 꾸미기 ---------- */
@@ -1942,7 +2025,7 @@ function zoneOf(x, z) {
   if (md < MOUNT.r - .2) return "mountain";
   if (z > 11) return "walk";
   if (Math.hypot(x - 9.5, z - 5.6) < 2.6) return "shop";
-  if (Math.hypot(x - PAGODA.x, z - PAGODA.z) < 6) return "pagoda";
+  if (Math.hypot(x - PAGODA.x, z - PAGODA.z) < 6.5) return "pagoda";
   return "yard";
 }
 const ZONES = {
@@ -1967,7 +2050,7 @@ const ZONES = {
   sea: { name: "달빛 바닷가", intro: "파도 소리가 들려요. 바위 앞 제단에서 기도하고, 물고기에게 먹이도 줘 보세요." },
   searock: { name: "연화바위", intro: "바다를 마주한 큰 바위 앞이에요. 초를 켜고 절을 올리거나, 물고기 떼에게 먹이를 줘 보세요." }
 };
-const GOTO = { shop: [9.5, 6.2], hall: [0, -16.8], pagoda: [0, 3.2], shrine: [21, -2.4], chilseong: [34, -3.2], gwaneum: [-34, -3.2], jijang: [34, -17.2], kitchen: [-21, -1.2], walk: [0, 16], yard: [0, 8], sea: [SEA.altarX, -53.6], seokgul: [SG.door.x, SG.door.z + 2.6], janggyeong: [JG.x, JG.z + JG.d / 2 + 3.4], wolji: [WJ.x - WJ.w / 2 - 1.8, WJ.z], mountain: [TRAIL[0].x + 1.2, TRAIL[0].z] };
+const GOTO = { shop: [9.5, 6.2], hall: [0, -16.8], pagoda: [0, 6.2], shrine: [21, -2.4], chilseong: [34, -3.2], gwaneum: [-34, -3.2], jijang: [34, -17.2], kitchen: [-21, -1.2], walk: [0, 16], yard: [0, 8], sea: [SEA.altarX, -53.6], seokgul: [SG.door.x, SG.door.z + 2.6], janggyeong: [JG.x, JG.z + JG.d / 2 + 3.4], wolji: [WJ.x - WJ.w / 2 - 1.8, WJ.z], mountain: [TRAIL[0].x + 1.2, TRAIL[0].z] };
 
 /* =========================================================
    카메라 조작
@@ -2042,7 +2125,7 @@ if (!Array.isArray(me.ate)) me.ate = [];
 let pendingMeal = null, eating = null;
 const A = (icon, label, fn, hot) => ({ icon, label, fn, hot });
 function actionsFor(z) {
-  const greetA = A("🙏", "합장", () => greet(null)), beadA = A("📿", "염주", openBeads), wishA = A("🏮", "소원 연등", () => openPanel("wishPanel"));
+  const greetA = A("🙏", "합장", () => greet(null)), beadA = A("📿", "염주", openBeads), wishA = A("🏮", "소원 연등", () => openWish("yard"));
   if (z === "hall") return [A(player?.sitting ? "🧍" : "🧘", player?.sitting ? "일어나기" : "방석 앉기", doSit, !player?.sitting), A(autoBow ? "⏸️" : "🙇", autoBow ? "멈추기" : "계속 절하기", toggleAutoBow, true), A("🪵", "목탁", doMok), A("🕯️", "향", doIncense), A("🍚", "공양미", doRice), A(loopEls.yebul && !loopEls.yebul.paused ? "⏹️" : "🎐", loopEls.yebul && !loopEls.yebul.paused ? "예불 끄기" : "예불 듣기", toggleYebul), greetA, beadA];
   const giwaA = A("🏯", "기와 소원", openGiwa);
   if (z === "pagoda") return [A("🗼", "탑돌이", doTapdori, true), wishA, giwaA, greetA, beadA];
@@ -2055,8 +2138,8 @@ function actionsFor(z) {
   if (z === "janggyeong") return [A("📜", "경판 읽기", readVerse, true), greetA, beadA];
   if (z === "wolji") return [A("🌙", "연못 바라보기", doPondView, true), A("🪷", "연꽃등 띄우기", floatLotus, true), greetA, beadA];
   if (z === "seokgul") return [A("🚪", "석굴암 들어가기", enterGrotto, true), greetA, beadA];
-  if (z === "searock" || z === "sea") { const wv = loopEls.wave && !loopEls.wave.paused; return [...(z === "searock" ? [A("🕯️", "바다 기도", doSeaPray, true), A("🙇", "절", doBow)] : []), A("🍙", "물고기 밥 주기", doFeed, true), A("🐟", "방생하기", doRelease), A(wv ? "⏹️" : "🌊", wv ? "파도 소리 끄기" : "파도 소리", doWave), greetA, wishA]; }
-  if (z === "seapath") return [A("🏮", "소원 연등", () => openPanel("wishPanel"), true), greetA, beadA];
+  if (z === "searock" || z === "sea") { const wv = loopEls.wave && !loopEls.wave.paused; return [...(z === "searock" ? [A("🕯️", "바다 기도", doSeaPray, true), A("🙇", "절", doBow)] : []), A("🍙", "물고기 밥 주기", doFeed, true), A("🐟", "방생하기", doRelease), A(wv ? "⏹️" : "🌊", wv ? "파도 소리 끄기" : "파도 소리", doWave), A("🏮", "바다 연등", () => openWish("sea")), greetA]; }
+  if (z === "seapath") return [A("🏮", "바다 연등", () => openWish("sea"), true), greetA, beadA];
   if (z === "walk") return [A("🌊", "계곡 소리", doNature, true), A("⛰️", "달빛봉 오르기", doClimb, true), greetA, beadA];
   if (z === "mountain") return [A(autoPath?.climb ? "⏸️" : "⛰️", autoPath?.climb ? "멈추기" : "정상까지 오르기", doClimb, true), A("🌬️", "바람 소리", doNature), greetA, beadA];
   if (z === "peak") return [A(pray && pray.timer ? "⏸️" : "✨", pray && pray.timer ? "기도 멈추기" : "칠성기도", () => { pray = pray && pray.k === "chilseong" ? pray : null; togglePray(); }, true), A("🌄", "경치 보기", doView), A("⬇️", "내려가기", doDescend), greetA, wishA];
@@ -2074,6 +2157,41 @@ for (const [z, n] of Object.entries(placeNames)) {
   const b = document.createElement("button"); b.type = "button"; b.dataset.z = z; b.textContent = n;
   b.onclick = () => { if (inGrotto) { stopZazen(false); hideWorld(false); grottoG.visible = false; inGrotto = false; if (player.aura) player.aura.visible = true; player.sitting = false; } if (inRoom) { stopPray(); hideWorld(false); if (player.aura) player.aura.visible = true; inRoom = null; $("prayBox").hidden = true; player.sitting = false; } standUp(); pendingSeat = null; const [x, zz] = GOTO[z]; player.pos.set(x, 0, zz); player.target.set(x, 0, zz); autoPath = null; camYaw = z === "walk" ? Math.PI : z === "mountain" ? Math.PI / 2 : 0; if (z === "sea") { camDist = 10; camPitch = .48; } if (z === "seokgul") { camDist = 8.5; camPitch = .42; camYaw = .45; } if (z === "janggyeong") { camDist = 8; camPitch = .3; camYaw = .95; } if (z === "wolji") { camDist = 8; camPitch = .3; camYaw = -Math.PI / 2 - .25; } camTarget.set(x, 1.6, zz); lastMoveTx = 0; sendPresence(); if (z === "hall") enterHallView(); };
   $("places").appendChild(b);
+}
+{ const mb = document.createElement("button"); mb.type = "button"; mb.className = "map-open"; mb.textContent = "🗺️ 지도 보고 이동하기"; mb.onclick = () => openMap(); $("places").appendChild(mb); }
+$("mapBtn").onclick = () => openMap();
+/* 달빛암 지도: 위가 북쪽(바다), 아래가 남쪽(산책길) */
+let mapTimer = null;
+function openMap() {
+  const X0 = -46, Z0 = -72, W = 92, H = 120, S = (x, z) => [x - X0, z - Z0];
+  const r = (x1, z1, x2, z2, fill, extra = "") => { const [a, b] = S(x1, z1); return `<rect x="${a}" y="${b}" width="${x2 - x1}" height="${z2 - z1}" rx="1" fill="${fill}" ${extra}/>`; };
+  const c = (x, z, rad, fill, extra = "") => { const [a, b] = S(x, z); return `<circle cx="${a}" cy="${b}" r="${rad}" fill="${fill}" ${extra}/>`; };
+  const lbl = (x, z, t) => { const [a, b] = S(x, z); return `<text class="lbl" x="${a}" y="${b}">${t}</text>`; };
+  let shore = ""; for (let x = -46; x <= 46; x += 2) { const [a, b] = S(x, shoreZ(x)); shore += `${x === -46 ? "M" : "L"}${a},${b} `; }
+  const lp = LPATH.map(([x, z], i) => { const [a, b] = S(x, z); return `${i ? "L" : "M"}${a},${b}`; }).join(" ");
+  let svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">`;
+  svg += r(-46, -72, 46, 48, "#33402c");
+  svg += r(-46, -60, 46, -42, "#cdbf9c"); // 모래사장
+  svg += `<path d="${shore} L92,0 L0,0 Z" fill="#3f7f8c"/>`; // 바다
+  svg += r(-46, 11, 46, 48, "#2a4a30"); svg += c(MOUNT.x, MOUNT.z, MOUNT.r, "#3d5a34"); svg += c(MOUNT.x, MOUNT.z, 4, "#56704a");
+  svg += r(-15, -11, 15, 11, "#6b5d48"); // 마당
+  svg += r(HB.x1, HB.z1, HB.x2, HB.z2, "#2b313b"); svg += lbl(0, -26, "大雄殿");
+  svg += c(PAGODA.x, PAGODA.z, 2.6, "#b9b3a6");
+  for (const k of ROOM_KEYS) { const R = ROOMS[k]; svg += r(R.x - 3.4, R.z - 3, R.x + 3.4, R.z + 2.6, "#2b313b"); }
+  svg += r(KITCHEN.x - 3.7, KITCHEN.z - 2.7, KITCHEN.x + 3.7, KITCHEN.z + 2.7, "#2b313b");
+  svg += r(WJ.x - WJ.w / 2, WJ.z - WJ.d / 2, WJ.x + WJ.w / 2, WJ.z + WJ.d / 2, "#3f7f8c");
+  svg += c(SG.x, SG.z, 6, "#4e6b3a"); svg += r(JG.x - JG.w / 2, JG.z - JG.d / 2, JG.x + JG.w / 2, JG.z + JG.d / 2, "#5a4632");
+  svg += `<path d="${lp}" fill="none" stroke="#f3e6c4" stroke-width="1.2" stroke-dasharray="1 1.2"/>`;
+  { const [a, b] = S(0, 10); svg += `<path d="M${a},${b} L${a},${b + 34}" stroke="#8d877c" stroke-width="1.4" stroke-dasharray="1.2 .8"/>`; }
+  svg += c(SEA.rockX, SEA.rockZ, 2.4, "#a39d92");
+  for (const [z, n] of Object.entries(placeNames)) { const g = GOTO[z]; if (!g) continue; const [a, b] = S(g[0], g[1]);
+    svg += `<g class="mk${z === zone ? " here" : ""}" data-z="${z}"><circle cx="${a}" cy="${b}" r="1.6"/><text x="${a}" y="${b - 2.4}">${n}</text></g>`; }
+  svg += `<circle class="me-ring" id="mapMeRing" r="1.4"/><circle class="me" id="mapMe" r="1.3"/></svg>`;
+  $("mapBox").innerHTML = svg;
+  $("mapBox").querySelectorAll(".mk").forEach((g) => g.addEventListener("click", () => { ac(); $("mapPanel").hidden = true; goPlace(g.dataset.z); }));
+  const upd = () => { if ($("mapPanel").hidden) { clearInterval(mapTimer); return; } const P = inRoom ? ROOMS[inRoom] : inGrotto ? SG.door : player ? { x: player.pos.x, z: player.pos.z } : { x: 0, z: 8 }; const [a, b] = S(P.x, P.z);
+    ["mapMe", "mapMeRing"].forEach((id) => { const e = $(id); if (e) { e.setAttribute("cx", a); e.setAttribute("cy", b); } }); };
+  openPanel("mapPanel"); upd(); clearInterval(mapTimer); mapTimer = setInterval(upd, 400);
 }
 
 // 법당에 들어서면 입구에서 법당 전체가 한눈에 보이게
@@ -2155,7 +2273,7 @@ function doRice() {
 function doIncense() { incenseUntil = Date.now() + 90000; act("incense"); say("향 연기가 천천히 피어올라요."); }
 function doBell() { const bx = -9, bz = 7; if (player.pos.distanceTo(new THREE.Vector3(bx, 0, bz)) > 5) { player.target.set(bx + 2.4, 0, bz); } sfx.bell(); act("bell"); say(); bubble(player, "데엥…"); }
 function doTapdori() {
-  if (autoPath) return; const pts = []; const r = 3.4; const start = Math.atan2(player.pos.x - PAGODA.x, player.pos.z - PAGODA.z);
+  if (autoPath) return; const pts = []; const r = 4.2; const start = Math.atan2(player.pos.x - PAGODA.x, player.pos.z - PAGODA.z);
   for (let i = 0; i <= 36; i++) { const a = start + (i / 36) * Math.PI * 2; pts.push({ x: PAGODA.x + Math.sin(a) * r, z: PAGODA.z + Math.cos(a) * r }); }
   autoPath = { pts, i: 0, done() { me.tap++; save(); bubble(player, `탑돌이 ${me.tap}바퀴`); act("tap"); if (me.tap % 3 === 0) say(); } };
   say("시계 방향으로 천천히 탑을 돌아요.");
@@ -2318,7 +2436,7 @@ function renderLookPanel(boxId) {
       const b = document.createElement("button"); b.type = "button"; b.className = "look-opt" + (cur[key] === i ? " on" : "");
       if (k !== "acc" && k !== "face") { const sw = document.createElement("span"); sw.className = "sw"; sw.style.background = val; b.appendChild(sw); }
       if (k === "acc" && !ownedAcc(i)) { b.classList.add("locked"); b.append(`🛍️ ${name}`); b.title = "기념품 가게에서 살 수 있어요"; b.onclick = () => toast(`${name}은(는) 기념품 가게에서 🪙${shopPrice(i)}에 살 수 있어요`); opts.appendChild(b); return; }
-      const locked = k === "acc" && levelOf(me.pts) < ACC_LEVEL[i];
+      const locked = k === "acc" && levelOf(XP()) < ACC_LEVEL[i];
       b.append(locked ? `🔒 ${name}` : name);
       if (locked) { b.classList.add("locked"); b.title = `${TITLES[ACC_LEVEL[i]][0]}부터 쓸 수 있어요`; b.onclick = () => toast(`${name}은(는) ${TITLES[ACC_LEVEL[i]][0]} 등급부터 쓸 수 있어요`); opts.appendChild(b); return; }
       b.onclick = () => { const p = lookParts(me.look); p[key] = i; if (key === "a" && i === 12 && !p.c) { toast("염꾸는 기념품 가게에서 이니셜을 골라 만들어요"); return; } me.look = lookStr(p); save(); renderActions(); if (player) { showFront(); applyLook(player, me.look); lastMoveTx = 0; lastTarget = { x: 1e9, z: 1e9 }; sendPresence(); trackMe(); } renderLookPanel(boxId); };
@@ -2369,7 +2487,7 @@ $("lookBtn").onclick = () => { renderLookPanel("lookBody"); $("nickEdit").value 
 $("nickSave").onclick = () => {
   const v = $("nickEdit").value.trim().slice(0, 8); if (!v || v === me.nick) return;
   if (BANNED.some((b) => v.includes(b))) { toast("고운 법명으로 지어 주세요"); return; }
-  me.nick = v; save(); if (player) { setLabel(player, labelText(v, levelOf(me.pts)), true); bubble(player, `이제 ${v}이에요`); trackMe(); } toast(`법명을 '${v}'(으)로 바꿨어요`);
+  me.nick = v; save(); if (player) { setLabel(player, labelText(v, levelOf(XP())), true); bubble(player, `이제 ${v}이에요`); trackMe(); } toast(`법명을 '${v}'(으)로 바꿨어요`);
 };
 $("nickDice2").onclick = () => { $("nickEdit").value = poeticNick(); sfx.bead?.(); };
 $("soundBtn").onclick = () => { ac(); noiseLoop("wind"); noiseLoop("water"); openPanel("soundPanel"); };
@@ -2411,7 +2529,7 @@ function isMyWish(w) {
   return me.myWishes.some((m) => (m.id && w.id ? m.id === w.id : m.text === w.text && (!w.nick || w.nick === me.nick)));
 }
 function applyLocalLit(w) { if (w && (me.litWishes.includes(wishKey(w)) || me.litWishes.includes("t:" + w.text) && isMyWish(w))) w.lit = true; return w; }
-function cleanWish(w) { return applyLocalLit({ id: w.id || null, text: String(w.text || "").slice(0, 40), nick: String(w.nick || "").slice(0, 8), kind: KIND_KEYS.includes(w.kind) ? w.kind : null, lit: !!w.lit }); }
+function cleanWish(w) { return applyLocalLit({ id: w.id || null, text: String(w.text || "").slice(0, 40), nick: String(w.nick || "").slice(0, 8), kind: KIND_KEYS.includes(w.kind) ? w.kind : null, lit: !!w.lit, place: w.place === "sea" || (me.seaTexts || []).includes(String(w.text || "")) ? "sea" : null }); }
 
 // 연등 종류 고르기
 let pickedKind = "gold", kindTouched = false;
@@ -2472,6 +2590,8 @@ function renderWishList() {
   });
   renderLanterns(wishes); renderKindStats(); renderMyLantern();
 }
+let wishPlace = "yard";
+function openWish(place = "yard") { wishPlace = place; const h = document.querySelector("#wishPanel h2"); h.textContent = place === "sea" ? "🌊 바다 연등" : "소원 연등"; openPanel("wishPanel"); }
 function goPlace(z) { const b = document.querySelector(`#places button[data-z="${z}"]`); if (b && player) b.click(); }
 
 // 108배를 마치면 내 연등에 불을 켜요
@@ -2496,23 +2616,25 @@ $("wishBtn").addEventListener("click", async () => {
   const text = $("wishInput").value.trim().slice(0, 40); if (!text) return;
   if (BANNED.some((b) => text.includes(b))) { $("wishNote").textContent = "고운 말로 적어 주세요."; return; }
   $("wishInput").value = ""; sfx.soft();
-  const kind = pickedKind, w = { text, nick: me.nick.slice(0, 8), kind };
+  const kind = pickedKind, w = { text, nick: me.nick.slice(0, 8), kind }; if (wishPlace === "sea") { w.place = "sea"; me.seaTexts = [text, ...(me.seaTexts || [])].slice(0, 40); }
   const mineRec = { id: null, text }; me.myWishes.unshift(mineRec); me.myWishes = me.myWishes.slice(0, 40); save();
   const kd = LANTERN_KINDS[kind];
   const after = () => {
     gain("wish"); kindTouched = false;
+    if (wishPlace === "sea") { renderWishList(); say("바다 연등을 달았어요. 파도 소리 들리는 바닷가 연등 줄에 걸렸어요."); }
     if (me.bow >= 108) { $("wishNote").textContent = `${kd.name}을 달았어요. 오늘 108배를 이미 마쳐서 바로 불을 밝혀요!`; setTimeout(() => lightMyLanterns(false), 500); }
     else $("wishNote").textContent = `${kd.emoji} ${kd.name}을 달았어요. 대웅전에서 108배를 올리면 불이 켜져요 (오늘 ${me.bow}/108).`;
     renderMyLantern();
   };
   if (sb) {
     let res = lanternSchemaOld ? { error: { message: "kind" } } : await sb.from("wishes").insert(w).select("id").single();
+    if (res.error && w.place && /place/.test(res.error.message || "")) { delete w.place; res = await sb.from("wishes").insert(w).select("id").single(); } // 바다 칸이 아직 없으면 내 화면에서만 바다에 걸어요
     if (res.error) { // kind · lit 칸이 없는 예전 테이블이면 글만 저장
       lanternSchemaOld = true; res = await sb.from("wishes").insert({ text: w.text, nick: w.nick });
       if (res.error) { me.myWishes.shift(); save(); $("wishNote").textContent = "연등을 걸지 못했어요. 잠시 뒤 다시 시도해 주세요."; return; }
       // 예전 테이블: 색 구분을 내 화면에서라도 보이게
-      wishes.unshift(cleanWish({ text: w.text, nick: w.nick, kind })); wishes = wishes.slice(0, 42); renderWishList();
-    } else { mineRec.id = res.data?.id || null; save(); const found = wishes.find((x) => !x.id ? false : x.id === mineRec.id); if (!found) { wishes.unshift(cleanWish({ ...w, id: mineRec.id })); wishes = wishes.slice(0, 42); } renderWishList(); }
+      wishes.unshift(cleanWish({ text: w.text, nick: w.nick, kind })); wishes = wishes.slice(0, 90); renderWishList();
+    } else { mineRec.id = res.data?.id || null; save(); const found = wishes.find((x) => !x.id ? false : x.id === mineRec.id); if (!found) { wishes.unshift(cleanWish({ ...w, id: mineRec.id })); wishes = wishes.slice(0, 90); } renderWishList(); }
     after();
   } else { me.localWishes.unshift(cleanWish(w)); me.localWishes = me.localWishes.slice(0, 40); wishes = me.localWishes; save(); renderWishList(); after(); }
 });
@@ -2571,7 +2693,7 @@ const online = () => !!sb;
    걷기는 목적지가 바뀔 때만, 동작은 그때그때 짧은 메시지(broadcast)로 보내요. */
 let lastMoveTx = 0, lastTarget = { x: 1e9, z: 1e9 }, presence = {};
 const posPayload = () => { const P = inRoom && roomReturn ? roomReturn : player.pos, T = inRoom && roomReturn ? roomReturn : player.target;
-  return { k: myKey, l: me.look, lv: levelOf(me.pts), s: player.sitting && !inRoom ? 1 : 0, x: +P.x.toFixed(2), z: +P.z.toFixed(2), tx: +T.x.toFixed(2), tz: +T.z.toFixed(2) }; };
+  return { k: myKey, l: me.look, lv: levelOf(XP()), s: player.sitting && !inRoom ? 1 : 0, x: +P.x.toFixed(2), z: +P.z.toFixed(2), tx: +T.x.toFixed(2), tz: +T.z.toFixed(2) }; };
 function trackMe() { if (roomCh && player) roomCh.track({ nick: me.nick.slice(0, 8), ...posPayload(), at: Date.now() }).catch(() => {}); }
 setInterval(trackMe, 30000);
 setInterval(() => {
@@ -2708,7 +2830,7 @@ async function connect() {
   lobby.subscribe((s) => { if (s === "SUBSCRIBED") setTimeout(start, 1200); if (s === "CHANNEL_ERROR" || s === "TIMED_OUT") { if (!started) solo("연결이 불안정해 혼자 수행 모드로 열었어요."); } });
   loadGiwa(); visitStart();
   // 소원 연등
-  let res = await sb.from("wishes").select("id,text,nick,kind,lit,created_at").order("created_at", { ascending: false }).limit(42);
+  let res = await sb.from("wishes").select("*").order("created_at", { ascending: false }).limit(90);
   if (res.error) { lanternSchemaOld = true; res = await sb.from("wishes").select("text,nick,created_at").order("created_at", { ascending: false }).limit(42); }
   wishes = (res.data || []).map(cleanWish); renderWishList();
   sb.channel("sansa-wishes").on("postgres_changes", { event: "INSERT", schema: "public", table: "wishes" }, ({ new: w }) => {
@@ -2716,7 +2838,7 @@ async function connect() {
     if (nw.id && wishes.some((x) => x.id === nw.id)) return; // 내가 방금 단 연등은 이미 들어가 있어요
     const pending = wishes.findIndex((x) => !x.id && x.text === nw.text && x.nick === nw.nick);
     if (pending >= 0) { const old = wishes[pending]; nw.kind = nw.kind || old.kind; nw.lit = nw.lit || old.lit; wishes[pending] = nw; } else wishes.unshift(nw);
-    wishes = wishes.slice(0, 42); renderWishList();
+    wishes = wishes.slice(0, 90); renderWishList();
     if (w.nick !== me.nick) { const kd = LANTERN_KINDS[nw.kind]; toast(`${kd ? kd.emoji + " 새 " + kd.name : "🏮 새 연등"}: ${nw.text.slice(0, 20)}`); }
   }).on("postgres_changes", { event: "UPDATE", schema: "public", table: "wishes" }, ({ new: w }) => {
     const x = wishes.find((v) => v.id && v.id === w.id); if (!x || x.lit || !w.lit) return;
@@ -2776,7 +2898,7 @@ async function shareCard(kind = "visit") {
   x.strokeStyle = "rgba(245,197,66,.55)"; x.lineWidth = 3; x.beginPath(); x.roundRect ? x.roundRect(60, 330, boxW, boxH, 36) : x.rect(60, 330, boxW, boxH); x.stroke();
   x.textAlign = "center"; x.fillStyle = "#f5c542"; x.font = `700 120px "Gowun Batang",serif`; x.fillText("달빛암", W / 2, 190);
   x.fillStyle = "rgba(244,239,226,.75)"; x.font = `40px "Gowun Dodum",sans-serif`; x.fillText(EN ? "Dalbitam · a Korean mountain temple online" : "온라인 산사 · 잠시 쉬어 가는 절", W / 2, 262);
-  const lv = levelOf(me.pts), title = window.T ? window.T(TITLES[lv][0]) : TITLES[lv][0], nick = me.nick || (EN ? "Monk" : "스님");
+  const lv = levelOf(XP()), title = window.T ? window.T(TITLES[lv][0]) : TITLES[lv][0], nick = me.nick || (EN ? "Monk" : "스님");
   const head = kind === "bow" ? (EN ? "I did 108 bows today 🙇" : "오늘 108배를 마쳤어요 🙇") : kind === "pray" ? (EN ? "I chanted a sutra at the temple 🙏" : "법당에서 기도 1독을 올렸어요 🙏") : kind === "zazen" ? (EN ? "I meditated in Seokguram Grotto 🧘" : "석굴암에서 좌선했어요 🧘") : (EN ? "I'm resting at a Korean temple 🌙" : "달빛암에서 쉬어 가는 중 🌙");
   x.fillStyle = "#f4efe2"; x.font = `700 60px "Gowun Batang",serif`; x.fillText(head, W / 2, 1620);
   x.fillStyle = "rgba(244,239,226,.8)"; x.font = `40px "Gowun Dodum",sans-serif`;
@@ -2807,8 +2929,8 @@ function enter() {
   $("gate").hidden = true; unlockAudio(); ac(); preloadRecs(); noiseLoop("wind"); noiseLoop("water");
   // 입장 버튼을 누른 순간에 소리 파일을 깨워 둬야 아이폰에서도 나중에 재생돼요
   if (soundUrl.chant && !loopEls.chant) { const el = new Audio(soundUrl.chant); el.loop = true; el.setAttribute("playsinline", ""); el.muted = true; loopEls.chant = el; el.play().then(() => { el.pause(); el.muted = false; }).catch(() => { el.muted = false; }); }
-  { const lp = lookParts(me.look); if (levelOf(me.pts) < ACC_LEVEL[lp.a]) { lp.a = 0; me.look = lookStr(lp); save(); } }
-  player = makeMonk(nick, true); applyLook(player, me.look); setLabel(player, labelText(nick, levelOf(me.pts)), true); applyAura(player, levelOf(me.pts)); updateHud(); player.pos.set(SPAWN.x + rand(-3, 3), 0, SPAWN.z + rand(-1, 1.5)); player.target.copy(player.pos); player.yaw = Math.PI;
+  { const lp = lookParts(me.look); if (levelOf(XP()) < ACC_LEVEL[lp.a]) { lp.a = 0; me.look = lookStr(lp); save(); } }
+  player = makeMonk(nick, true); applyLook(player, me.look); setLabel(player, labelText(nick, levelOf(XP())), true); applyAura(player, levelOf(XP())); updateHud(); player.pos.set(SPAWN.x + rand(-3, 3), 0, SPAWN.z + rand(-1, 1.5)); player.target.copy(player.pos); player.yaw = Math.PI;
   zone = zoneOf(player.pos.x, player.pos.z); renderActions(); say(ZONES[zone].intro);
   connect();
 }

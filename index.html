@@ -61,6 +61,7 @@
   <button id="roomBtn" class="chip" type="button"><span id="roomLabel">월하당 1</span> ▾</button>
   <div class="chip-group">
     <button id="chantBtn" class="chip" type="button">염불</button>
+    <button id="mapBtn" class="chip" type="button" aria-label="지도">🗺️</button>
     <button id="lookBtn" class="chip" type="button" aria-label="법복 꾸미기">👘</button>
     <button id="soundBtn" class="chip" type="button" aria-label="자연 소리 설정">🎐</button>
   </div>
@@ -149,6 +150,7 @@
     <p class="muted">미션 하나에 공덕 +30, 세 개 모두 마치면 +50. 미션은 매일 자정에 바뀌어요.</p>
     <h3 class="sub-h">수행 등급</h3>
     <ul id="titleList" class="title-list"></ul>
+    <p class="muted">달빛암에 머무는 1초마다 공덕이 1점씩 쌓여요(수행하면 더 쌓여요). 뒤로 갈수록 오래 걸려서, 30일을 꼬박 머물면 최고 등급 도인이 돼요.</p>
     <p class="muted">등급이 오르면 이름 앞에 등급이 붙고 털모자 · 삿갓 · 연꽃 소품이 열려요. 스님부터는 머리 뒤에 후광이 생기고, 큰스님 · 도인이 되면 더 밝게 빛나요.</p>
   </div>
 </div>
@@ -209,6 +211,13 @@
 </div>
 
 <!-- 소원 연등 -->
+<div id="mapPanel" class="panel" hidden>
+  <div class="panel-card map-card">
+    <div class="panel-head"><h2>달빛암 지도</h2><button class="close" data-close type="button" aria-label="닫기">✕</button></div>
+    <p class="muted">가고 싶은 곳을 누르면 바로 가요. 노란 점이 지금 내 자리예요.</p>
+    <div id="mapBox" class="map-box"></div>
+  </div>
+</div>
 <div id="wishPanel" class="panel" hidden>
   <div class="panel-card">
     <div class="panel-head"><h2>소원 연등</h2><button class="close" data-close type="button" aria-label="닫기">✕</button></div>
