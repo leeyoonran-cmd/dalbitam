@@ -832,6 +832,7 @@ function renderPray(reset) {
     if (L) { if (d === 0 && !L.head) { const chars = [...L.t]; let n = 0; chars.forEach((c) => { const s = document.createElement("span"); s.textContent = c; if (c !== " ") { if (n < P.ci) s.className = "done"; else if (n === P.ci && P.timer) s.className = "now"; n++; } div.appendChild(s); }); } else div.textContent = L.t; }
     else div.innerHTML = "&nbsp;";
     box.appendChild(div);
+    if (d === 0 && L && !L.head && window.LANG === "en" && window.romanize) { const r = document.createElement("div"); r.className = "pl rom"; r.textContent = window.romanize(L.t); box.appendChild(r); }
   }
   const btn = $("prayToggle"); btn.textContent = P.timer ? "⏸️ 잠시 멈추기" : P.rounds || P.li ? "🙏 이어서 기도하기" : "🙏 기도 시작";
 }
@@ -839,7 +840,7 @@ function prayStep() {
   const P = pray; if (!P || !prayKey()) return;
   const L = P.lines[P.li];
   if (!L) { P.rounds++; P.li = 0; P.ci = 0; P.done = 0; if (!inRoom) { dipper.flashAt = performance.now(); dipper.full = true; } gain("pray"); me.pray = (me.pray || 0) + 1; save(); act("pray", { what: P.k });
-    sfx.bell(); say(inRoom ? `${ROOMS[P.k].name}에서 ${P.rounds}독을 마쳤어요. 마음이 맑아졌어요.` : `북두칠성이 모두 밝혀졌어요. ${P.rounds}독, 별빛이 가족을 지켜 주길.`); if (P.k === "chilseong") sevenStars.userData.glowUntil = Date.now() + 8000;
+    sfx.bell(); say(inRoom ? `${ROOMS[P.k].name}에서 ${P.rounds}독을 마쳤어요. 마음이 맑아졌어요.` : `북두칠성이 모두 밝혀졌어요. ${P.rounds}독, 별빛이 가족을 지켜 주길.`); if (P.k === "chilseong") sevenStars.userData.glowUntil = Date.now() + 8000; if (P.rounds === 1) setTimeout(() => toast("🙏 기도 인증 카드를 만들어 보세요", { label: "📸 공유", fn: () => shareCard("pray") }), 2500);
     if (player) playAnim(player, "bow"); P.timer = setTimeout(prayStep, 2600); renderPray(); return; }
   if (L.head) { P.li++; P.ci = 0; sfx.soft(); if (player && inRoom) playAnim(player, "bow"); renderPray(); P.timer = setTimeout(prayStep, 900); return; }
   if (P.ci === 0 && player && inRoom && !player.anim) playAnim(player, P.li % 4 === 0 ? "bow" : "pray");
@@ -1183,6 +1184,7 @@ function renderLanterns(list) {
    동자승
    ========================================================= */
 function textSprite(text, { size = 40, color = "#ece6d8", bg = "rgba(16,21,29,.7)", pad = 14 } = {}) {
+  if (window.T) text = window.T(text);
   const c = document.createElement("canvas"), x = c.getContext("2d");
   const font = `${size}px "Gowun Dodum","Apple SD Gothic Neo",sans-serif`;
   x.font = font; const w = Math.ceil(x.measureText(text).width) + pad * 2, h = size + pad * 1.4;
@@ -1669,6 +1671,7 @@ function doBow() {
   if (me.bow === 108) {
     say("오늘 108배를 모두 마쳤어요. 정말 수고했어요."); sfx.bell(); me.coin += 108; save(); updateHud(); toast("🪙 108배 완료! 복전 108닢을 받았어요. 기념품 가게에 들러 보세요");
     setTimeout(() => lightMyLanterns(true), 1600);
+    setTimeout(() => toast("🙇 108배 인증 카드를 만들어 자랑해 보세요", { label: "📸 공유", fn: () => shareCard("bow") }), 6000);
   } else if (me.bow % 12 === 0) say();
   if (!$("wishPanel").hidden) renderMyLantern();
 }
@@ -2338,6 +2341,43 @@ function toast(text, btn) {
   if (btn) { const b = document.createElement("button"); b.type = "button"; b.textContent = btn.label; b.onclick = () => { ac(); btn.fn(); t.remove(); }; t.appendChild(b); }
   const box = $("toasts"); box.appendChild(t); while (box.children.length > 3) box.firstChild.remove(); setTimeout(() => t.remove(), 5100);
 }
+
+
+/* =========================================================
+   공유 카드 (인스타 스토리 크기 1080×1920)
+   ========================================================= */
+async function shareCard(kind = "visit") {
+  const EN = window.LANG === "en";
+  renderer.render(scene, camera);
+  const W = 1080, H = 1920, c = document.createElement("canvas"); c.width = W; c.height = H; const x = c.getContext("2d");
+  const g = x.createLinearGradient(0, 0, 0, H); g.addColorStop(0, "#0d1422"); g.addColorStop(1, "#1d1a24"); x.fillStyle = g; x.fillRect(0, 0, W, H);
+  // 지금 화면을 가운데 크게
+  const sw = canvas.width, sh = canvas.height, boxW = W - 120, boxH = 1180, sc = Math.max(boxW / sw, boxH / sh);
+  const cw = boxW / sc, ch = boxH / sc;
+  x.save(); x.beginPath(); x.roundRect ? x.roundRect(60, 330, boxW, boxH, 36) : x.rect(60, 330, boxW, boxH); x.clip();
+  x.drawImage(canvas, (sw - cw) / 2, (sh - ch) / 2, cw, ch, 60, 330, boxW, boxH); x.restore();
+  x.strokeStyle = "rgba(245,197,66,.55)"; x.lineWidth = 3; x.beginPath(); x.roundRect ? x.roundRect(60, 330, boxW, boxH, 36) : x.rect(60, 330, boxW, boxH); x.stroke();
+  x.textAlign = "center"; x.fillStyle = "#f5c542"; x.font = `700 120px "Gowun Batang",serif`; x.fillText("달빛암", W / 2, 190);
+  x.fillStyle = "rgba(244,239,226,.75)"; x.font = `40px "Gowun Dodum",sans-serif`; x.fillText(EN ? "Dalbitam · a Korean mountain temple online" : "온라인 산사 · 잠시 쉬어 가는 절", W / 2, 262);
+  const lv = levelOf(me.pts), title = window.T ? window.T(TITLES[lv][0]) : TITLES[lv][0], nick = me.nick || (EN ? "Monk" : "스님");
+  const head = kind === "bow" ? (EN ? "I did 108 bows today 🙇" : "오늘 108배를 마쳤어요 🙇") : kind === "pray" ? (EN ? "I chanted a sutra at the temple 🙏" : "법당에서 기도 1독을 올렸어요 🙏") : (EN ? "I'm resting at a Korean temple 🌙" : "달빛암에서 쉬어 가는 중 🌙");
+  x.fillStyle = "#f4efe2"; x.font = `700 60px "Gowun Batang",serif`; x.fillText(head, W / 2, 1620);
+  x.fillStyle = "rgba(244,239,226,.8)"; x.font = `40px "Gowun Dodum",sans-serif`;
+  x.fillText(EN ? `${title} ${nick} · merit ${me.pts.toLocaleString()} · ${me.bow} bows` : `${title} ${nick} · 공덕 ${me.pts.toLocaleString()} · 오늘 ${me.bow}배`, W / 2, 1700);
+  x.fillStyle = "#f5c542"; x.font = `700 46px "Gowun Dodum",sans-serif`; x.fillText("dalbitam.vercel.app", W / 2, 1810);
+  const url = location.origin + (EN ? "/?lang=en" : "/");
+  const blob = await new Promise((r) => c.toBlob(r, "image/png")); if (!blob) return;
+  const file = new File([blob], "dalbitam.png", { type: "image/png" });
+  const text = EN ? "Come rest at Dalbitam, a Korean mountain temple you can visit online 🙏" : "목탁 한 번, 숨 한 번. 온라인 절 달빛암에서 같이 쉬어 가요 🙏";
+  try {
+    if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], text, url }); return; }
+  } catch (e) { if (e && e.name === "AbortError") return; }
+  // 공유를 못 하는 브라우저: 이미지를 보여 주고 길게 눌러 저장
+  const im = URL.createObjectURL(blob); const ov = $("shareView"); $("shareImg").src = im; $("shareDl").href = im; ov.hidden = false;
+}
+$("shareBtn").onclick = () => { $("soundPanel").hidden = true; shareCard("visit"); };
+$("shareClose").onclick = () => { $("shareView").hidden = true; };
+$("shareLink").onclick = async () => { const url = location.origin + (window.LANG === "en" ? "/?lang=en" : "/"); try { await navigator.clipboard.writeText(url); toast(window.LANG === "en" ? "Link copied" : "주소를 복사했어요"); } catch { toast(url); } };
 
 /* =========================================================
    입장

@@ -3,10 +3,20 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
-<title>달빛암</title>
-<meta name="description" content="목탁 치고, 절하고, 탑돌이하며 잠시 쉬어 가는 온라인 절">
-<meta property="og:title" content="달빛암">
-<meta property="og:description" content="지금 접속한 사람들과 함께 수행하는 온라인 절">
+<title>달빛암 Dalbitam</title>
+<meta name="description" content="목탁 치고, 절하고, 탑돌이하며 잠시 쉬어 가는 온라인 절 · Strike the moktak, bow, and rest at a Korean mountain temple online.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://dalbitam.vercel.app/">
+<meta property="og:title" content="달빛암 Dalbitam · Korean Online Temple">
+<meta property="og:description" content="Strike the moktak, do 108 bows, chant with people around the world. 지금 접속한 사람들과 함께 수행하는 온라인 절">
+<meta property="og:image" content="https://dalbitam.vercel.app/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="달빛암 Dalbitam · Korean Online Temple">
+<meta name="twitter:description" content="Strike the moktak, do 108 bows, and rest at a Korean mountain temple online.">
+<meta name="twitter:image" content="https://dalbitam.vercel.app/og.jpg">
+<script src="i18n.js"></script>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Gowun+Dodum&display=swap">
 <link rel="stylesheet" href="style.css">
 <link rel="manifest" href="manifest.json">
@@ -32,7 +42,9 @@
 <div id="gate" class="gate">
   <div class="gate-card">
     <p class="eyebrow">ONLINE TEMPLE</p>
+    <button id="langBtn" type="button" class="lang-btn" onclick="setLang(LANG==='en'?'ko':'en')">🌐 <span class="no-tr">English</span></button>
     <h1 id="siteTitle">달빛암</h1>
+    <p class="en-only romaji">Dalbitam · Moonlit Hermitage</p>
     <p class="lead">목탁 한 번, 숨 한 번.<br>잠시 마음을 내려놓고 쉬어 가세요.</p>
     <label for="nickInput">법명</label>
     <div class="row"><input id="nickInput" maxlength="8" placeholder="예: 고요" autocomplete="off"><button id="nickDice" type="button" class="ghost-btn dice" aria-label="법명 새로 짓기">🎲</button></div>
@@ -170,9 +182,12 @@
     </div>
     <div class="stats" id="stats"></div>
     <button id="recBtn" type="button" class="ghost-btn">🎬 촬영 모드 (화면 글자 숨기기)</button>
+    <button id="shareBtn" type="button" class="ghost-btn">📸 공유 카드 만들기</button>
+    <button id="shareLink" type="button" class="ghost-btn">🔗 주소 복사하기</button>
+    <button type="button" class="ghost-btn" onclick="setLang(LANG==='en'?'ko':'en')">🌐 <span class="no-tr lang-name">English</span></button>
     <button id="installBtn" type="button" class="ghost-btn">📲 앱처럼 홈 화면에 추가하기</button>
     <details class="credits"><summary>소리 출처</summary>
-      <ul>
+      <ul class="no-tr">
         <li>염불소리1 · 목탁2 — 김용배, 공유마당(한국저작권위원회), CC BY 4.0</li>
         <li>풍경_바람_흔들리기 — 한국저작권위원회, 공유마당, CC BY 4.0</li>
         <li>산_선운산 선운사_저녁예불, 새소리, 범종, 목어, 운판, 목탁 — JICA, 공유마당, 공공누리 제1유형</li>
@@ -227,6 +242,13 @@
 
 <script>window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };</script>
 <script defer src="/_vercel/insights/script.js"></script>
+<div id="shareView" class="share-view" hidden>
+  <div class="share-card"><img id="shareImg" alt="">
+    <p class="hint">이미지를 길게 눌러 저장한 뒤 스토리에 올려 보세요</p>
+    <div class="row"><a id="shareDl" class="primary" download="dalbitam.png">저장하기</a><button id="shareClose" type="button" class="ghost-btn">닫기</button></div>
+  </div>
+</div>
+<script>document.querySelectorAll(".lang-name,#langBtn .no-tr").forEach(function(e){e.textContent=LANG==="en"?"한국어":"English";});</script>
 <script type="module" src="main.js"></script>
 </body>
 </html>

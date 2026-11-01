@@ -195,3 +195,16 @@ body.rec .pray-box{display:none!important}
 .pray-box.compact .pray-lines{min-height:3.4em;gap:2px}.pray-box.compact .pl{font-size:.78rem}.pray-box.compact .pl.cur{font-size:1.02rem}
 
 .credits{font-size:.78rem;color:var(--mute)}.credits summary{cursor:pointer;padding:6px 0}.credits ul{margin:4px 0 6px;padding-left:18px;display:flex;flex-direction:column;gap:4px}
+/* English mode · share card */
+.gate-card{position:relative}
+.lang-btn{position:absolute;top:-6px;right:0;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);color:var(--ink,#ece6d8);border-radius:999px;padding:5px 11px;font:inherit;font-size:13px;cursor:pointer}
+.en-only{display:none}
+html[lang=en] .en-only{display:block}
+.romaji{margin:-6px 0 2px;color:#d9b44a;letter-spacing:.06em;font-size:14px}
+.pl.rom{font-size:12px;opacity:.7;letter-spacing:.02em;font-style:italic;margin-top:-2px}
+.share-view{position:fixed;inset:0;z-index:80;background:rgba(5,8,14,.86);display:flex;align-items:center;justify-content:center;padding:16px}
+.share-view[hidden]{display:none}
+.share-card{display:flex;flex-direction:column;gap:10px;align-items:center;max-width:360px;width:100%}
+.share-card img{width:100%;max-height:68vh;object-fit:contain;border-radius:14px}
+.share-card .row{display:flex;gap:8px;width:100%}
+.share-card .row>*{flex:1;text-align:center;text-decoration:none}
