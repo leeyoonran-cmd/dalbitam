@@ -719,7 +719,7 @@ const roomG = new THREE.Group(); roomG.position.copy(RO); scene.add(roomG);
   const cu = box(1.1, .14, 1.1, mat.cushion, 0, .17, .6, roomG);
 }
 const roomTang = new THREE.Mesh(new THREE.PlaneGeometry(4.4, 2.9), new THREE.MeshStandardMaterial({ roughness: .9 })); roomTang.position.set(0, 2.45, -3.38); roomG.add(roomTang);
-const tangFrame = box(4.7, 3.2, .06, mat.wood, 0, 2.45, -3.41, roomG);
+const tangFrame = box(4.7, 3.2, .06, mat.wood, 0, 2.45, -3.45, roomG); roomTang.position.z = -3.36;
 const roomStatue = new THREE.Group(); roomStatue.position.set(0, .96, -2.65); roomG.add(roomStatue);
 const roomCandles = [];
 [-1.45, 1.45].forEach((x) => { cyl(.08, .08, .5, mat.candle, x, 1.21, -2.4, 8, roomG); const f = new THREE.Mesh(new THREE.SphereGeometry(.07, 8, 6), mat.flame); f.scale.y = 1.8; f.position.set(x, 1.53, -2.4); roomG.add(f); roomCandles.push(f); });
@@ -794,7 +794,7 @@ function enterRoom(k) {
   if (!player) return; standUp(); stopAutoBow(); pendingSeat = null; autoPath = null;
   fade(() => {
     roomReturn = { x: ROOMS[k].x, z: ROOMS[k].z + 3.6 }; inRoom = k; pray = null; setupRoom(k);
-    hideWorld(true);
+    hideWorld(true); if (player.aura) player.aura.visible = false;
     camTarget.set(RO.x, 1.45, RO.z - 2.6); camera.position.set(RO.x, 2.5, RO.z + 3.15);
     player.pos.set(RO.x, 0, RO.z + .6); player.target.copy(player.pos); player.yaw = Math.PI; player.root.rotation.y = Math.PI; player.y = 0; player.sitting = true;
     camYaw = 0; ZONES.room.name = ROOMS[k].name; ZONES.room.intro = ROOMS[k].intro; zone = "room"; renderActions(); say(ROOMS[k].intro); gain(`visit:${k}`);
@@ -803,7 +803,7 @@ function enterRoom(k) {
 }
 function leaveRoom() {
   stopPray(); const back = roomReturn;
-  fade(() => { hideWorld(false); inRoom = null; $("prayBox").hidden = true; player.sitting = false; if (back) { player.pos.set(back.x, 0, back.z); player.target.copy(player.pos); player.yaw = 0; camTarget.set(back.x, 1.6, back.z); camera.position.set(back.x, 1.6 + Math.sin(camPitch) * camDist, back.z + Math.cos(camPitch) * camDist); } camYaw = 0; lastMoveTx = 0; sendPresence(); });
+  fade(() => { hideWorld(false); if (player.aura) player.aura.visible = true; inRoom = null; $("prayBox").hidden = true; player.sitting = false; if (back) { player.pos.set(back.x, 0, back.z); player.target.copy(player.pos); player.yaw = 0; camTarget.set(back.x, 1.6, back.z); camera.position.set(back.x, 1.6 + Math.sin(camPitch) * camDist, back.z + Math.cos(camPitch) * camDist); } camYaw = 0; lastMoveTx = 0; sendPresence(); });
 }
 /* 기도: 경문 → 정근 → 축원 순서로 한 글자씩 목탁 박자에 맞춰 */
 let pray = null; // { k, lines, li, ci, timer, rounds, done, total }
@@ -888,6 +888,39 @@ function updateDipper(dt, now, t) {
     m.scale.x = Math.max(.001, m.userData.len * k); m.material.opacity = k * (.75 + flash * .25); });
   // 하늘이 서서히 밤으로
   if (D.active || D.shown > .01) { dayCol.copy(scene.background); scene.background.lerp(nightCol, Math.min(1, dt * .6 * (D.active ? 1 : 0))); scene.fog.color.copy(scene.background); }
+}
+
+/* 대웅전 양옆 벽: 아래는 탱화, 가운데는 천불(작은 금빛 불상들), 위는 꽃살 창 */
+{
+  const WX = HB.x2 - .4, zs = [-33.5, -26, -18.5];
+  const nicheTex = canvasTex(256, 256, (x, w, h) => { x.fillStyle = "#4a1610"; x.fillRect(0, 0, w, h); const g = x.createRadialGradient(w / 2, h * .45, 10, w / 2, h * .45, w * .5); g.addColorStop(0, "rgba(255,200,120,.55)"); g.addColorStop(1, "rgba(255,200,120,0)"); x.fillStyle = g; x.fillRect(0, 0, w, h);
+    x.strokeStyle = "#d9b44a"; x.lineWidth = 10; x.strokeRect(5, 5, w - 10, h - 10); x.lineWidth = 3; x.beginPath(); x.moveTo(30, h - 22); x.quadraticCurveTo(w / 2, 10, w - 30, h - 22); x.stroke(); });
+  const winMat = new THREE.MeshStandardMaterial({ map: DOOR_TEX, emissive: "#ffe6b8", emissiveMap: DOOR_TEX, emissiveIntensity: .45, roughness: .8 });
+  const sitParts = dongjaGeo("sit");
+  [-1, 1].forEach((sd) => {
+    const ry = -sd * Math.PI / 2, X = sd * WX;
+    // 탱화 세 폭 (금테 액자)
+    ["gwaneum", "chilseong", "jijang"].forEach((k, i) => { const z = zs[i];
+      box(.12, 3.6, 5.4, mat.wood, X + sd * .05, 3.1, z);
+      const tx = tangTex(sd > 0 ? ["sanshin", "jijang", "gwaneum"][i] : k);
+      const tm = new THREE.Mesh(new THREE.PlaneGeometry(5, 3.25), new THREE.MeshStandardMaterial({ map: tx, emissiveMap: tx, emissive: "#ffffff", emissiveIntensity: .35, roughness: .85 })); tm.position.set(X - sd * .02, 3.1, z); tm.rotation.y = ry; scene.add(tm); });
+    // 천불: 금빛 작은 불상이 감실마다 (한 번에 그리는 묶음으로 가볍게)
+    const cols = 16, rows = 4, z0 = -36.8, z1 = -15.4, y0 = 5.6, dz = (z1 - z0) / (cols - 1), dy = .95;
+    const back = new THREE.Mesh(new THREE.PlaneGeometry(z1 - z0 + 1.2, rows * dy + .5), new THREE.MeshStandardMaterial({ map: nicheTex, roughness: .9 }));
+    back.material.map = nicheTex.clone(); back.material.map.needsUpdate = true; back.material.map.repeat.set(cols, rows);
+    back.material.emissiveMap = back.material.map; back.material.emissive = new THREE.Color("#ffffff"); back.material.emissiveIntensity = .25;
+    back.position.set(X - sd * .02, y0 + (rows - 1) * dy / 2, (z0 + z1) / 2); back.rotation.y = ry; scene.add(back);
+    const o = new THREE.Object3D();
+    sitParts.forEach(([geo, m]) => { const im = new THREE.InstancedMesh(geo, m, cols * rows); let n = 0;
+      for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) { o.position.set(X - sd * .28, y0 - .32 + r * dy, z0 + c * dz); o.rotation.set(0, ry, 0); o.scale.setScalar(.36); o.updateMatrix(); im.setMatrixAt(n++, o.matrix); }
+      scene.add(im); });
+    box(.3, .14, z1 - z0 + 1.4, mat.wood, X - sd * .1, y0 - .45, (z0 + z1) / 2); box(.3, .14, z1 - z0 + 1.4, mat.wood, X - sd * .1, y0 + rows * dy - .25, (z0 + z1) / 2);
+    // 꽃살 창 (위쪽에서 은은한 빛)
+    for (let i = 0; i < 6; i++) { const w = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 1.6), winMat); w.position.set(X - sd * .02, 10.6, -35.6 + i * 3.9); w.rotation.y = ry; scene.add(w); }
+    // 벽 앞 큰 연꽃 등 두 개
+    [-30, -22].forEach((z) => { const c = "#f4b6c6", l = new THREE.Mesh(new THREE.SphereGeometry(.55, 14, 10), new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: .7 })); l.scale.y = .8; l.position.set(X - sd * 1.6, 4.9, z); scene.add(l);
+      const st = new THREE.Mesh(new THREE.CylinderGeometry(.04, .04, 4.4, 6), mat.wood); st.position.set(X - sd * 1.6, 2.6, z); scene.add(st); });
+  });
 }
 
 /* 계조암: 법당 뒤로 솟은 화강암 바위 무리와 그 위의 흔들바위 */
@@ -1612,7 +1645,7 @@ function renderActions() {
 const placeNames = { hall: "대웅전", pagoda: "석탑", shrine: "산신각", chilseong: "칠성각", gwaneum: "관음전", jijang: "지장전", kitchen: "공양간", walk: "산책길", mountain: "달빛봉", shop: "기념품" };
 for (const [z, n] of Object.entries(placeNames)) {
   const b = document.createElement("button"); b.type = "button"; b.dataset.z = z; b.textContent = n;
-  b.onclick = () => { if (inRoom) { stopPray(); hideWorld(false); inRoom = null; $("prayBox").hidden = true; player.sitting = false; } standUp(); pendingSeat = null; const [x, zz] = GOTO[z]; player.pos.set(x, 0, zz); player.target.set(x, 0, zz); autoPath = null; camYaw = z === "walk" ? Math.PI : z === "mountain" ? Math.PI / 2 : 0; lastMoveTx = 0; sendPresence(); if (z === "hall") enterHallView(); };
+  b.onclick = () => { if (inRoom) { stopPray(); hideWorld(false); if (player.aura) player.aura.visible = true; inRoom = null; $("prayBox").hidden = true; player.sitting = false; } standUp(); pendingSeat = null; const [x, zz] = GOTO[z]; player.pos.set(x, 0, zz); player.target.set(x, 0, zz); autoPath = null; camYaw = z === "walk" ? Math.PI : z === "mountain" ? Math.PI / 2 : 0; lastMoveTx = 0; sendPresence(); if (z === "hall") enterHallView(); };
   $("places").appendChild(b);
 }
 
