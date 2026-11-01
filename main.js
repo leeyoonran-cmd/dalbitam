@@ -2504,6 +2504,8 @@ function doYaho() {
   setTimeout(() => player && bubble(player, "야호~…"), 1300); setTimeout(() => player && bubble(player, "…야호…"), 2400);
 }
 function doView() {
+  // 칠성기도 중이거나 마친 뒤에는 카메라가 별자리에 고정돼 있어서, 먼저 풀어 줘요
+  if (pray && pray.timer) stopPray(); dipper.active = false; $("prayBox").hidden = true; applyTimeOfDay(); renderActions();
   camYaw = Math.atan2(MOUNT.x, MOUNT.z); camPitch = .5; camDist = 15; camera.userData.lerp = true;
   say("저 아래 대웅전과 석탑, 연등이 보여요. 두 손가락으로 다시 가까이 볼 수 있어요.");
 }
