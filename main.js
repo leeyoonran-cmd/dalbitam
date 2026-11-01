@@ -51,7 +51,7 @@ const say = (t) => { $("saying").textContent = t || sayings[Math.floor(Math.rand
    소리 (모두 브라우저에서 직접 합성 — 음원 파일 없음)
    ========================================================= */
 let ctx, master, noiseBuf, softBuf;
-const vol = { wind: 0, water: 0, bird: .3, chime: .25, fx: .8 }; // 바람 · 계곡물은 기본으로 꺼 둬요 (휴대폰 스피커에서 잡음처럼 들려서)
+const vol = { wind: 0, water: 0, bird: 0, chime: .25, fx: .8 }; // 바람 · 계곡물은 기본으로 꺼 둬요 (휴대폰 스피커에서 잡음처럼 들려서)
 function ac() {
   if (!ctx) {
     ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -76,7 +76,7 @@ function tone(freq, dur, v, type = "sine", delay = 0) {
    sounds/chant.mp3   염불 (반복 재생)
    sounds/moktak.mp3  목탁 한 번 치는 소리
    sounds/bell.mp3    범종 한 번
-   sounds/nature.mp3  산사 자연 소리 (반복 재생)
+   sounds/stream.mp3 계곡 물소리 · sounds/wave.mp3 파도 소리 (반복 재생)
    sounds 폴더 없이 맨 바깥에 올려도 찾아요.
    파일이 없으면 브라우저가 만든 소리로 대신해요. */
 const rec = {}, recTried = {};
@@ -97,7 +97,7 @@ function playRec(name, v = 1, loop = false) {
   const c = ac(), s = c.createBufferSource(), g = c.createGain(); s.buffer = buf; s.loop = loop; g.gain.value = v;
   s.connect(g).connect(master); s.start(); return { s, g };
 }
-function preloadRecs() { ["moktak", "bell", "pung"].forEach(loadRec); ["chant", "nature", "yebul"].forEach(findSound); }
+function preloadRecs() { ["moktak", "bell", "pung"].forEach(loadRec); ["chant", "stream", "wave", "yebul"].forEach(findSound); }
 // 녹음 파일의 한 부분만 잠깐 (풍경처럼 긴 녹음에서 한 번 흔들리는 소리만)
 function playRecSlice(name, off, dur, v = 1) {
   const buf = rec[name]; if (!buf) return false;
@@ -144,7 +144,7 @@ function unlockAudio() {
 }
 document.addEventListener("touchend", unlockAudio, { once: true, passive: true });
 document.addEventListener("click", unlockAudio, { once: true });
-findSound("chant"); findSound("nature");
+findSound("chant");
 
 const sfx = {
   mok() {
@@ -193,13 +193,12 @@ function noiseLoop(kind) {
   }
   loops[kind].gain.setTargetAtTime(vol[kind] * (kind === "wind" ? .35 : .22), c.currentTime, .6);
 }
-[["vWind", "wind"], ["vWater", "water"], ["vBird", "bird"], ["vChime", "chime"], ["vFx", "fx"]].forEach(([id, k]) => {
-  $(id).addEventListener("input", (e) => { vol[k] = e.target.value / 100; if (ctx && (k === "wind" || k === "water")) { noiseLoop(k); if (natureRec) natureRec.volume = clamp(.6 * Math.max(vol.wind, vol.water), 0, 1); } });
+[["vWind", "wind"], ["vWater", "water"], ["vChime", "chime"], ["vFx", "fx"]].forEach(([id, k]) => {
+  $(id).addEventListener("input", (e) => { vol[k] = e.target.value / 100; if (ctx && (k === "wind" || k === "water")) { noiseLoop(k); if (natureRec) natureRec.volume = clamp(.3 + .7 * vol.water, 0, 1); } });
 });
 setInterval(() => {
   if (!ctx || !player) return;
   const nearWalk = zoneOf(player.pos.x, player.pos.z) === "walk";
-  if (vol.bird && Math.random() < .3 * vol.bird + (nearWalk ? .25 : .05)) { sfx.bird(); setTimeout(sfx.bird, 170); }
   if (vol.chime && Math.random() < .2 * vol.chime + .05) { if (rec.pung) sfx.pung(true); else sfx.chime(); const p = pungs[Math.random() * pungs.length | 0]; if (p && !p.userData.amp) { p.userData.amp = .22; p.userData.t0 = performance.now(); } }
 }, 1500);
 
@@ -307,6 +306,7 @@ const cyl = (rt, rb, h, m, x, y, z, seg = 12, parent = scene) => { const o = new
 const ground = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), mat.ground); ground.rotation.x = -Math.PI / 2; scene.add(ground);
 for (let i = 0; i < 14; i++) {
   const a = (i / 14) * Math.PI * 2, r = rand(55, 70);
+  if (Math.sin(a) < -.25) continue; // 북쪽은 바다가 탁 트이게 비워 둬요
   const m = new THREE.Mesh(new THREE.ConeGeometry(rand(14, 24), rand(14, 26), 6), M(i % 2 ? "#1d2633" : "#222d3a"));
   m.position.set(Math.cos(a) * r, 5, Math.sin(a) * r); scene.add(m);
 }
@@ -1097,6 +1097,149 @@ for (let z = 12; z < 44; z += 2.4) for (const side of [-1, 1]) {
 }
 const stream = new THREE.Mesh(new THREE.PlaneGeometry(3, 40), mat.water); stream.rotation.x = -Math.PI / 2; stream.position.set(11, .05, 26); scene.add(stream);
 for (let i = 0; i < 18; i++) { const r = new THREE.Mesh(new THREE.DodecahedronGeometry(rand(.3, .7)), mat.stone); r.position.set(11 + rand(-2.2, 2.2), .1, rand(7, 45)); scene.add(r); }
+/* =========================================================
+   달빛 바닷가 (휴휴암처럼): 대웅전 뒤로 돌아 나가면 하얀 연등길, 모래사장, 큰 바위와 물고기 떼
+   ========================================================= */
+const SEA = { rockX: 4, rockZ: -65, altarX: 4, altarZ: -56.4, fishX: 4, fishZ: -64.6 };
+const shoreZ = (x) => -61.2 + Math.sin(x * .13) * 1.4 + Math.sin(x * .05 + 1) * 1.1; // 물가 선
+const LPATH = [[18.6, -12], [18.6, -40], [18.6, -44], [16, -47.5], [10, -50.5], [4, -53], [SEA.altarX, -55.4]]; // 연등길 가운데 선
+const onSeaPath = (x, z) => { for (let i = 0; i < LPATH.length - 1; i++) { const [ax, az] = LPATH[i], [bx, bz] = LPATH[i + 1], vx = bx - ax, vz = bz - az, L = vx * vx + vz * vz, k = clamp(((x - ax) * vx + (z - az) * vz) / L, 0, 1); if (Math.hypot(ax + vx * k - x, az + vz * k - z) < 1.9) return true; } return false; };
+const seaG = new THREE.Group(); scene.add(seaG);
+{
+  // 모래사장 · 바다
+  const sandTex = canvasTex(512, 512, (x, w, h) => noise(x, w, h, "#d8ccb0", .12, 16000, 2), 14, 6);
+  const sand = new THREE.Mesh(new THREE.PlaneGeometry(92, 30), M("#ffffff", { map: sandTex, roughness: 1 })); sand.rotation.x = -Math.PI / 2; sand.position.set(4, .035, -56); seaG.add(sand);
+  const sea = new THREE.Mesh(new THREE.PlaneGeometry(420, 200, 1, 1), new THREE.MeshStandardMaterial({ color: "#3d7f8c", roughness: .15, metalness: .15, transparent: true, opacity: .78 }));
+  sea.rotation.x = -Math.PI / 2; sea.position.set(4, .09, -162); seaG.add(sea); SEA.sea = sea;
+  // 물가 (바다 가장자리를 모래 위로 곡선으로 덮어요)
+  const edge = (w0, w1, y, color, op) => { const N = 120, pos = [], idx = []; for (let i = 0; i <= N; i++) { const x = -44 + i * 96 / N, z = shoreZ(x); pos.push(x, y, z + w0, x, y, z - w1); if (i < N) { const a = i * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); } }
+    const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
+    const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color, transparent: true, opacity: op, roughness: .2, side: THREE.DoubleSide, depthWrite: false })); seaG.add(m); return m; };
+  edge(0, 62, .085, "#4a8f98", .82); // 얕은 물
+  SEA.foam = [edge(.35, .25, .1, "#f4f7f6", .8), edge(.25, .2, .1, "#f4f7f6", .5)];
+  SEA.wet = edge(1.6, 0, .04, "#b9ab8e", .6);
+  // 화강암 바위들 (물가 · 물속)
+  const rockM = M("#a39d92", { roughness: .95 }), rockD = M("#8a857c", { roughness: .95 });
+  const boulder = (x, z, s, sy = .7, rot = 0, m = rockM, solid = true) => { const r = new THREE.Mesh(new THREE.DodecahedronGeometry(1, 1), m); const p = r.geometry.attributes.position; for (let i = 0; i < p.count; i++) { const k = 1 + (Math.sin(p.getX(i) * 3.1 + x) * .12 + Math.cos(p.getZ(i) * 2.7 + z) * .1); p.setXYZ(i, p.getX(i) * k, p.getY(i) * k, p.getZ(i) * k); } r.geometry.computeVertexNormals();
+    r.scale.set(s, s * sy, s * rand(.8, 1.2)); r.rotation.y = rot || rand(0, 6); r.position.set(x, s * sy * .45, z); seaG.add(r); if (solid && z > shoreZ(x) - 2) block(x - s * .8, x + s * .8, z - s * .8, z + s * .8); return r; };
+  [[-34, -58, 2.6], [-31, -61, 3.2], [-27.5, -63, 2.2], [-37, -62, 3.6], [-24, -66, 1.6], [30, -60, 2.4], [33.5, -62.5, 3.4], [37, -59.5, 2.8], [40, -63, 3.8], [26, -66, 1.8],
+   [-14, -70, 1.4], [16, -72, 1.6], [22, -69, 1.1], [-8, -76, 2.2], [-20, -73, 1.3], [12, -80, 2.6]].forEach(([x, z, s], i) => boulder(x, z, s, rand(.55, .8), 0, i % 3 ? rockM : rockD));
+  // 가운데 큰 바위 (연화바위) — 넓적한 윗면에서 바다를 보며 기도해요
+  const big = boulder(SEA.rockX, SEA.rockZ, 3.2, .36, .4, rockM, false);
+  boulder(SEA.rockX + 3.4, SEA.rockZ - 1.6, 1.4, .6); boulder(SEA.rockX - 3.2, SEA.rockZ - 1.2, 1.1, .7);
+  SEA.big = big;
+  { const s = textSprite("연화바위", { size: 34, color: "#f3e6c4", bg: "rgba(40,30,20,.6)", pad: 12 }); s.material.depthTest = true; s.position.set(SEA.rockX, 2.7, SEA.rockZ); s.scale.multiplyScalar(.9); seaG.add(s); }
+  // 바위 앞 제단: 돌상 위에 촛대 · 향로 · 과일 · 물그릇
+  const altar = new THREE.Group(); altar.position.set(SEA.altarX, 0, SEA.altarZ); seaG.add(altar);
+  box(2.6, .7, 1.1, mat.stone, 0, .35, 0, altar); box(2.9, .12, 1.3, mat.stone, 0, .76, 0, altar);
+  SEA.candles = [-1.05, 1.05].map((x) => { cyl(.05, .07, .32, mat.candle, x, .98, -.2, 8, altar); const f = new THREE.Mesh(new THREE.SphereGeometry(.06, 8, 6), mat.flame); f.scale.y = 1.6; f.position.set(x, 1.2, -.2); f.visible = false; altar.add(f); return f; });
+  cyl(.2, .16, .16, M("#5a5a4a", { metalness: .6, roughness: .4 }), 0, .9, -.15, 12, altar);
+  [["#d9472f", -.55], ["#e8b23a", -.3], ["#7a3a6a", .35], ["#d9472f", .6]].forEach(([c, x]) => { const f = new THREE.Mesh(new THREE.SphereGeometry(.11, 10, 8), M(c, { roughness: .5 })); f.position.set(x, .93, .2); altar.add(f); });
+  cyl(.13, .1, .1, M("#f2efe6", { roughness: .3 }), 0, .87, .25, 12, altar);
+  block(SEA.altarX - 1.5, SEA.altarX + 1.5, SEA.altarZ - .7, SEA.altarZ + .7);
+  // 해수관음 (하얀 관음상이 바다를 내려다봐요)
+  const gw = new THREE.Group(); gw.position.set(-13, 0, -54.5); gw.rotation.y = .5; seaG.add(gw); camSolidGroups.push(gw);
+  const W = M("#f1eee6", { roughness: .55 });
+  { const pb = boulder(0, 0, 2.4, .55, 0, rockD, false); gw.add(pb); pb.position.set(0, .6, 0); }
+  cyl(1.0, 1.15, .7, W, 0, 1.7, 0, 16, gw);
+  for (let i = 0; i < 12; i++) { const p = new THREE.Mesh(new THREE.SphereGeometry(.42, 10, 8), W); const a = i / 12 * Math.PI * 2; p.scale.set(1, .5, .6); p.position.set(Math.cos(a) * .95, 2.1, Math.sin(a) * .95); p.rotation.y = -a; gw.add(p); }
+  const robe = new THREE.Mesh(new THREE.LatheGeometry([[.0, 0], [.62, 0], [.6, .8], [.5, 2.4], [.46, 3.4], [.52, 3.9], [.3, 4.25], [.18, 4.35], [0, 4.35]].map(([x, y]) => new THREE.Vector2(x, y)), 20), W); robe.position.y = 2.2; gw.add(robe);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(.36, 16, 12), W); head.scale.set(1, 1.15, 1); head.position.y = 6.95; gw.add(head);
+  const crown = new THREE.Mesh(new THREE.ConeGeometry(.28, .7, 12), W); crown.position.y = 7.55; gw.add(crown);
+  const veil = new THREE.Mesh(new THREE.CylinderGeometry(.34, .62, 1.5, 16, 1, true), W); veil.position.y = 6.5; gw.add(veil);
+  const vase = new THREE.Mesh(new THREE.LatheGeometry([[0, 0], [.1, 0], [.14, .14], [.06, .3], [.08, .38], [0, .38]].map(([x, y]) => new THREE.Vector2(x, y)), 12), W); vase.position.set(.45, 5.0, .38); gw.add(vase);
+  const arm = new THREE.Mesh(new THREE.CapsuleGeometry(.12, .9, 4, 8), W); arm.position.set(.42, 5.35, .22); arm.rotation.x = -.5; gw.add(arm);
+  const halo = new THREE.Mesh(new THREE.TorusGeometry(.62, .04, 8, 32), M("#e8c766", { metalness: .5, roughness: .35, emissive: "#6b5420", emissiveIntensity: .4 })); halo.position.set(0, 7.0, -.25); gw.add(halo);
+  block(-15, -11, -56.5, -52.5);
+  { const s = textSprite("해수관음", { size: 34, color: "#f3e6c4", bg: "rgba(40,30,20,.6)", pad: 12 }); s.material.depthTest = true; s.position.set(-13, 8.6, -54.5); seaG.add(s); }
+  // 먼 바다 섬과 등대
+  const isl = new THREE.Mesh(new THREE.SphereGeometry(9, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2), M("#2c4a36")); isl.scale.set(1.4, .55, 1); isl.position.set(34, 0, -112); seaG.add(isl);
+  const lh = cyl(.5, .7, 3.4, M("#f2f0ea"), 26, 6.2, -106, 10, seaG); cyl(.55, .55, .5, M("#c23a2c"), 26, 8.1, -106, 10, seaG);
+  // 연등길: 난간 + 하얀 연등 + 이름표
+  const posts = [], lamps = [], tags = [];
+  for (let i = 0; i < LPATH.length - 1; i++) {
+    const [ax, az] = LPATH[i], [bx, bz] = LPATH[i + 1], L = Math.hypot(bx - ax, bz - az), nx = -(bz - az) / L, nz = (bx - ax) / L, n = Math.max(1, Math.round(L / .62));
+    for (const side of [-1, 1]) for (let j = 0; j < n; j++) { const k = j / n, x = ax + (bx - ax) * k + nx * side * 1.55, z = az + (bz - az) * k + nz * side * 1.55; lamps.push([x, z, Math.atan2(bx - ax, bz - az)]); if (j % 4 === 0) posts.push([x, z]); }
+  }
+  // 바닷가를 따라 동서로 한 줄 더
+  for (let x = -26; x <= 30; x += .62) { if (Math.abs(x - SEA.altarX) < 2.4) continue; lamps.push([x, shoreZ(x) + 5.2, Math.PI / 2]); if (Math.round(x / .62) % 4 === 0) posts.push([x, shoreZ(x) + 5.2]); }
+  const postM = M("#5c6168", { roughness: .6, metalness: .3 });
+  const postI = new THREE.InstancedMesh(new THREE.CylinderGeometry(.03, .03, 1.25, 6), postM, posts.length), o = new THREE.Object3D();
+  posts.forEach(([x, z], i) => { o.position.set(x, .62, z); o.rotation.set(0, 0, 0); o.scale.set(1, 1, 1); o.updateMatrix(); postI.setMatrixAt(i, o.matrix); }); seaG.add(postI);
+  const lampGeo = new THREE.SphereGeometry(.2, 12, 10); lampGeo.scale(1, .9, 1);
+  const lampM = new THREE.MeshStandardMaterial({ color: "#fbfaf5", emissive: "#fff3d8", emissiveIntensity: .25, roughness: .7 }); SEA.lampM = lampM;
+  const lampI = new THREE.InstancedMesh(lampGeo, lampM, lamps.length), tagI = new THREE.InstancedMesh(new THREE.PlaneGeometry(.11, .3), M("#f6f3ea", { side: THREE.DoubleSide }), lamps.length);
+  lamps.forEach(([x, z, r], i) => { o.position.set(x, 1.0, z); o.rotation.set(0, r, 0); o.updateMatrix(); lampI.setMatrixAt(i, o.matrix); o.position.set(x, .62, z); o.updateMatrix(); tagI.setMatrixAt(i, o.matrix); });
+  seaG.add(lampI, tagI);
+  // 난간 줄 (연등 위로 이어지는 줄)
+  const ropeM = new THREE.LineBasicMaterial({ color: "#3a3d42" });
+  for (const side of [-1, 1]) { const pts = []; for (let i = 0; i < LPATH.length; i++) { const [ax, az] = LPATH[Math.min(i, LPATH.length - 2)], [bx, bz] = LPATH[Math.min(i, LPATH.length - 2) + 1], L = Math.hypot(bx - ax, bz - az), nx = -(bz - az) / L, nz = (bx - ax) / L; const [px, pz] = LPATH[i]; pts.push(new THREE.Vector3(px + nx * side * 1.55, 1.22, pz + nz * side * 1.55)); } seaG.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), ropeM)); }
+  // 연등길 바닥 (돌 깔린 길)
+  for (let i = 0; i < LPATH.length - 1; i++) { const [ax, az] = LPATH[i], [bx, bz] = LPATH[i + 1], L = Math.hypot(bx - ax, bz - az); const p = new THREE.Mesh(new THREE.PlaneGeometry(2.6, L + .4), M("#8d877c", { roughness: 1 })); p.rotation.order = "YXZ"; p.rotation.set(-Math.PI / 2, Math.atan2(bx - ax, bz - az), 0); p.position.set((ax + bx) / 2, .045, (az + bz) / 2); seaG.add(p); }
+  // 길 입구 표지
+  { const s = textSprite("연등길 · 바닷가 가는 길", { size: 34, color: "#f3e6c4", bg: "#3b2a1a", pad: 14 }); s.material.depthTest = true; s.position.set(18.6, 2.3, -12.6); s.scale.multiplyScalar(.6); seaG.add(s); }
+  // 해송 몇 그루
+  [[-20, -46], [-26, -48.5], [27, -47], [33, -49], [-6, -45], [12, -44.5]].forEach(([x, z]) => { const t = new THREE.Group(); t.position.set(x, 0, z); seaG.add(t); camHide.push(t); const tr = cyl(.2, .3, 3.2, mat.trunk, 0, 1.6, 0, 6, t); tr.rotation.z = .12;
+    [[0, 3.4, 0, 1.6], [.6, 3.0, .3, 1.2], [-.5, 3.8, -.2, 1.1]].forEach(([a, b, c, r]) => { const cl = new THREE.Mesh(new THREE.SphereGeometry(r, 8, 6), mat.leaf2); cl.scale.y = .45; cl.position.set(a, b, c); t.add(cl); }); block(x - .4, x + .4, z - .4, z + .4); });
+}
+// 물고기 떼 (황어): 바위 주변을 빙글빙글 돌다가 먹이를 주면 우르르 몰려와요
+const FISH_N = 150;
+const seaFishGeo = (() => { const b = new THREE.SphereGeometry(.16, 10, 6); b.scale(.55, .45, 1.4); const t = new THREE.ConeGeometry(.12, .2, 4); t.rotateX(-Math.PI / 2); t.scale(.25, 1, 1); t.translate(0, 0, -.28); const g = mergeGeometries([b.toNonIndexed(), t.toNonIndexed()]); return g; })();
+const seaFishM = new THREE.MeshStandardMaterial({ color: "#d8ae5c", roughness: .35, metalness: .3, emissive: "#5a4016", emissiveIntensity: .45 });
+const fishI = new THREE.InstancedMesh(seaFishGeo, seaFishM, FISH_N + 40); fishI.count = FISH_N; fishI.frustumCulled = false; seaG.add(fishI);
+const fishes = []; for (let i = 0; i < FISH_N + 40; i++) fishes.push({ a: rand(0, Math.PI * 2), r: rand(4, 9.5), sp: rand(.18, .4) * (Math.random() < .85 ? 1 : -1), y: rand(.0, .06), ph: rand(0, 6), x: 0, z: 0, s: rand(1, 1.6) });
+fishes.forEach((f) => { f.x = SEA.fishX + Math.cos(f.a) * f.r; f.z = SEA.fishZ + Math.sin(f.a) * f.r * .7; });
+const feed = { until: 0, x: 0, z: 0, pellets: [] };
+const pelletM = new THREE.MeshBasicMaterial({ color: "#e8d6a0" });
+const splashes = [];
+function updateSea(dt, t) {
+  if (!seaG.visible) return;
+  SEA.foam[0].material.opacity = .45 + Math.sin(t * .9) * .35; SEA.foam[0].position.z = Math.sin(t * .9) * .5;
+  SEA.foam[1].material.opacity = .35 + Math.sin(t * .9 + 2) * .3; SEA.foam[1].position.z = Math.sin(t * .9 + 2) * .7 - .6;
+  const o = new THREE.Object3D(), feeding = Date.now() < feed.until;
+  for (let i = 0; i < fishI.count; i++) {
+    const f = fishes[i]; let tx, tz;
+    if (feeding) { tx = feed.x + Math.cos(f.ph + t * 3) * (.4 + (i % 7) * .18); tz = feed.z + Math.sin(f.ph + t * 3) * (.4 + (i % 5) * .2); }
+    else { f.a += f.sp * dt * (1 + Math.sin(t * .5 + f.ph) * .3); tx = SEA.fishX + Math.cos(f.a) * f.r; tz = SEA.fishZ + Math.sin(f.a) * f.r * .7; }
+    const dx = tx - f.x, dz = tz - f.z, d = Math.hypot(dx, dz) || 1, v = Math.min(d, (feeding ? 3.2 : 1.4) * dt * (1 + f.s * .3));
+    f.x += dx / d * v; f.z += dz / d * v; const lim = shoreZ(f.x) - 1.2; if (f.z > lim) f.z = lim;
+    o.position.set(f.x, .03 + f.y + (feeding ? Math.max(0, Math.sin(t * 9 + f.ph)) * .06 : 0), f.z); o.rotation.set(0, Math.atan2(dx, dz) + Math.sin(t * 10 + f.ph) * .18, 0); o.scale.setScalar(f.s); o.updateMatrix(); fishI.setMatrixAt(i, o.matrix);
+  }
+  fishI.instanceMatrix.needsUpdate = true;
+  for (let i = feed.pellets.length - 1; i >= 0; i--) { const p = feed.pellets[i]; p.k += dt / .9; const k = Math.min(1, p.k); p.m.position.set(p.x0 + (p.x1 - p.x0) * k, p.y0 + (p.y1 - p.y0) * k + Math.sin(k * Math.PI) * 2.2, p.z0 + (p.z1 - p.z0) * k); if (p.k >= 1) { seaG.remove(p.m); feed.pellets.splice(i, 1); splash(p.x1, p.z1); } }
+  for (let i = splashes.length - 1; i >= 0; i--) { const s = splashes[i]; s.k += dt / 1.4; s.m.scale.setScalar(.3 + s.k * 2.2); s.m.material.opacity = .8 * (1 - s.k); if (s.k >= 1) { seaG.remove(s.m); s.m.geometry.dispose(); s.m.material.dispose(); splashes.splice(i, 1); } }
+  if (feeding && Math.random() < dt * 6) splash(feed.x + rand(-1.4, 1.4), feed.z + rand(-1, 1));
+  SEA.sea.material.color.setHSL(.53, .38, .38 + Math.sin(t * .4) * .015);
+}
+function splash(x, z) { const m = new THREE.Mesh(new THREE.RingGeometry(.15, .24, 20), new THREE.MeshBasicMaterial({ color: "#ffffff", transparent: true, opacity: .8, depthWrite: false })); m.rotation.x = -Math.PI / 2; m.position.set(x, .12, z); seaG.add(m); splashes.push({ m, k: 0 }); }
+function doFeed() {
+  if (!player) return;
+  const tx = SEA.fishX + rand(-2.5, 2.5), tz = Math.min(shoreZ(SEA.fishX) - 3, SEA.fishZ + rand(1, 3));
+  feed.x = tx; feed.z = tz; feed.until = Date.now() + 9000;
+  for (let i = 0; i < 14; i++) { const m = new THREE.Mesh(new THREE.SphereGeometry(.05, 5, 4), pelletM); seaG.add(m); feed.pellets.push({ m, k: -i * .04, x0: player.pos.x, y0: 1.2, z0: player.pos.z, x1: tx + rand(-1.2, 1.2), y1: .1, z1: tz + rand(-.8, .8) }); }
+  playAnim(player, "bow"); sfx.soft(); act("feed"); me.fed = (me.fed || 0) + 1; save();
+  say(me.fed === 1 ? "먹이를 던지자 황어 떼가 우르르 몰려와요! 휴휴암 바다의 물고기들처럼요." : `물고기들이 반갑게 몰려와요. 지금까지 ${me.fed}번 먹이를 줬어요.`);
+}
+function doRelease() {
+  if (!player) return;
+  if (fishI.count >= fishes.length) { say("바다에 물고기가 가득해요. 모두 자유롭게 헤엄쳐요."); return; }
+  const f = fishes[fishI.count]; f.x = player.pos.x; f.z = Math.min(player.pos.z - 1, shoreZ(player.pos.x) - 1.3); f.s = 1.5; fishI.count++;
+  splash(f.x, f.z); sfx.bell(); act("release"); me.released = (me.released || 0) + 1; save();
+  bubble(player, "🐟 잘 가렴"); say("물고기 한 마리를 바다로 돌려보냈어요. 생명을 살리는 방생의 공덕이 쌓여요.");
+}
+let seaPrayUntil = 0;
+function doSeaPray() {
+  seaPrayUntil = Date.now() + 120000; SEA.candles.forEach((f) => (f.visible = true));
+  playAnim(player, "bow"); sfx.bell(); act("seapray");
+  say("연화바위 앞 제단에 초와 향을 올렸어요. 파도 소리에 걱정을 실어 보내요.");
+  setTimeout(() => bubble(player, "관세음보살"), 1800);
+}
+function doWave() {
+  if (!soundUrl.wave) { findSound("wave").then((u) => { if (u) doWave(); else say("잠시 눈을 감고 파도 소리를 떠올려 보세요. 들숨에 밀려오고, 날숨에 쓸려 가요."); }); return; }
+  const el = loopEls.wave; if (el && !el.paused) { el.pause(); renderActions(); return; }
+  loopAudio("wave", .7 * Math.max(.3, vol.water || .5)); say("파도 소리를 들으며 숨을 맞춰 보세요. 들숨에 밀려오고, 날숨에 쓸려 가요."); renderActions();
+}
+
 // 마당 둘레 나무와 석등
 [[-12, 6], [12, 6], [-10, -12], [10, -12], [-13, 1], [13, 1]].forEach(([x, z]) => {
   const t = new THREE.Group(); t.position.set(x, 0, z); scene.add(t); camHide.push(t); cyl(.22, .3, 2.4, mat.trunk, 0, 1.2, 0, 6, t);
@@ -1199,11 +1342,11 @@ function textSprite(text, { size = 40, color = "#ece6d8", bg = "rgba(16,21,29,.7
 const TITLES = [["동자", 0], ["행자", 100], ["수행자", 300], ["스님", 800], ["큰스님", 2000], ["도인", 5000]];
 const levelOf = (p) => { let l = 0; TITLES.forEach(([, need], i) => { if (p >= need) l = i; }); return l; };
 const labelText = (nick, lv) => `${TITLES[clamp(lv | 0, 0, TITLES.length - 1)][0]} ${nick || "스님"}`;
-const PTS = { pung: 1, rice: 5, giwa: 5, emo: 0, mok: 1, bow: 3, incense: 3, bell: 2, tap: 10, pray: 5, candle: 3, meal: 3, tea: 2, greet: 2, wish: 5, bead: 1, chat: 1, visit: 0, climb: 10, yaho: 1 };
+const PTS = { pung: 1, rice: 5, giwa: 5, emo: 0, mok: 1, bow: 3, incense: 3, bell: 2, tap: 10, pray: 5, candle: 3, meal: 3, tea: 2, greet: 2, wish: 5, bead: 1, chat: 1, visit: 0, climb: 10, yaho: 1, feed: 3, release: 5, seapray: 5 };
 const MISSION_POOL = [
   ["mok", 30, "목탁 30번 치기"], ["bow", 30, "절 30번 올리기"], ["tap", 1, "탑돌이 한 바퀴"], ["greet", 3, "합장 인사 3번"],
   ["incense", 1, "향 피우기"], ["tea", 1, "공양간에서 차 마시기"], ["wish", 1, "소원 연등 달기"], ["visit:walk", 1, "산책길 걷기"],
-  ["chat", 1, "누군가에게 말 걸기"], ["bead", 108, "염주 한 바퀴 돌리기"], ["pray", 1, "법당이나 달빛봉에서 기도 1독"], ["bell", 3, "범종 3번 치기"], ["visit:peak", 1, "달빛봉 정상 오르기"], ["rice", 1, "부처님께 공양미 올리기"], ["giwa", 1, "기와에 소원 적기"]
+  ["chat", 1, "누군가에게 말 걸기"], ["bead", 108, "염주 한 바퀴 돌리기"], ["pray", 1, "법당이나 달빛봉에서 기도 1독"], ["bell", 3, "범종 3번 치기"], ["visit:peak", 1, "달빛봉 정상 오르기"], ["rice", 1, "부처님께 공양미 올리기"], ["giwa", 1, "기와에 소원 적기"], ["feed", 1, "바닷가 물고기에게 먹이 주기"], ["visit:sea", 1, "연등길 따라 바닷가 가기"]
 ];
 function todayMissions() {
   let h = 0; for (const ch of today) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
@@ -1524,12 +1667,15 @@ function animateMonk(m, dt, now) {
 let player;
 const SPAWN = new THREE.Vector3(0, 0, 9);
 function blocked(x, z) {
-  if (Math.abs(x) > 44 || z < -40 || z > 46) return true;
+  if (Math.abs(x) > 44 || z > 46) return true;
+  if (z < -40 && !(Math.abs(x - 4) < 40 && z > shoreZ(x) + .6) && !onSeaPath(x, z)) return true;
   for (const b of blockers) if (x > b.x1 - .3 && x < b.x2 + .3 && z > b.z1 - .3 && z < b.z2 + .3) return true;
   return false;
 }
 function floorY(x, z) { return (x > HB.x1 - .5 && x < HB.x2 + .5 && z > HB.z1 - .5 && z < HB.z2 + .5) ? .55 : mh(x, z); }
 function zoneOf(x, z) {
+  if (z < -41.5) return Math.hypot(x - SEA.altarX, z - SEA.altarZ) < 5.5 ? "searock" : "sea";
+  if (x > 16.2 && x < 21.5 && z < -12) return "seapath";
   if (z < -13.5 && Math.abs(x) < 15.5) return "hall";
   const rk = roomAt(x, z); if (rk) return rk === "sanshin" ? "shrine" : rk;
   if (Math.abs(x + 21) < 5 && z < -1 && z > -11) return "kitchen";
@@ -1554,9 +1700,12 @@ const ZONES = {
   walk: { name: "산책길", intro: "물소리 들리는 숲길이에요. 서쪽으로 가면 달빛봉이 있어요." },
   mountain: { name: "산길", intro: "디딤돌을 따라 한 걸음씩 올라가 보세요." },
   peak: { name: "정상", intro: "정상이에요! 달빛암이 한눈에 내려다보여요." },
-  shop: { name: "기념품 가게", intro: "수행하며 모은 복전으로 기념품을 골라 보세요." }
+  shop: { name: "기념품 가게", intro: "수행하며 모은 복전으로 기념품을 골라 보세요." },
+  seapath: { name: "연등길", intro: "하얀 연등이 줄지어 걸린 길이에요. 따라 내려가면 바다가 나와요." },
+  sea: { name: "달빛 바닷가", intro: "파도 소리가 들려요. 바위 앞 제단에서 기도하고, 물고기에게 먹이도 줘 보세요." },
+  searock: { name: "연화바위", intro: "바다를 마주한 큰 바위 앞이에요. 초를 켜고 절을 올리거나, 물고기 떼에게 먹이를 줘 보세요." }
 };
-const GOTO = { shop: [9.5, 6.2], hall: [0, -16.8], pagoda: [0, 3.2], shrine: [21, -2.4], chilseong: [34, -3.2], gwaneum: [-34, -3.2], jijang: [34, -17.2], kitchen: [-21, -1.2], walk: [0, 16], yard: [0, 8], mountain: [TRAIL[0].x + 1.2, TRAIL[0].z] };
+const GOTO = { shop: [9.5, 6.2], hall: [0, -16.8], pagoda: [0, 3.2], shrine: [21, -2.4], chilseong: [34, -3.2], gwaneum: [-34, -3.2], jijang: [34, -17.2], kitchen: [-21, -1.2], walk: [0, 16], yard: [0, 8], sea: [SEA.altarX, -53.6], mountain: [TRAIL[0].x + 1.2, TRAIL[0].z] };
 
 /* =========================================================
    카메라 조작
@@ -1640,6 +1789,8 @@ function actionsFor(z) {
   if (z === "room") return [A(pray && pray.timer ? "⏸️" : "🙏", pray && pray.timer ? "멈추기" : "기도하기", togglePray, true), A("🙇", "절", doBow), A("🪵", "목탁", doMok), A("🚪", "나가기", leaveRoom)];
   if (z === "kitchen") return [A("🍚", "공양 고르기", () => { renderMenu(); openPanel("menuPanel"); }, true), A("🍵", "차 마시기", doTea, true), greetA, beadA];
   if (z === "shop") return [A("🛍️", "가게 둘러보기", openShop, true), greetA, beadA];
+  if (z === "searock" || z === "sea") { const wv = loopEls.wave && !loopEls.wave.paused; return [...(z === "searock" ? [A("🕯️", "바다 기도", doSeaPray, true), A("🙇", "절", doBow)] : []), A("🍙", "물고기 밥 주기", doFeed, true), A("🐟", "방생하기", doRelease), A(wv ? "⏹️" : "🌊", wv ? "파도 소리 끄기" : "파도 소리", doWave), greetA, wishA]; }
+  if (z === "seapath") return [A("🏮", "소원 연등", () => openPanel("wishPanel"), true), greetA, beadA];
   if (z === "walk") return [A("🌊", "계곡 소리", doNature, true), A("⛰️", "달빛봉 오르기", doClimb, true), greetA, beadA];
   if (z === "mountain") return [A(autoPath?.climb ? "⏸️" : "⛰️", autoPath?.climb ? "멈추기" : "정상까지 오르기", doClimb, true), A("🌬️", "바람 소리", doNature), greetA, beadA];
   if (z === "peak") return [A(pray && pray.timer ? "⏸️" : "✨", pray && pray.timer ? "기도 멈추기" : "칠성기도", () => { pray = pray && pray.k === "chilseong" ? pray : null; togglePray(); }, true), A("🌄", "경치 보기", doView), A("⬇️", "내려가기", doDescend), greetA, wishA];
@@ -1652,10 +1803,10 @@ function renderActions() {
   $("placeTag").textContent = ZONES[zone].name;
   document.querySelectorAll("#places button").forEach((b) => b.classList.toggle("here", b.dataset.z === zone));
 }
-const placeNames = { hall: "대웅전", pagoda: "석탑", shrine: "산신각", chilseong: "칠성각", gwaneum: "관음전", jijang: "지장전", kitchen: "공양간", walk: "산책길", mountain: "달빛봉", shop: "기념품" };
+const placeNames = { hall: "대웅전", pagoda: "석탑", shrine: "산신각", chilseong: "칠성각", gwaneum: "관음전", jijang: "지장전", kitchen: "공양간", walk: "산책길", sea: "바닷가", mountain: "달빛봉", shop: "기념품" };
 for (const [z, n] of Object.entries(placeNames)) {
   const b = document.createElement("button"); b.type = "button"; b.dataset.z = z; b.textContent = n;
-  b.onclick = () => { if (inRoom) { stopPray(); hideWorld(false); if (player.aura) player.aura.visible = true; inRoom = null; $("prayBox").hidden = true; player.sitting = false; } standUp(); pendingSeat = null; const [x, zz] = GOTO[z]; player.pos.set(x, 0, zz); player.target.set(x, 0, zz); autoPath = null; camYaw = z === "walk" ? Math.PI : z === "mountain" ? Math.PI / 2 : 0; lastMoveTx = 0; sendPresence(); if (z === "hall") enterHallView(); };
+  b.onclick = () => { if (inRoom) { stopPray(); hideWorld(false); if (player.aura) player.aura.visible = true; inRoom = null; $("prayBox").hidden = true; player.sitting = false; } standUp(); pendingSeat = null; const [x, zz] = GOTO[z]; player.pos.set(x, 0, zz); player.target.set(x, 0, zz); autoPath = null; camYaw = z === "walk" ? Math.PI : z === "mountain" ? Math.PI / 2 : 0; if (z === "sea") { camDist = 10; camPitch = .48; } camTarget.set(x, 1.6, zz); lastMoveTx = 0; sendPresence(); if (z === "hall") enterHallView(); };
   $("places").appendChild(b);
 }
 
@@ -1878,7 +2029,7 @@ function startEat(i) {
   };
 }
 function doTea() { tea.visible = true; teaUntil = Date.now() + 60000; act("tea"); say("따뜻한 차 한 모금에 숨을 골라 보세요."); bubble(player, "후―"); }
-function doNature() { vol.water = .4; vol.bird = .6; vol.wind = .2; $("vWater").value = 40; $("vBird").value = 60; $("vWind").value = 20; noiseLoop("water"); noiseLoop("wind"); say("물소리와 새소리를 들으며 천천히 걸어 보세요."); }
+function doNature() { const go = () => { natureRec = loopAudio("stream", .7); say("계곡 물소리를 들으며 천천히 걸어 보세요."); }; if (soundUrl.stream) go(); else findSound("stream").then((u) => { if (u) go(); }); }
 function greet(toKey) {
   playAnim(player, "greet"); tone(660, .8, .07 * vol.fx); act("greet", { to: toKey || null });
   const o = toKey && others.get(toKey); bubble(player, o ? `${o.nick}님께 합장` : "🙏 합장");
@@ -2389,8 +2540,6 @@ function enter() {
   me.nick = nick; save();
   $("gate").hidden = true; unlockAudio(); ac(); preloadRecs(); noiseLoop("wind"); noiseLoop("water");
   // 입장 버튼을 누른 순간에 소리 파일을 깨워 둬야 아이폰에서도 나중에 재생돼요
-  if (soundUrl.nature) natureRec = loopAudio("nature", .6 * Math.max(vol.wind, vol.water, .3));
-  else findSound("nature").then((u) => { if (u) natureRec = loopAudio("nature", .6 * Math.max(vol.wind, vol.water, .3)); });
   if (soundUrl.chant && !loopEls.chant) { const el = new Audio(soundUrl.chant); el.loop = true; el.setAttribute("playsinline", ""); el.muted = true; loopEls.chant = el; el.play().then(() => { el.pause(); el.muted = false; }).catch(() => { el.muted = false; }); }
   { const lp = lookParts(me.look); if (levelOf(me.pts) < ACC_LEVEL[lp.a]) { lp.a = 0; me.look = lookStr(lp); save(); } }
   player = makeMonk(nick, true); applyLook(player, me.look); setLabel(player, labelText(nick, levelOf(me.pts)), true); applyAura(player, levelOf(me.pts)); updateHud(); player.pos.set(SPAWN.x + rand(-3, 3), 0, SPAWN.z + rand(-1, 1.5)); player.target.copy(player.pos); player.yaw = Math.PI;
@@ -2439,7 +2588,7 @@ function tick() {
     if (moved && now - lastMoveSent > 250) { lastMoveSent = now; sendPresence(); }
     animateMonk(player, dt, now);
     const z = inRoom ? "room" : zoneOf(player.pos.x, player.pos.z);
-    if (z !== zone) { const prev = zone; if (prev === "peak" && z !== "peak") { if (pray && pray.timer) stopPray(); pray = null; dipper.active = false; dipper.full = false; $("prayBox").hidden = true; applyTimeOfDay(); } zone = z; renderActions(); say(ZONES[zone].intro); gain(`visit:${z}`); if (z === "peak") reachPeak(); if (z === "hall") enterHallView(prev); }
+    if (z !== zone) { const prev = zone; if (prev === "peak" && z !== "peak") { if (pray && pray.timer) stopPray(); pray = null; dipper.active = false; dipper.full = false; $("prayBox").hidden = true; applyTimeOfDay(); } zone = z; if (z !== "sea" && z !== "searock" && loopEls.wave && !loopEls.wave.paused) loopEls.wave.pause(); renderActions(); say(ZONES[zone].intro); gain(`visit:${z === "searock" ? "sea" : z}`); if (z === "peak") reachPeak(); if (z === "hall") enterHallView(prev); }
     // 대웅전 안에서는 동자승 뒤쪽 위에서 부처님을 함께 바라보는 구도로 바꿔요
     if (inRoom) { // 개인 법당: 동자승 뒤에서 탱화와 불단을 바라봐요
       const yaw = clamp(camYaw, -.5, .5), cp = clamp(camPitch, .1, .6);
@@ -2501,6 +2650,7 @@ function tick() {
     if (fa && now - fa < 4000) { const p = (now - fa) / 4000; const s = 1 + Math.sin(p * Math.PI * 6) * .25 * (1 - p); l.scale.set(s, 1.2 * s, s); if (l.userData.halo) l.userData.halo.scale.setScalar(1.6 + (1 - p) * 2.4); }
     else if (l.userData.halo) l.userData.halo.material.opacity = (kindOf(w) === "gold" ? .7 : .45) + Math.sin(t * 2 + i) * .08;
   });
+  updateSea(dt, t);
   stream.material.color.setHSL(.55, .4, .27 + Math.sin(t * 2) * .02);
   renderer.render(scene, camera);
   requestAnimationFrame(tick);
@@ -2519,6 +2669,7 @@ function applyTimeOfDay() {
   moon.color.set(P.sun); moon.intensity = P.sunI;
   moonBall.visible = P.moon; if (starField) { starField.visible = P.stars > 0; starField.material.opacity = P.stars; }
   document.body.dataset.time = phase;
+  if (SEA.lampM) SEA.lampM.emissiveIntensity = phase === "night" ? 1.1 : phase === "dusk" ? .7 : .25;
 }
 applyTimeOfDay(); setInterval(applyTimeOfDay, 60000);
 
