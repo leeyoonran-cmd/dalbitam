@@ -41,8 +41,11 @@
 <!-- 입장 화면 -->
 <div id="gate" class="gate">
   <div class="gate-card">
+    <div class="lang-pick no-tr" role="group" aria-label="Language">
+      <button type="button" data-l="ko" onclick="LANG==='ko'||setLang('ko')">한국어</button>
+      <button type="button" data-l="en" onclick="LANG==='en'||setLang('en')">English</button>
+    </div>
     <p class="eyebrow">ONLINE TEMPLE</p>
-    <button id="langBtn" type="button" class="lang-btn" onclick="setLang(LANG==='en'?'ko':'en')">🌐 <span class="no-tr">English</span></button>
     <h1 id="siteTitle">달빛암</h1>
     <p class="en-only romaji">Dalbitam · Moonlit Hermitage</p>
     <p class="lead">목탁 한 번, 숨 한 번.<br>잠시 마음을 내려놓고 쉬어 가세요.</p>
@@ -260,7 +263,7 @@
     <div class="row"><a id="shareDl" class="primary" download="dalbitam.png">저장하기</a><button id="shareClose" type="button" class="ghost-btn">닫기</button></div>
   </div>
 </div>
-<script>document.querySelectorAll(".lang-name,#langBtn .no-tr").forEach(function(e){e.textContent=LANG==="en"?"한국어":"English";});</script>
+<script>document.querySelectorAll(".lang-name").forEach(function(e){e.textContent=LANG==="en"?"한국어":"English";});document.querySelectorAll(".lang-pick button").forEach(function(b){b.classList.toggle("on",b.dataset.l===LANG);});</script>
 <script type="module" src="main.js"></script>
 </body>
 </html>
