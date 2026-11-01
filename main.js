@@ -1691,8 +1691,8 @@ function gain(kind, n = 1) {
   const pv = (PTS[kind.split(":")[0]] ?? 0) * n; me.pts += pv; me.coin += pv;
   MISSIONS.forEach(([k, goal, title]) => {
     if (k === key && !me.daily.done.includes(k) && me.daily.c[k] >= goal) {
-      me.daily.done.push(k); me.pts += 30; me.coin += 30; toast(`✅ 오늘의 수행 완료: ${title} (+30 공덕 · 🪙30)`); sfx.soft();
-      if (me.daily.done.length === MISSIONS.length) setTimeout(() => { toast("🌕 오늘의 수행을 모두 마쳤어요! (+50 공덕 · 🪙50)"); me.pts += 50; me.coin += 50; save(); updateHud(); }, 1200);
+      me.daily.done.push(k); me.pts += 30; me.coin += 30; toast(`✅ 오늘의 수행 완료: ${title} (🪙30)`); sfx.soft();
+      if (me.daily.done.length === MISSIONS.length) setTimeout(() => { toast("🌕 오늘의 수행을 모두 마쳤어요! (🪙50)"); me.pts += 50; me.coin += 50; save(); updateHud(); }, 1200);
     }
   });
   checkLevel();
@@ -1722,7 +1722,7 @@ let xpSaveT = 0;
 setInterval(() => { if (!player || document.visibilityState !== "visible") return; me.time = (me.time || 0) + 1; if (++xpSaveT % 15 === 0) save(); updateHud(); if (xpSaveT % 5 === 0) checkLevel(); }, 1000);
 function renderMissionPanel() {
   const xp = XP(), lv = levelOf(xp), si = subOf(xp), next = SUBRANKS[si + 1];
-  $("missionLevel").textContent = next ? `${SUBRANKS[si][0]} · 공덕 ${xp.toLocaleString()} · ${next[0]}까지 ${(next[1] - xp).toLocaleString()}` : `${SUBRANKS[si][0]} · 공덕 ${xp.toLocaleString()} · 최고 등급`;
+  $("missionLevel").textContent = next ? `지금 ${SUBRANKS[si][0]} · 다음 ${next[0]}` : `지금 ${SUBRANKS[si][0]} · 최고 등급`;
   const ul = $("missionList"); ul.innerHTML = "";
   MISSIONS.forEach(([k, goal, title]) => {
     const li = document.createElement("li"); const done = me.daily.done.includes(k); const c = Math.min(goal, me.daily.c[k] || 0);
@@ -2268,7 +2268,7 @@ function doRice() {
   sfx.soft(); addRiceBag(true); act("rice");
   bubble(player, "공양미 한 되 🙏");
   say(me.rice === 1 ? "부처님 앞에 공양미를 올렸어요. 나눔의 마음이 쌓여요." : `공양미를 올렸어요. 지금까지 ${me.rice}되를 시주했어요.`);
-  toast(`🍚 공양미 한 되를 올렸어요 (복전 -${RICE_COST} · 공덕 +${PTS.rice})`);
+  toast(`🍚 공양미 한 되를 올렸어요 (복전 -${RICE_COST})`);
 }
 function doIncense() { incenseUntil = Date.now() + 90000; act("incense"); say("향 연기가 천천히 피어올라요."); }
 function doBell() { const bx = -9, bz = 7; if (player.pos.distanceTo(new THREE.Vector3(bx, 0, bz)) > 5) { player.target.set(bx + 2.4, 0, bz); } sfx.bell(); act("bell"); say(); bubble(player, "데엥…"); }
@@ -2297,7 +2297,7 @@ let lastClimbGain = 0;
 function reachPeak() {
   if (Date.now() - lastClimbGain < 60000) return; lastClimbGain = Date.now();
   me.climb = (me.climb || 0) + 1; save(); sfx.bell(); playAnim(player, "greet"); showFront();
-  bubble(player, `정상 도착! ${me.climb}번째`); toast(`⛰️ 달빛봉 정상에 올랐어요! (+10 공덕 · 🪙10)`); act("climb");
+  bubble(player, `정상 도착! ${me.climb}번째`); toast(`⛰️ 달빛봉 정상에 올랐어요! (🪙10)`); act("climb");
 }
 function doYaho() {
   showFront(); bubble(player, "야호~!"); act("yaho");
@@ -2409,7 +2409,7 @@ function startEat(i) {
   say("공양은 먹을 만큼만, 감사한 마음으로 남김없이.");
   player.onEatDone = () => {
     eating = null; bubble(player, "잘 먹었습니다 🙏"); bowl.userData.food.scale.setScalar(.01); if (bowl.userData.top) bowl.userData.top.visible = false;
-    if (!me.ate.includes(i)) { me.ate.push(i); me.pts += 10; save(); updateHud(); toast(`📖 공양 도감에 ${MENU[i][0]} 추가! (${me.ate.length}/${MENU.length}, +10 공덕)`); if (me.ate.length === MENU.length) toast("🎉 공양 도감을 모두 채웠어요!"); }
+    if (!me.ate.includes(i)) { me.ate.push(i); me.pts += 10; save(); updateHud(); toast(`📖 공양 도감에 ${MENU[i][0]} 추가! (${me.ate.length}/${MENU.length})`); if (me.ate.length === MENU.length) toast("🎉 공양 도감을 모두 채웠어요!"); }
   };
 }
 function doTea() { tea.visible = true; teaUntil = Date.now() + 60000; act("tea"); say("따뜻한 차 한 모금에 숨을 골라 보세요."); bubble(player, "후―"); }
@@ -2902,7 +2902,7 @@ async function shareCard(kind = "visit") {
   const head = kind === "bow" ? (EN ? "I did 108 bows today 🙇" : "오늘 108배를 마쳤어요 🙇") : kind === "pray" ? (EN ? "I chanted a sutra at the temple 🙏" : "법당에서 기도 1독을 올렸어요 🙏") : kind === "zazen" ? (EN ? "I meditated in Seokguram Grotto 🧘" : "석굴암에서 좌선했어요 🧘") : (EN ? "I'm resting at a Korean temple 🌙" : "달빛암에서 쉬어 가는 중 🌙");
   x.fillStyle = "#f4efe2"; x.font = `700 60px "Gowun Batang",serif`; x.fillText(head, W / 2, 1620);
   x.fillStyle = "rgba(244,239,226,.8)"; x.font = `40px "Gowun Dodum",sans-serif`;
-  x.fillText(EN ? `${title} ${nick} · merit ${me.pts.toLocaleString()} · ${me.bow} bows` : `${title} ${nick} · 공덕 ${me.pts.toLocaleString()} · 오늘 ${me.bow}배`, W / 2, 1700);
+  x.fillText(EN ? `${title} ${nick} · ${me.bow} bows today` : `${title} ${nick} · 오늘 ${me.bow}배`, W / 2, 1700);
   x.fillStyle = "#f5c542"; x.font = `700 46px "Gowun Dodum",sans-serif`; x.fillText("dalbitam.vercel.app", W / 2, 1810);
   const url = location.origin + (EN ? "/?lang=en" : "/");
   const blob = await new Promise((r) => c.toBlob(r, "image/png")); if (!blob) return;
