@@ -600,6 +600,90 @@ function buildBuddha(G) {
 }
 buildBuddha(statue);
 block(-5, 5, BUDDHA_Z - 2.2, BUDDHA_Z + 1.9);
+/* =========================================================
+   대웅전 본존불 장엄: 수미단 · 거신광배(불꽃 · 화불) · 닫집 · 연꽃 공양
+   ========================================================= */
+{
+  // 1) 수미단: 붉은 바탕에 금빛 연꽃 · 학 · 물고기를 새긴 칸, 위아래 연꽃 띠
+  const panelTex = canvasTex(1024, 256, (x, w, h) => {
+    x.fillStyle = "#5a1a12"; x.fillRect(0, 0, w, h);
+    const n = 6, pw = w / n;
+    for (let i = 0; i < n; i++) { const px = i * pw;
+      x.fillStyle = "#2f6b58"; x.fillRect(px + 6, 6, pw - 12, h - 12); x.fillStyle = "#7a2418"; x.fillRect(px + 16, 16, pw - 32, h - 32);
+      x.strokeStyle = "#e3b964"; x.lineWidth = 5; x.strokeRect(px + 16, 16, pw - 32, h - 32); x.lineWidth = 2; x.strokeRect(px + 26, 26, pw - 52, h - 52);
+      const cx = px + pw / 2, cy = h / 2; x.fillStyle = "#e7bd62"; x.strokeStyle = "#8a5a1e"; x.lineWidth = 2;
+      if (i % 3 === 0) { for (let k = 0; k < 8; k++) { x.save(); x.translate(cx, cy + 10); x.rotate(-Math.PI / 2 + (k - 3.5) * .32); x.beginPath(); x.ellipse(0, -42, 14, 38, 0, 0, 7); x.fill(); x.stroke(); x.restore(); } x.beginPath(); x.arc(cx, cy + 14, 16, 0, 7); x.fill(); x.stroke(); // 연꽃
+        x.beginPath(); x.ellipse(cx - 60, cy + 50, 34, 12, -.2, 0, 7); x.fill(); x.beginPath(); x.ellipse(cx + 60, cy + 50, 34, 12, .2, 0, 7); x.fill(); }
+      else if (i % 3 === 1) { x.beginPath(); x.ellipse(cx, cy, 52, 20, -.15, 0, 7); x.fill(); x.stroke(); x.beginPath(); x.moveTo(cx - 40, cy - 4); x.quadraticCurveTo(cx - 80, cy - 60, cx - 10, cy - 40); x.fill(); x.stroke(); x.beginPath(); x.moveTo(cx + 40, cy); x.lineTo(cx + 72, cy - 26); x.lineTo(cx + 66, cy + 6); x.fill(); x.stroke(); // 학
+        x.beginPath(); x.moveTo(cx - 50, cy + 2); x.quadraticCurveTo(cx - 70, cy - 20, cx - 78, cy - 50); x.lineWidth = 6; x.strokeStyle = "#e7bd62"; x.stroke(); x.lineWidth = 2; x.strokeStyle = "#8a5a1e"; }
+      else { x.beginPath(); x.moveTo(cx - 60, cy); x.quadraticCurveTo(cx, cy - 46, cx + 46, cy); x.quadraticCurveTo(cx, cy + 46, cx - 60, cy); x.fill(); x.stroke(); x.beginPath(); x.moveTo(cx + 40, cy); x.lineTo(cx + 74, cy - 26); x.lineTo(cx + 74, cy + 26); x.closePath(); x.fill(); x.stroke(); x.fillStyle = "#5a1a12"; x.beginPath(); x.arc(cx - 34, cy - 6, 5, 0, 7); x.fill(); } // 물고기
+    }
+  });
+  const sideTex = panelTex.clone(); sideTex.needsUpdate = true; sideTex.repeat.set(.34, 1);
+  const goldTrim = new THREE.MeshStandardMaterial({ color: "#d4a54a", metalness: .8, roughness: .35, envMap: goldEnv, envMapIntensity: 1 });
+  const front = new THREE.MeshStandardMaterial({ map: panelTex, roughness: .6, metalness: .15, emissive: "#ffffff", emissiveMap: panelTex, emissiveIntensity: .12 });
+  const sideM = new THREE.MeshStandardMaterial({ map: sideTex, roughness: .6, metalness: .15 });
+  altar.material = [sideM, sideM, goldTrim, goldTrim, front, sideM]; altar.scale.set(1, .92, 1); altar.position.y = .46;
+  // 위아래 몰딩과 앙련 · 복련 띠
+  box(5.6, .14, 2.15, goldTrim, 0, .07, 0, buddhaRoot); box(5.4, .08, 2.0, M("#7a2418"), 0, .18, 0, buddhaRoot);
+  box(5.7, .1, 2.2, goldTrim, 0, .94, 0, buddhaRoot);
+  const petal = new THREE.SphereGeometry(1, 10, 6); const pm = new THREE.InstancedMesh(petal, goldTrim, 64); const o = new THREE.Object3D(); let pi = 0;
+  for (const [y, tilt] of [[.98, -.5], [.12, .5]]) for (let i = 0; i < 16; i++) { const xx = -2.62 + i * .35; o.position.set(xx, y, 1.08); o.rotation.set(tilt, 0, 0); o.scale.set(.15, .07, .05); o.updateMatrix(); pm.setMatrixAt(pi++, o.matrix); o.position.set(xx, y, -1.08); o.updateMatrix(); pm.setMatrixAt(pi++, o.matrix); }
+  pm.count = pi; buddhaRoot.add(pm);
+  [-2.75, 2.75].forEach((x) => [1.05, -1.05].forEach((z) => { const c = cyl(.06, .06, .95, goldTrim, x, .48, z, 10, buddhaRoot); }));
+
+  // 2) 거신광배: 몸 전체를 감싸는 배 모양 광배 — 바깥은 불꽃, 안쪽은 넝쿨 · 화불
+  const mand = canvasTex(768, 1024, (x, w, h) => {
+    const cx = w / 2;
+    const shape = (s) => { x.beginPath(); x.moveTo(cx, h * .02 + (1 - s) * h * .1); x.bezierCurveTo(cx + w * .62 * s, h * .18, cx + w * .5 * s, h * .78, cx + w * .3 * s, h * .99); x.lineTo(cx - w * .3 * s, h * .99); x.bezierCurveTo(cx - w * .5 * s, h * .78, cx - w * .62 * s, h * .18, cx, h * .02 + (1 - s) * h * .1); x.closePath(); };
+    const g = x.createRadialGradient(cx, h * .5, 40, cx, h * .5, h * .6); g.addColorStop(0, "#e9c26a"); g.addColorStop(1, "#a8762a");
+    shape(1); x.fillStyle = g; x.fill();
+    // 불꽃 무늬 (바깥 띠)
+    x.save(); shape(1); x.clip();
+    for (let i = 0; i < 70; i++) { const t = i / 70, a = t * Math.PI * 2; const px = cx + Math.sin(a) * w * .42, py = h * .5 - Math.cos(a) * h * .48; x.save(); x.translate(px, py); x.rotate(a); x.fillStyle = i % 2 ? "#f3d68c" : "#c48a34"; x.beginPath(); x.moveTo(-14, 30); x.quadraticCurveTo(-18, -10, 0, -44); x.quadraticCurveTo(10, -10, 16, 30); x.fill(); x.restore(); }
+    x.restore();
+    shape(.82); x.fillStyle = "#b8842f"; x.fill(); x.lineWidth = 8; x.strokeStyle = "#f0cf7a"; x.stroke();
+    // 넝쿨 투각 (구멍)
+    x.save(); shape(.8); x.clip(); x.globalCompositeOperation = "destination-out";
+    for (let i = 0; i < 26; i++) { const yy = h * .12 + i * h * .033; for (const sd of [-1, 1]) { x.beginPath(); x.ellipse(cx + sd * (w * .18 + Math.sin(i * .9) * w * .08), yy, 16, 7, sd * .6, 0, 7); x.fill(); } }
+    x.globalCompositeOperation = "source-over"; x.restore();
+    // 화불: 광배 둘레의 작은 부처님들
+    for (let i = 0; i < 9; i++) { const t = (i + .5) / 9, a = -Math.PI * .8 + t * Math.PI * 1.6; const px = cx + Math.sin(a) * w * .33, py = h * .48 - Math.cos(a) * h * .4;
+      x.fillStyle = "#f6dc8f"; x.beginPath(); x.arc(px, py, 26, 0, 7); x.fill(); x.fillStyle = "#c08a35"; x.beginPath(); x.arc(px, py - 6, 7, 0, 7); x.fill(); x.beginPath(); x.ellipse(px, py + 9, 13, 9, 0, 0, 7); x.fill(); }
+    // 가운데는 비워 둬요 (부처님 몸 뒤)
+    x.globalCompositeOperation = "destination-out"; x.beginPath(); x.ellipse(cx, h * .55, w * .2, h * .3, 0, 0, 7); x.fill(); x.globalCompositeOperation = "source-over";
+  });
+  mand.wrapS = mand.wrapT = THREE.ClampToEdgeWrapping;
+  const mandM = new THREE.MeshStandardMaterial({ map: mand, transparent: true, alphaTest: .35, side: THREE.DoubleSide, metalness: .85, roughness: .38, envMap: goldEnv, envMapIntensity: 1.1, emissive: "#ffcf80", emissiveMap: mand, emissiveIntensity: .12 });
+  const mandorla = new THREE.Mesh(new THREE.PlaneGeometry(4.3, 5.7), mandM); mandorla.position.set(0, 3.95, -.95); buddhaRoot.add(mandorla);
+  // 3) 연꽃 공양: 불단 양쪽 금빛 연꽃 화병
+  [-2.25, 2.25].forEach((x) => { const v = new THREE.Mesh(new THREE.LatheGeometry([[0, 0], [.16, 0], [.2, .1], [.12, .32], [.1, .4], [.16, .5], [0, .5]].map(([a, b]) => new THREE.Vector2(a, b)), 16), goldTrim); v.position.set(x, 1.0, .75); buddhaRoot.add(v);
+    for (let k = 0; k < 5; k++) { const st = cyl(.008, .008, .6, M("#4f7a36"), x + (k - 2) * .05, 1.75, .75, 4, buddhaRoot); st.rotation.z = (k - 2) * .15;
+      const fl = new THREE.Mesh(new THREE.SphereGeometry(.09, 10, 8), new THREE.MeshStandardMaterial({ color: "#f2b8c6", emissive: "#f28aa4", emissiveIntensity: .25 })); fl.scale.y = 1.3; fl.position.set(x + (k - 2) * .1, 2.08, .75); buddhaRoot.add(fl); } });
+}
+// 4) 닫집: 부처님 위 천장에 매단 작은 궁궐 지붕, 용 두 마리와 구름, 늘어진 유소
+{
+  const g = new THREE.Group(); g.position.set(0, 0, BUDDHA_Z + .6); scene.add(g);
+  const top = HALL.h + .5, W = 4.6, D = 2.2;
+  const gold = new THREE.MeshStandardMaterial({ color: "#d9ab4f", metalness: .85, roughness: .32, envMap: goldEnv, envMapIntensity: 1.1 });
+  box(2 * W + .6, .35, 2 * D + .6, mat.green, 0, top - .2, 0, g); // 천장에 닿는 판
+  box(2 * W + .2, .3, .25, mat.green, 0, top - 1.95, D, g); box(2 * W + .2, .3, .25, mat.green, 0, top - 1.95, -D, g);
+  [-W, W].forEach((x) => box(.25, .3, 2 * D, mat.green, x, top - 1.95, 0, g));
+  for (let i = 0; i < 18; i++) box(.22, .26, .3, gold, -W + (i + .5) * (2 * W / 18), top - 1.68, D + .02, g); // 공포
+  const roof = new THREE.Group(); roof.position.y = top - 1.55; g.add(roof);
+  koreanRoof(W + .7, D + .7, 1.0, roof, 0, { lift: .45 });
+  [-W - .2, W + .2].forEach((x) => [-D - .2, D + .2].forEach((z) => cyl(.09, .09, 1.4, mat.pillar, x, top - 1.3, z, 10, g)));
+  // 용 두 마리 (금빛 몸이 구름 사이를 휘감아요)
+  [-1, 1].forEach((sd) => { const pts = []; for (let k = 0; k <= 14; k++) { const t = k / 14; pts.push(new THREE.Vector3(sd * (W - 3.6 * t), top - 2.15 - Math.sin(t * Math.PI) * .5, D + .5 + Math.sin(t * Math.PI * 3) * .25)); }
+    const body = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 60, .1, 8), gold); g.add(body);
+    const hd = new THREE.Mesh(new THREE.SphereGeometry(.2, 14, 10), gold); hd.scale.set(1.3, .9, 1); hd.position.copy(pts[14]).add(new THREE.Vector3(sd * -.1, .05, .05)); g.add(hd);
+    const pearl = new THREE.Mesh(new THREE.SphereGeometry(.13, 14, 10), new THREE.MeshStandardMaterial({ color: "#fff2d0", emissive: "#ffcf80", emissiveIntensity: .6, roughness: .2 })); pearl.position.set(0, top - 2.35, D + .55); g.add(pearl); });
+  for (let k = 0; k < 10; k++) { const c = new THREE.Mesh(new THREE.SphereGeometry(.22, 10, 8), new THREE.MeshStandardMaterial({ color: "#eef3f7", roughness: .8 })); c.scale.set(1.6, .6, .8); c.position.set(-W + .4 + k * (2 * W - .8) / 9, top - 2.0 + (k % 2) * .12, D + .45); g.add(c); }
+  // 늘어진 유소 (색실 장식)
+  [[-W - .2, D + .2], [W + .2, D + .2], [-1.6, D + .3], [1.6, D + .3]].forEach(([x, z], i) => { const cord = cyl(.015, .015, 1.6, M("#c23a2c"), x, top - 2.9, z, 5, g);
+    const tas = new THREE.Mesh(new THREE.ConeGeometry(.12, .5, 10), M(["#c23a2c", "#2a4f8a", "#e9c46a", "#2f7d6a"][i % 4])); tas.position.set(x, top - 3.9, z); g.add(tas);
+    const knotM = new THREE.Mesh(new THREE.SphereGeometry(.1, 10, 8), gold); knotM.position.set(x, top - 3.62, z); g.add(knotM); });
+}
 // 불상을 위에서 비추는 따뜻한 조명 + 뒤에서 윤곽을 살리는 빛
 const buddhaSpot = new THREE.SpotLight("#ffd9a0", 260, 30, .5, .6, 1.2); buddhaSpot.position.set(0, 11, BUDDHA_Z + 10); buddhaSpot.target.position.set(0, 5.8, BUDDHA_Z); scene.add(buddhaSpot, buddhaSpot.target);
 const buddhaRim = new THREE.PointLight("#ffcf88", 26, 11, 1.5); buddhaRim.position.set(0, 9, BUDDHA_Z - 3); scene.add(buddhaRim);
