@@ -687,16 +687,15 @@ block(-5, 5, BUDDHA_Z - 2.2, BUDDHA_Z + 1.9);
 // 불상을 위에서 비추는 따뜻한 조명 + 뒤에서 윤곽을 살리는 빛
 const buddhaSpot = new THREE.SpotLight("#ffd9a0", 260, 30, .5, .6, 1.2); buddhaSpot.position.set(0, 11, BUDDHA_Z + 10); buddhaSpot.target.position.set(0, 5.8, BUDDHA_Z); scene.add(buddhaSpot, buddhaSpot.target);
 const buddhaRim = new THREE.PointLight("#ffcf88", 26, 11, 1.5); buddhaRim.position.set(0, 9, BUDDHA_Z - 3); scene.add(buddhaRim);
-// buddha.glb 파일이 있으면 그 모델로 바꿔요
+// buddha.glb(국립박물관 석불좌상 3D 스캔)로 본존불 몸을 바꾸고 금으로 입혀요 — 연꽃 대좌 · 두광은 그대로
 fetch("buddha.glb", { method: "HEAD" }).then((r) => {
   if (!r.ok || !(r.headers.get("content-type") || "").match(/gltf|octet|model|binary/)) return;
   new GLTFLoader().load("buddha.glb", (gltf) => {
-    const m = gltf.scene; const bb = new THREE.Box3().setFromObject(m), size = bb.getSize(new THREE.Vector3());
-    const k = 3.6 / Math.max(size.y, .001); m.scale.setScalar(k);
-    const bb2 = new THREE.Box3().setFromObject(m), c = bb2.getCenter(new THREE.Vector3());
-    m.position.set(-c.x, 1.08 - bb2.min.y, -c.z);
-    m.traverse((o) => { if (o.isMesh && o.material) { o.material.envMap = goldEnv; o.material.envMapIntensity = 1; o.material.needsUpdate = true; } });
-    statue.clear(); statue.add(m);
+    const m = gltf.scene;
+    m.traverse((o) => { if (o.isMesh) { o.geometry.computeVertexNormals(); o.material = new THREE.MeshStandardMaterial({ color: "#f3bb55", vertexColors: true, metalness: 1, roughness: .34, envMap: goldEnv, envMapIntensity: 1.35 }); } });
+    const SC = 1.3; m.scale.setScalar(SC); m.position.set(0, 1.74, .15);
+    [...statue.children].forEach((o) => { if (o.position.y > 1.8) { if (o.position.z < -.5) o.position.set(0, 1.74 + 2.44 * SC, -.55); else statue.remove(o); } });
+    statue.add(m);
   });
 }).catch(() => {});
 // 촛대 + 향로
