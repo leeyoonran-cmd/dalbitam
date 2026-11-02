@@ -2545,7 +2545,8 @@ function buildNpcs() {
 }
 let npcCheck = 0;
 function updateNpcs(dt, now) {
-  const inHall = zone === "hall" || (player && player.pos.z < -10 && Math.abs(player.pos.x) < 18);
+  // 마당에서도 대웅전 안 신도들이 절하는 모습이 보이게 (가까이 왔을 때)
+  const inHall = !inRoom && !inGrotto && !inCave && (zone === "hall" || (player && player.pos.z < -10 && Math.abs(player.pos.x) < 18) || Math.hypot(camera.position.x - HALL.x, camera.position.z - HALL.z) < 58);
   if (now > npcCheck) {
     npcCheck = now + 500;
     const want = Math.max(4, NPC_MAX - others.size * 2); let shown = 0;
