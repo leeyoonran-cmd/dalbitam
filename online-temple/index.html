@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Online Temple · Visit a Korean Buddhist Temple Online | Dalbitam</title>
+<meta name="description" content="Dalbitam is a free online temple: walk a 3D Korean Buddhist mountain temple in your browser, strike the moktak, do 108 bows, hang a wish lantern and ring the temple bell with people around the world. No download, no sign-up.">
+<link rel="canonical" href="https://dalbitam.vercel.app/online-temple/">
+<link rel="alternate" hreflang="en" href="https://dalbitam.vercel.app/online-temple/">
+<link rel="alternate" hreflang="ko" href="https://dalbitam.vercel.app/">
+<link rel="alternate" hreflang="x-default" href="https://dalbitam.vercel.app/online-temple/">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://dalbitam.vercel.app/online-temple/">
+<meta property="og:title" content="Dalbitam · Korean Online Temple">
+<meta property="og:description" content="Walk a Korean Buddhist mountain temple online. Strike the moktak, do 108 bows, hang a wish lantern. Free, in your browser.">
+<meta property="og:image" content="https://dalbitam.vercel.app/og.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/icon-192.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="theme-color" content="#121a28">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Gowun+Dodum&display=swap">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": "https://dalbitam.vercel.app/#website",
+      "url": "https://dalbitam.vercel.app/",
+      "name": "Dalbitam",
+      "alternateName": ["달빛암", "Dalbitam Online Temple", "Korean Online Temple"],
+      "inLanguage": ["ko", "en"]
+    },
+    {
+      "@type": "WebApplication",
+      "name": "Dalbitam · Korean Online Temple",
+      "url": "https://dalbitam.vercel.app/?lang=en",
+      "applicationCategory": "LifestyleApplication",
+      "operatingSystem": "Any (web browser)",
+      "browserRequirements": "Requires a browser with WebGL",
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+      "image": "https://dalbitam.vercel.app/og.jpg",
+      "description": "A free 3D online temple modeled on a Korean Buddhist mountain temple. Strike the moktak, do 108 bows, hang wish lanterns and ring the temple bell together with visitors from around the world."
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        { "@type": "Question", "name": "What is an online temple?", "acceptedAnswer": { "@type": "Answer", "text": "An online temple is a place you can visit through your screen to pray, meditate or simply rest. Dalbitam is a 3D Korean Buddhist mountain temple you walk through in your web browser, together with whoever else is visiting at the same time." } },
+        { "@type": "Question", "name": "Is Dalbitam free?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Dalbitam is free to visit. There is nothing to download and no account to create." } },
+        { "@type": "Question", "name": "Do I need to be Buddhist?", "acceptedAnswer": { "@type": "Answer", "text": "No. Anyone is welcome. Many visitors come to take a quiet break, listen to temple sounds or learn about Korean temple culture." } },
+        { "@type": "Question", "name": "Does it work on my phone?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Dalbitam runs in mobile and desktop browsers. You can also add it to your home screen like an app." } }
+      ]
+    }
+  ]
+}
+</script>
+<style>
+:root{--night:#10151d;--card:#171e2a;--line:rgba(236,230,216,.14);--ink:#ece6d8;--mute:#a3abb8;--lantern:#f2a65a;--jade:#3f8f7d;--display:"Gowun Batang",Georgia,serif;--body:"Gowun Dodum",system-ui,sans-serif;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--night);color:var(--ink);font-family:var(--body);line-height:1.7;font-size:17px}
+a{color:var(--lantern)}
+.wrap{max-width:760px;margin:0 auto;padding:0 20px}
+header.hero{position:relative;min-height:78vh;display:flex;align-items:flex-end;background:linear-gradient(180deg,rgba(16,21,29,.15),var(--night) 92%),url(/og.jpg) center/cover no-repeat}
+.hero .wrap{padding-bottom:48px}
+.eyebrow{letter-spacing:.24em;font-size:.78rem;color:var(--lantern);margin:0 0 8px}
+h1{font-family:var(--display);font-size:clamp(2.1rem,6vw,3.2rem);line-height:1.2;margin:0 0 14px;font-weight:700;text-wrap:balance}
+.lead{font-size:1.12rem;color:#d9d2c3;max-width:34em;margin:0 0 26px}
+.cta{display:inline-block;background:var(--lantern);color:#1b1208;text-decoration:none;font-weight:700;padding:14px 26px;border-radius:999px;font-size:1.05rem}
+.cta:hover{filter:brightness(1.08)}
+.sub{display:block;margin-top:10px;font-size:.88rem;color:var(--mute)}
+section{padding:44px 0;border-top:1px solid var(--line)}
+h2{font-family:var(--display);font-size:1.6rem;margin:0 0 16px;line-height:1.3}
+h3{font-family:var(--display);font-size:1.12rem;margin:0 0 4px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px}
+.item{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+.item p{margin:0;color:var(--mute);font-size:.95rem}
+.ko{color:var(--mute);font-size:.9rem}
+dl dt{font-family:var(--display);font-weight:700;margin-top:18px}
+dl dd{margin:4px 0 0;color:#d4cdbf}
+footer{padding:36px 0 56px;border-top:1px solid var(--line);color:var(--mute);font-size:.9rem}
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="wrap">
+    <p class="eyebrow">KOREAN ONLINE TEMPLE</p>
+    <h1>Dalbitam, an online temple in the Korean mountains</h1>
+    <p class="lead">Visit a Korean Buddhist temple online, any time of day. Walk the courtyard under the moon, strike the wooden moktak, do 108 bows, hang a wish lantern and ring the temple bell, together with visitors from around the world.</p>
+    <a class="cta" href="/?lang=en">Enter the temple</a>
+    <span class="sub">Free · runs in your browser · no download or sign-up</span>
+  </div>
+</header>
+
+<main class="wrap">
+  <section>
+    <h2>What is Dalbitam?</h2>
+    <p>Dalbitam (달빛암, "Moonlit Hermitage") is a 3D online temple modeled on the mountain temples of Korea. It is a quiet place to pause, pray or simply listen. You enter with a temple name, and you will see other visitors who are there right now. You can greet them, bow together and send a short blessing.</p>
+    <p>The sounds come from real Korean temples: the moktak, the evening service with bell, wooden fish and cloud gong, mountain streams and the sea.</p>
+  </section>
+
+  <section>
+    <h2>Things to do at the online temple</h2>
+    <div class="grid">
+      <div class="item"><h3>Strike the moktak</h3><p>Tap the wooden moktak and let each sound settle one thought.</p></div>
+      <div class="item"><h3>108 bows</h3><p>Bow 108 times in the main hall. Finish and your wish lantern lights up.</p></div>
+      <div class="item"><h3>Wish lanterns</h3><p>Write a wish on a lotus lantern and hang it over the courtyard for everyone to see.</p></div>
+      <div class="item"><h3>Ring the temple bell</h3><p>Strike the great bronze bell, modeled from a 3D scan of a real Korean temple bell.</p></div>
+      <div class="item"><h3>Roof tile wishes</h3><p>Write your wish on a roof tile (giwa), just as visitors do at temples in Korea.</p></div>
+      <div class="item"><h3>Meditate and chant</h3><p>Sit for ten breaths in a stone grotto, turn prayer beads or follow a chant with romanized text.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Places to explore</h2>
+    <p>Beyond the main hall (Daeungjeon) and the stone pagoda, paths lead to the mountain spirit shrine, the Seven Stars hall, a stone grotto inspired by Seokguram, a sutra library inspired by Janggyeong Panjeon, a lotus pond inspired by Wolji, Moonlight Peak and a lantern path down to the sea.</p>
+    <p class="ko">대웅전 · 석탑 · 산신각 · 칠성각 · 관음전 · 지장전 · 석굴암 · 장경판전 · 월지 · 바닷가 · 달빛봉</p>
+  </section>
+
+  <section>
+    <h2>Frequently asked questions</h2>
+    <dl>
+      <dt>What is an online temple?</dt>
+      <dd>An online temple is a place you can visit through your screen to pray, meditate or simply rest. Dalbitam is a 3D Korean Buddhist mountain temple you walk through in your web browser, together with whoever else is visiting at the same time.</dd>
+      <dt>Is Dalbitam free?</dt>
+      <dd>Yes. Dalbitam is free to visit. There is nothing to download and no account to create.</dd>
+      <dt>Do I need to be Buddhist?</dt>
+      <dd>No. Anyone is welcome. Many visitors come to take a quiet break, listen to temple sounds or learn about Korean temple culture.</dd>
+      <dt>Does it work on my phone?</dt>
+      <dd>Yes. Dalbitam runs in mobile and desktop browsers. You can also add it to your home screen like an app.</dd>
+    </dl>
+    <p style="margin-top:28px"><a class="cta" href="/?lang=en">Enter Dalbitam</a></p>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    Dalbitam · Korean Online Temple · <a href="/">달빛암 온라인 절 (한국어)</a> · Instagram <a href="https://www.instagram.com/dalbitam.temple/" rel="me">@dalbitam.temple</a>
+  </div>
+</footer>
+</body>
+</html>
