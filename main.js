@@ -2241,6 +2241,9 @@ const glowTex = (() => {
   x.fillStyle = g; x.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c);
 })();
 const lanternGeo = new THREE.SphereGeometry(.32, 12, 10), tasselGeo = new THREE.CylinderGeometry(.02, .02, .3, 4);
+// 내 연등 빛기둥: 아래는 밝고 위로 갈수록 사라지는 세로 그라데이션
+const BEAM_TEX = canvasTex(8, 128, (x, w, h) => { const g = x.createLinearGradient(0, 0, 0, h); g.addColorStop(0, "rgba(255,255,255,0)"); g.addColorStop(.55, "rgba(255,255,255,.35)"); g.addColorStop(1, "rgba(255,255,255,1)"); x.fillStyle = g; x.fillRect(0, 0, w, h); });
+BEAM_TEX.wrapS = BEAM_TEX.wrapT = THREE.ClampToEdgeWrapping;
 function renderLanterns(list) {
   lanternGroup.clear();
   const yard = list.filter((w) => w.place !== "sea").slice(0, lanternSlots.length), sea = list.filter((w) => w.place === "sea").slice(0, seaSlots.length);
@@ -2261,7 +2264,18 @@ function hangLantern(w, i, slot) {
       const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color, transparent: true, opacity: k === "gold" ? .75 : .5, depthWrite: false, blending: THREE.AdditiveBlending }));
       halo.scale.setScalar(k === "gold" ? 1.9 : 1.5); halo.raycast = () => {}; m.add(halo); m.userData.halo = halo;
     }
-    if (isMyWish(w) && !lit) { const tag = textSprite("내 연등", { size: 30, color: "#f3e6c4", bg: "rgba(16,21,29,.6)", pad: 10 }); tag.scale.multiplyScalar(.55); tag.position.y = .6; tag.raycast = () => {}; m.add(tag); }
+    if (isMyWish(w)) {
+      // 내 연등: 이름표 · 하늘로 오르는 빛기둥 · 둘레를 도는 반짝이로 멀리서도 찾기 쉽게
+      const tg = textSprite(lit ? "✨ 내 연등" : "내 연등 (불을 켜 보세요)", { size: 30, color: lit ? "#fff2c4" : "#f3e6c4", bg: lit ? "rgba(120,70,10,.72)" : "rgba(16,21,29,.6)", pad: 10 });
+      tg.scale.multiplyScalar(.55); tg.position.y = .78; tg.raycast = () => {}; m.add(tg); m.userData.mine = { tag: tg };
+      if (lit) {
+        const bm = new THREE.Mesh(new THREE.CylinderGeometry(.07, .16, 16, 12, 1, true), new THREE.MeshBasicMaterial({ map: BEAM_TEX, color: new THREE.Color(color).lerp(new THREE.Color("#fff6d8"), .5), transparent: true, opacity: .45, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false }));
+        bm.position.y = 8.2; bm.raycast = () => {}; m.add(bm); m.userData.mine.beam = bm;
+        const orb = new THREE.Group(); m.add(orb); m.userData.mine.orb = orb;
+        for (let k = 0; k < 6; k++) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: k % 2 ? "#fff3c0" : color, transparent: true, opacity: .9, depthWrite: false, blending: THREE.AdditiveBlending })); const a = k / 6 * Math.PI * 2; sp.position.set(Math.cos(a) * .72, (k % 3 - 1) * .16, Math.sin(a) * .72); sp.scale.setScalar(.24); sp.raycast = () => {}; orb.add(sp); }
+        if (m.userData.halo) m.userData.halo.scale.setScalar(2.2);
+      }
+    }
   }
 }
 
@@ -3935,6 +3949,7 @@ function tick() {
   rockingStone.rotation.z = Math.sin(t * .9) * .025; rockingStone.rotation.x = Math.sin(t * .63) * .012;
   lanternGroup.children.forEach((l, i) => {
     l.rotation.z = Math.sin(t * .8 + i) * .06;
+    const my = l.userData.mine; if (my) { my.tag.position.y = .78 + Math.sin(t * 2) * .05; if (my.orb) my.orb.rotation.y = t * 1.3; if (my.beam) { my.beam.rotation.z = -l.rotation.z; my.beam.material.opacity = .26 + Math.sin(t * 1.6) * .08; } }
     const w = l.userData.wish, fa = w && w.flashAt;
     if (fa && now - fa < 4000) { const p = (now - fa) / 4000; const s = 1 + Math.sin(p * Math.PI * 6) * .25 * (1 - p); l.scale.set(s, 1.2 * s, s); if (l.userData.halo) l.userData.halo.scale.setScalar(1.6 + (1 - p) * 2.4); }
     else if (l.userData.halo) l.userData.halo.material.opacity = (kindOf(w) === "gold" ? .7 : .45) + Math.sin(t * 2 + i) * .08;
