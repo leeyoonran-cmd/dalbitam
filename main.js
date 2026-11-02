@@ -509,7 +509,7 @@ function buildBuddha(G) {
       pt.scale.set(.28, .4, .09); pt.position.set(Math.sin(a) * r, y + .12 * up, Math.cos(a) * r); pt.rotation.set(0, a, 0); pt.rotateX(tilt * up); G.add(pt);
       const rib = new THREE.Mesh(new THREE.SphereGeometry(1, 8, 6), GOLD_DARK); rib.scale.set(.025, .32, .02); rib.position.copy(pt.position).add(V(Math.sin(a) * .07, .02 * up, Math.cos(a) * .07)); rib.rotation.copy(pt.rotation); G.add(rib); }
   });
-  const disc = new THREE.Mesh(new THREE.CylinderGeometry(1.3, 1.34, .12, 48), GOLD); disc.position.y = 1.72; G.add(disc);
+  const disc = new THREE.Mesh(new THREE.CylinderGeometry(1.3, 1.34, .12, 48), GOLD); disc.position.y = 1.72; G.add(disc); G.userData.nBase = G.children.length;
   // 결가부좌 다리: 옷자락 주름이 흐르는 무릎
   const lap = new THREE.Mesh(folds(new THREE.SphereGeometry(1, 64, 28), .035, 26), GOLD); lap.scale.set(1.5, .42, .86); lap.position.set(0, 2.0, .2); G.add(lap);
   [-1, 1].forEach((sd) => { const knee = new THREE.Mesh(folds(new THREE.SphereGeometry(.44, 32, 18), .03, 12), GOLD); knee.scale.set(1.15, .7, 1.05); knee.position.set(sd * 1.02, 1.98, .4); G.add(knee); });
@@ -554,25 +554,59 @@ function buildBuddha(G) {
   const hL = hand(false); hL.position.set(-.08, 2.27, .54); hL.rotation.set(0, Math.PI / 2, 0); hL.scale.setScalar(1.05);
   const hR = hand(true); hR.position.set(1.03, 2.12, .84); hR.rotation.set(Math.PI / 2 - .25, 0, 0); hR.scale.setScalar(1.05);
   // 목의 삼도
-  const neck = new THREE.Mesh(new THREE.CylinderGeometry(.22, .27, .3, 28), GOLD); neck.position.y = 3.57; G.add(neck);
-  [3.5, 3.57, 3.64].forEach((y) => { const r = new THREE.Mesh(new THREE.TorusGeometry(.225, .011, 6, 32), GOLD_DARK); r.rotation.x = Math.PI / 2; r.position.y = y; G.add(r); });
+  const headG = new THREE.Group(); headG.userData.keep = true; G.add(headG); G.userData.headG = headG;
+  const NECKM = new THREE.MeshStandardMaterial({ color: "#f2bb58", metalness: .95, roughness: .3, envMap: goldEnv, envMapIntensity: 1.3 });
+  const neck = new THREE.Mesh(new THREE.LatheGeometry([[.62, -.3], [.5, -.24], [.36, -.14], [.28, 0], [.25, .14], [.25, .3], [0, .3]].map(([r, y]) => new THREE.Vector2(r, y)), 40), NECKM); neck.scale.z = .8; neck.position.y = 3.52; headG.add(neck);
+  [3.5, 3.58, 3.66].forEach((y) => { const r = new THREE.Mesh(new THREE.TorusGeometry(.25, .01, 6, 32), GOLD_DARK); r.scale.y = .8; r.rotation.x = Math.PI / 2; r.position.y = y; headG.add(r); });
   // 얼굴: 갸름하고 길쭉한 얼굴, 지그시 내려 감은 눈
-  const head = new THREE.Group(); head.position.y = 4.05; head.scale.setScalar(1.12); G.add(head);
-  const face = new THREE.Mesh(new THREE.SphereGeometry(.45, 48, 36), GOLD); face.scale.set(.9, 1.24, .96); head.add(face);
-  const chin = new THREE.Mesh(new THREE.SphereGeometry(.19, 18, 12), GOLD); chin.scale.set(1.1, .7, .8); chin.position.set(0, -.4, .17); head.add(chin);
+  const head = new THREE.Group(); head.position.y = 4.05; head.scale.setScalar(1.12); headG.add(head); G.userData.head = head;
+  // 얼굴을 하나의 매끈한 면으로 조각: 눈두덩 · 반개한 눈 · 오똑한 코 · 미소 띤 입술 · 둥근 턱
+  const faceGeo = new THREE.SphereGeometry(.45, 180, 140);
+  { const p = faceGeo.attributes.position, col = new Float32Array(p.count * 3).fill(1), n = new THREE.Vector3(), g2 = (x, y, sx, sy) => Math.exp(-(x * x) / (2 * sx * sx) - (y * y) / (2 * sy * sy));
+    for (let i = 0; i < p.count; i++) {
+      const x = p.getX(i), y = p.getY(i), z = p.getZ(i); n.set(x, y, z).normalize(); if (z <= 0) continue;
+      const u = x / .45, v = y / .45, fw = Math.min(1, z / .3), au = Math.abs(u), eu = au - .36;
+      let d = 0, gr = 0;
+      // 이마 · 눈썹뼈: 코 뿌리에서 양쪽으로 이어지는 부드러운 아치
+      d += .018 * g2(au - .3, v - (.22 - .35 * (au - .3) * (au - .3)), .2, .045);
+      // 눈두덩 오목 + 도톰한 윗눈꺼풀 + 지그시 감은 눈선
+      d -= .042 * g2(eu, v - .06, .15, .085);
+      const lid = .03 - .2 * eu * eu + .03 * eu; // 눈꼬리가 살짝 올라간 눈선
+      d += .03 * g2(eu, v - lid - .045, .13, .035) * (au < .58);
+      gr += g2(eu, v - lid, .14, .011) * (au < .56); d -= .016 * g2(eu, v - lid, .14, .011) * (au < .56);
+      d += .01 * g2(eu, v - lid + .035, .12, .025);
+      // 콧대와 코끝, 콧방울, 콧구멍
+      const along = Math.min(1, Math.max(0, (.14 - v) / .36));
+      d += (.022 + .04 * along) * g2(u, 0, .055 + .02 * along, 1) * (v < .17 && v > -.26 ? 1 : 0) * Math.min(1, (v + .3) / .06);
+      d += .05 * g2(u, v + .23, .075, .055);
+      d += .03 * g2(au - .1, v + .26, .045, .035);
+      d -= .022 * g2(au - .055, v + .3, .025, .014); gr += .8 * g2(au - .055, v + .3, .025, .014);
+      // 인중
+      d -= .008 * g2(u, v + .34, .022, .035);
+      // 입술: 윗입술 큐피드 활, 두툼한 아랫입술, 입꼬리가 올라간 미소선
+      const mouth = -.415 + .1 * u * u;
+      d += .028 * g2(u, v - mouth - .035, .16, .022) * (1 + .4 * g2(au - .05, 0, .04, 1));
+      d -= .016 * g2(u, v - mouth, .19, .008) * (au < .24); gr += .9 * g2(u, v - mouth, .19, .008) * (au < .24);
+      d += .034 * g2(u, v - mouth + .045, .14, .028);
+      d -= .01 * g2(au - .23, v - mouth - .01, .025, .02);
+      d -= .012 * g2(u, v + .54, .12, .03);
+      // 둥근 턱과 두툼한 볼
+      d += .045 * g2(u, v + .7, .17, .1);
+      d += .022 * g2(au - .45, v + .15, .17, .2);
+      d -= .01 * g2(au - .3, v + .02, .07, .05) * 0;
+      d *= fw; const cc = 1 - Math.min(.62, gr * fw * .7); col[i * 3] = col[i * 3 + 1] = col[i * 3 + 2] = cc;
+      p.setXYZ(i, x + n.x * d, y + n.y * d, z + n.z * d);
+    }
+    faceGeo.setAttribute("color", new THREE.BufferAttribute(col, 3)); faceGeo.computeVertexNormals(); }
+  const SKIN = new THREE.MeshStandardMaterial({ color: "#f2bb58", vertexColors: true, metalness: .95, roughness: .3, envMap: goldEnv, envMapIntensity: 1.3 });
+  const face = new THREE.Mesh(faceGeo, SKIN); face.scale.set(.9, 1.24, .96); head.add(face);
   [-1, 1].forEach((sd) => {
-    const lidUp = new THREE.Mesh(new THREE.SphereGeometry(.09, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2), GOLD); lidUp.scale.set(1.1, .35, .32); lidUp.position.set(sd * .155, -.02, .415); lidUp.rotation.set(.3, sd * .3, 0); head.add(lidUp);
-    const lash = new THREE.Mesh(new THREE.TorusGeometry(.09, .009, 6, 20, Math.PI * .85), GOLD_DARK); lash.rotation.set(0, sd * .3, Math.PI + .2); lash.position.set(sd * .155, -.03, .43); head.add(lash);
-    const brow = new THREE.Mesh(new THREE.TorusGeometry(.15, .014, 6, 24, Math.PI * .75), GOLD); brow.rotation.set(0, sd * .3, .37); brow.position.set(sd * .16, .1, .4); head.add(brow);
-    const ear = new THREE.Mesh(new THREE.CapsuleGeometry(.065, .46, 6, 12), GOLD); ear.scale.set(.45, 1, 1.3); ear.position.set(sd * .41, -.16, -.04); ear.rotation.z = sd * .1; head.add(ear);
-    const lobe = new THREE.Mesh(new THREE.SphereGeometry(.07, 10, 8), GOLD); lobe.scale.set(.7, 1.2, 1); lobe.position.set(sd * .43, -.44, -.01); head.add(lobe);
+    // 긴 귀: 귓바퀴 테두리와 늘어진 귓불
+    const ear = new THREE.Mesh(new THREE.CapsuleGeometry(.065, .48, 8, 16), NECKM); ear.scale.set(.42, 1, 1.35); ear.position.set(sd * .4, -.17, -.05); ear.rotation.z = sd * .1; head.add(ear);
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(.07, .014, 6, 20, Math.PI * 1.4), NECKM); rim.scale.set(.9, 3.4, 1); rim.position.set(sd * .43, -.1, -.03); rim.rotation.set(0, sd * Math.PI / 2, Math.PI * .8); head.add(rim);
+    const lobe = new THREE.Mesh(new THREE.SphereGeometry(.07, 14, 10), NECKM); lobe.scale.set(.6, 1.35, 1); lobe.position.set(sd * .43, -.47, -.02); head.add(lobe);
   });
-  const nose = new THREE.Mesh(new THREE.SphereGeometry(.072, 16, 12), GOLD); nose.scale.set(.8, 1.7, 1); nose.position.set(0, -.1, .45); head.add(nose);
-  const bridge = new THREE.Mesh(new THREE.CapsuleGeometry(.03, .14, 4, 8), GOLD); bridge.position.set(0, .0, .44); head.add(bridge);
-  const lips = new THREE.Mesh(new THREE.TorusGeometry(.07, .007, 5, 18, Math.PI * .8), GOLD_DARK); lips.rotation.z = Math.PI * 1.1; lips.position.set(0, -.255, .425); head.add(lips);
-  const lipD = new THREE.Mesh(new THREE.SphereGeometry(.045, 12, 8), GOLD); lipD.scale.set(1.4, .55, .6); lipD.position.set(0, -.28, .41); head.add(lipD);
-  const lipU = new THREE.Mesh(new THREE.SphereGeometry(.05, 12, 8), GOLD); lipU.scale.set(1.5, .5, .6); lipU.position.set(0, -.235, .42); head.add(lipU);
-  const urna = new THREE.Mesh(new THREE.SphereGeometry(.03, 10, 8), GOLD_DARK); urna.position.set(0, .14, .45); head.add(urna);
+  const urna = new THREE.Mesh(new THREE.SphereGeometry(.028, 12, 10), new THREE.MeshStandardMaterial({ color: "#fff2c8", metalness: .4, roughness: .2, emissive: "#6a4a10" })); urna.position.set(0, .19, .445); head.add(urna);
   // 나발과 큰 육계
   const curls = new THREE.InstancedMesh(new THREE.SphereGeometry(.042, 8, 6), HAIR, 560); let ci = 0; const tmp = new THREE.Object3D();
   const addCurls = (cx, cy, cz, R, sy, n, minY) => { for (let i = 0; i < n && ci < 560; i++) { const y = 1 - (i + .5) / n * 2; if (y < minY) continue; const r = Math.sqrt(1 - y * y), th = i * 2.39996; tmp.position.set(cx + Math.cos(th) * r * R, cy + y * R * sy, cz + Math.sin(th) * r * R); tmp.updateMatrix(); curls.setMatrixAt(ci++, tmp.matrix); } };
@@ -694,7 +728,9 @@ fetch("buddha.glb", { method: "HEAD" }).then((r) => {
     const m = gltf.scene;
     m.traverse((o) => { if (o.isMesh) { o.geometry.computeVertexNormals(); o.material = new THREE.MeshStandardMaterial({ color: "#f3bb55", vertexColors: true, metalness: 1, roughness: .34, envMap: goldEnv, envMapIntensity: 1.35 }); } });
     const SC = 1.3; m.scale.setScalar(SC); m.position.set(0, 1.74, .15);
-    [...statue.children].forEach((o) => { if (o.position.y > 1.8) { if (o.position.z < -.5) o.position.set(0, 1.74 + 2.44 * SC, -.55); else statue.remove(o); } });
+    const hg = statue.userData.headG, nB = statue.userData.nBase || 0;
+    [...statue.children].forEach((o, i) => { if (i < nB || o.userData.keep) return; if (o.position.z < -.5 && o.position.y > 3) o.position.set(0, 4.8, -.5); else statue.remove(o); });
+    if (hg) { hg.position.set(0, .72, -.02); statue.userData.head.scale.setScalar(1.01); }
     statue.add(m);
   });
 }).catch(() => {});
