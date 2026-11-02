@@ -131,7 +131,7 @@ const D = {
   "방석에 앉았어요": "sat on a cushion", "일어났어요": "stood up", "목탁을 쳤어요": "struck the moktak", "합장했어요": "bowed with palms together", "절을 올렸어요": "bowed",
   "향을 피웠어요": "lit incense", "기도를 올렸어요": "prayed", "탑을 한 바퀴 돌았어요": "circled the pagoda", "공양을 해요": "is eating", "차를 마셔요": "is drinking tea",
   "범종을 울렸어요": "rang the bell", "달빛봉 정상에 올랐어요": "reached Moon Peak", "야호를 외쳤어요": "shouted yaho", "공양미를 올렸어요": "offered rice", "기와에 소원을 적었어요": "wrote a tile wish",
-  "누군가": "Someone", "템플스테이": "Templestay", "🏯 달빛암 템플스테이": "🏯 Dalbitam Templestay", "오늘의 정진": "Today's practice", "마음 다지기": "Steady the mind", "정진": "Devotion", "🌙 밤 9시부터": "🌙 From 9 PM", "🌙 야간 정진": "🌙 Night practice",
+  "누군가": "Someone", "오솔길": "Footpath", "전각 사이 오솔길이에요. 지도를 열면 가고 싶은 곳으로 바로 갈 수 있어요.": "A footpath between the halls. Open the map to go anywhere instantly.", "휙~ 🍙": "Toss~ 🍙", "템플스테이": "Templestay", "🏯 달빛암 템플스테이": "🏯 Dalbitam Templestay", "오늘의 정진": "Today's practice", "마음 다지기": "Steady the mind", "정진": "Devotion", "🌙 밤 9시부터": "🌙 From 9 PM", "🌙 야간 정진": "🌙 Night practice",
   "절은 운동이 아니라 비우고, 바라고, 감사하는 시간이에요. 한 번 절할 때마다 마음 한 가지를 떠올려요.": "Bowing isn't exercise. It's a time to let go, wish and give thanks. With each bow, hold one thought in mind.",
   "나의 발원문 · 바라는 것, 감사한 것, 내려놓고 싶은 것": "My vow · what you wish for, are grateful for, or want to let go", "예: 가족 모두 건강하기를, 지난 일을 내려놓기를": "e.g. Health for my family, letting go of the past",
   "🙇 정진 시작하기": "🙇 Begin bowing", "수행 뱃지": "Badges", "수행 리포트": "Practice report", "성취등 방명록": "Lamp of achievement guestbook", "108배 완주": "108 bows", "1000배 정진": "1000 bows", "3000배 전설": "3000 bows legend",
