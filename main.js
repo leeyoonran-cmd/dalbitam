@@ -260,7 +260,7 @@ const TEX = {
       for (let g = 0; g < 26; g++) { x.strokeStyle = `rgba(0,0,0,${.08 + Math.random() * .12})`; x.lineWidth = 1 + Math.random() * 1.5; x.beginPath(); const yy = y0 + Math.random() * 62; x.moveTo(0, yy); for (let xx = 0; xx <= w; xx += 32) x.lineTo(xx, yy + Math.sin(xx * .02 + g) * 2.5); x.stroke(); }
       x.fillStyle = "rgba(0,0,0,.55)"; x.fillRect(0, y0 + 62, w, 2); x.fillRect((p * 173) % w, y0, 2, 62); }
   }, 3, 3),
-  ground: canvasTex(512, 512, (x, w, h) => noise(x, w, h, "#5a4d3c", .22, 14000, 3), 40, 40),
+  ground: canvasTex(512, 512, (x, w, h) => { noise(x, w, h, "#55583a", .2, 14000, 3); for (let i = 0; i < 900; i++) { x.fillStyle = `rgba(${70 + Math.random() * 30},${90 + Math.random() * 40},${40 + Math.random() * 20},.35)`; x.fillRect(Math.random() * w, Math.random() * h, 2, 5 + Math.random() * 6); } }, 40, 40),
   stone: canvasTex(256, 256, (x, w, h) => { noise(x, w, h, "#8d8f93", .25, 5000, 2); x.strokeStyle = "rgba(0,0,0,.25)"; x.lineWidth = 2; for (let r = 0; r < 4; r++) { x.beginPath(); x.moveTo(0, r * 64); x.lineTo(w, r * 64); x.stroke(); for (let c = 0; c < 3; c++) { const xx = (c * 96 + (r % 2) * 48) % w; x.beginPath(); x.moveTo(xx, r * 64); x.lineTo(xx, r * 64 + 64); x.stroke(); } } }, 2, 1),
   roof: canvasTex(256, 256, (x, w, h) => { x.fillStyle = "#2a3038"; x.fillRect(0, 0, w, h); for (let i = 0; i < 16; i++) { const gr = x.createLinearGradient(i * 16, 0, i * 16 + 16, 0); gr.addColorStop(0, "#1c2128"); gr.addColorStop(.5, "#4a525e"); gr.addColorStop(1, "#1c2128"); x.fillStyle = gr; x.fillRect(i * 16, 0, 16, h); } for (let j = 0; j < 8; j++) { x.fillStyle = "rgba(0,0,0,.35)"; x.fillRect(0, j * 32, w, 3); } }, 6, 2),
   dancheong: canvasTex(512, 64, (x, w, h) => {
@@ -2260,7 +2260,11 @@ function applyLayout() {
     if (o.isLight && !(o.isPointLight || o.isSpotLight)) return;
     if (o.position.y > 19) return; // 하늘의 달 · 별
     const atOrigin = Math.abs(o.position.x) + Math.abs(o.position.z) < .001;
-    if (atOrigin && !o.isMesh && !o.isLine && !o.isPoints && !o.isSprite && o.children.length) { [...o.children].forEach(visit); return; }
+    if (atOrigin && !o.isMesh && !o.isLine && !o.isPoints && !o.isSprite && o.children.length) {
+      // 원점에 있는 묶음: 부품이 원점 둘레에 모여 있으면(동자승처럼 나중에 자리를 잡는 것) 그대로 두고, 흩어져 있으면 하나씩 옮겨요
+      const bb = new THREE.Box3().setFromObject(o), c = bb.getCenter(new THREE.Vector3()), sz = bb.getSize(new THREE.Vector3());
+      if (bb.isEmpty() || (Math.abs(c.x) < 3 && Math.abs(c.z) < 3 && sz.x < 6 && sz.z < 6)) return;
+      [...o.children].forEach(visit); return; }
     const p = repOf(o); const k = (Math.abs(p.x) < 16.2 && p.z > -56 && p.z < -12.9) ? CL.hall : clusterOfOrig(p.x, p.z); if (!k) return; // 대웅전 뒤 바위는 대웅전과 함께
     if (atOrigin && (o.isMesh || o.isLine || o.isPoints)) { // 원점에 두고 모양을 옮겨 둔 것: 위치만 무리만큼 옮겨요
       const w = layoutW(p.x, p.z, k); o.position.x += w.x - p.x; o.position.z += w.z - p.z; if (k.s !== 1) { /* 크기는 그대로 */ } return; }
@@ -2285,6 +2289,16 @@ function applyLayout() {
   lane(Y(15, 8), G(WJ.x - WJ.w / 2 - 1.8, WJ.z)); lane(G(34, -17.2), G(JG.x, JG.z + JG.d / 2 + 3.4));
   lane({ x: 1.6, z: -9 }, layoutW(18.6, -13, CL.sea));
   lane({ x: -1.2, z: 27 }, G(TRAIL[0].x + 1.2, TRAIL[0].z)); lane(Y(15, 9), G(CAVE.x - 2.4, CAVE.z - 2.4));
+  // 전각 사이 빈 땅에 소나무 · 둥근 나무 · 바위를 흩어 심어요 (길과 전각은 비켜서)
+  { let n = 0; for (let i = 0; i < 2500 && n < 90; i++) { const x = rand(-70, 70), z = rand(-68, 66);
+      if (layoutO(x, z) || blocked(x, z)) continue; let near = false; for (const k of CLUSTERS) { if (k.id === "sea") continue; const hw = (k.r[1] - k.r[0]) / 2 * k.s + 3, hd = (k.r[3] - k.r[2]) / 2 * k.s + 3, cx = k.n[0] + ((k.r[0] + k.r[1]) / 2 - k.c[0]) * k.s, cz = k.n[1] + ((k.r[2] + k.r[3]) / 2 - k.c[1]) * k.s; if (Math.abs(x - cx) < hw && Math.abs(z - cz) < hd) { near = true; break; } }
+      if (near || placed.some((p) => Math.hypot(p.x - x, p.z - z) < 3.2) || Math.hypot(x, z - 10) < 20 || (z < -40 && Math.abs(x - 18.6) < 4)) continue; n++;
+      const t = new THREE.Group(); t.position.set(x, 0, z); scene.add(t); camHide.push(t); cyl(.16, .24, 1.6, mat.trunk, 0, .8, 0, 6, t);
+      if (n % 3) { const c1 = new THREE.Mesh(new THREE.ConeGeometry(1.3, 2.6, 7), mat.leaf2); c1.position.y = 2.4; t.add(c1); const c2 = new THREE.Mesh(new THREE.ConeGeometry(.95, 2, 7), mat.leaf); c2.position.y = 3.6; t.add(c2); }
+      else { const c = new THREE.Mesh(new THREE.SphereGeometry(1.5, 10, 8), mat.leaf); c.position.y = 2.6; c.scale.y = .85; t.add(c); }
+      t.scale.setScalar(rand(.8, 1.35)); t.rotation.y = rand(0, 6); }
+    for (let i = 0, m = 0; i < 800 && m < 40; i++) { const x = rand(-70, 70), z = rand(-68, 66); if (layoutO(x, z) || placed.some((p) => Math.hypot(p.x - x, p.z - z) < 2)) continue; m++;
+      const r = new THREE.Mesh(new THREE.DodecahedronGeometry(rand(.25, .7), 0), mat.stone); r.position.set(x, .1, z); r.rotation.set(rand(0, 3), rand(0, 3), 0); r.scale.y = .6; scene.add(r); } }
   // 실제 위치가 필요한 것들
   lanternSlots.forEach((v) => { const w = layoutW(v.x, v.z, CL.yard); v.x = w.x; v.z = w.z; });
   TRAIL.forEach((p) => { const w = layoutW(p.x, p.z, CL.m1); p.x = w.x; p.z = w.z; });
