@@ -241,6 +241,7 @@ const camera = new THREE.PerspectiveCamera(55, 1, .1, 200);
 
 const hemi = new THREE.HemisphereLight("#8fa6c8", "#2a2018", .9); scene.add(hemi);
 const moon = new THREE.DirectionalLight("#dfe6ff", .9); moon.position.set(-20, 30, 10); scene.add(moon);
+const localLights = []; // 가까이 있을 때만 켜는 작은 조명들 (조명이 많으면 휴대폰이 느려져요)
 
 const M = (color, extra = {}) => new THREE.MeshStandardMaterial(Object.assign({ color, roughness: .85 }, extra));
 const mat = {
@@ -331,7 +332,11 @@ const LOTUS = (() => {
   const leafRing = []; for (let i = 0; i < 8; i++) { const l = new THREE.SphereGeometry(1, 8, 6); l.scale(.1, .03, .22); l.translate(0, -.12, .26); l.rotateY(i / 8 * Math.PI * 2 + .2); leafRing.push(l); }
   const sepals = mergeGeometries([sep, ...leafRing]);
   const geo = mergeGeometries([petals, sepals], true);
-  return { geo, white: mergeGeometries([petals.clone(), sepals.clone()]), leaf: new THREE.MeshStandardMaterial({ color: "#3f7a46", roughness: .7, emissive: "#0f2a14", emissiveIntensity: .3 }) };
+  // 멀리 줄지어 선 연등용 가벼운 모양 (꽃잎 수 · 면 수를 줄여 그리기 부담을 1/8로)
+  const lp = new THREE.SphereGeometry(1, 6, 4); lp.scale(.11, .25, .055); lp.translate(0, .22, 0); const lite = [];
+  [[.1, .5, 6, .02, 0], [.2, 1.05, 7, -.07, Math.PI / 7]].forEach(([r, tilt, n, y, off]) => { for (let i = 0; i < n; i++) { const g = lp.clone(); g.rotateX(tilt); g.translate(0, y, r); g.rotateY(off + i / n * Math.PI * 2); lite.push(g); } });
+  const lc = new THREE.SphereGeometry(.14, 6, 4); lc.translate(0, .12, 0); lite.push(lc); const ls = new THREE.CylinderGeometry(.24, .06, .1, 7); ls.translate(0, -.14, 0); lite.push(ls);
+  return { geo, lite: mergeGeometries(lite.map((g) => g.index ? g.toNonIndexed() : g)), white: mergeGeometries([petals.clone(), sepals.clone()]), leaf: new THREE.MeshStandardMaterial({ color: "#3f7a46", roughness: .7, emissive: "#0f2a14", emissiveIntensity: .3 }) };
 })();
 const cyl = (rt, rb, h, m, x, y, z, seg = 12, parent = scene) => { const o = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, seg), m); o.position.set(x, y, z); parent.add(o); return o; };
 
@@ -798,7 +803,7 @@ new GLTFLoader().load("assets/panbul.glb", (gltf) => {
 const candles = [];
 const ALTAR_F = BUDDHA_Z + 2.4; // 불단 앞
 const hallLight = new THREE.PointLight("#ffb466", 60, 40, 1.4); hallLight.position.set(0, 8, -27); scene.add(hallLight);
-[-10, 10].forEach((x) => { const l = new THREE.PointLight("#ffc27a", 22, 22, 1.6); l.position.set(x, 7.5, -30); scene.add(l); });
+const hallSideLights = [-10, 10].map((x) => { const l = new THREE.PointLight("#ffc27a", 22, 22, 1.6); l.position.set(x, 7.5, -30); scene.add(l); return l; });
 // 불전 공양상: 붉은 옻칠 상 위에 향로 · 촛대 한 쌍 · 청수 · 과일 고임 · 떡 — 좌우 대칭으로 가지런히
 const TABLE_Z = ALTAR_F + .55, TABLE_TOP = 1.5;
 const altarTable = new THREE.Group(); altarTable.position.set(0, 0, TABLE_Z); scene.add(altarTable);
@@ -908,36 +913,37 @@ const caveBack = rock(1, 4.2 * BS, 3.2 * BS, .5, 0, 3 * BS, BUDDHA_Z - 3); caveB
 
 /* 금빛 꼬마 동자승들 (자세가 여러 가지) */
 const dongjaGeoCache = {};
-function dongjaGeo(pose) {
-  if (dongjaGeoCache[pose]) return dongjaGeoCache[pose];
+function dongjaGeo(pose, lite = false) {
+  const ck = pose + (lite ? ":lite" : ""); if (dongjaGeoCache[ck]) return dongjaGeoCache[ck];
+  const hs = (n, m) => lite ? Math.max(m, Math.round(n / 2)) : n; // 멀리 보이는 천불은 면 수를 절반으로
   const G = new THREE.Group(), up = new THREE.Group(); up.position.y = .3; G.add(up);
   const add = (geo, m, x, y, z, parent = up, sx = 1, sy = 1, sz = 1) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.scale.set(sx, sy, sz); parent.add(o); return o; };
-  add(new THREE.SphereGeometry(.42, 20, 14), GOLD, 0, .32, 0, up, 1, 1.08, .92);
-  add(new THREE.CylinderGeometry(.38, .44, .22, 18), GOLD, 0, .04, 0);
-  const sash = add(new THREE.TorusGeometry(.415, .06, 6, 28), GOLD_DARK, 0, .34, 0, up, 1, 1.08, .94); sash.rotation.set(0, Math.PI / 2, .8);
+  add(new THREE.SphereGeometry(.42, hs(20, 6), hs(14, 4)), GOLD, 0, .32, 0, up, 1, 1.08, .92);
+  add(new THREE.CylinderGeometry(.38, .44, .22, hs(18, 6)), GOLD, 0, .04, 0);
+  const sash = add(new THREE.TorusGeometry(.415, .06, hs(6, 3), hs(28, 6)), GOLD_DARK, 0, .34, 0, up, 1, 1.08, .94); sash.rotation.set(0, Math.PI / 2, .8);
   const head = new THREE.Group(); head.position.y = 1.12; up.add(head);
-  add(new THREE.SphereGeometry(.5, 24, 16), GOLD, 0, 0, 0, head, 1, .96, .96);
-  [-1, 1].forEach((sd) => { add(new THREE.SphereGeometry(.08, 8, 6), GOLD, sd * .5, -.02, 0, head, .6, 1, 1);
-    const eye = add(new THREE.TorusGeometry(.065, .014, 6, 14, Math.PI), GOLD_DARK, sd * .17, -.02, .465, head); eye.rotation.z = Math.PI; });
-  const mouth = add(new THREE.TorusGeometry(.07, .014, 6, 14, Math.PI), GOLD_DARK, 0, -.17, .46, head); mouth.rotation.z = Math.PI;
-  const arm = (sd, rx, rz) => { const g = new THREE.Group(); g.position.set(sd * .36, .56, .08); up.add(g); add(new THREE.CapsuleGeometry(.1, .24, 4, 8), GOLD, 0, -.18, 0, g); add(new THREE.SphereGeometry(.085, 10, 8), GOLD, 0, -.4, 0, g); g.rotation.set(rx, 0, rz); return g; };
-  const legs = () => [-.15, .15].forEach((x) => { add(new THREE.CapsuleGeometry(.1, .14, 4, 8), GOLD, x, .2, 0, G); add(new THREE.SphereGeometry(.11, 10, 8), GOLD, x, .05, .05, G, 1, .6, 1.4); });
-  const crossLegs = () => { add(new THREE.SphereGeometry(.5, 18, 10), GOLD, 0, .12, .08, G, 1, .32, .8); up.position.y = .2; };
+  add(new THREE.SphereGeometry(.5, hs(24, 6), hs(16, 4)), GOLD, 0, 0, 0, head, 1, .96, .96);
+  [-1, 1].forEach((sd) => { add(new THREE.SphereGeometry(.08, hs(8, 6), hs(6, 4)), GOLD, sd * .5, -.02, 0, head, .6, 1, 1);
+    const eye = add(new THREE.TorusGeometry(.065, .014, hs(6, 3), hs(14, 6), Math.PI), GOLD_DARK, sd * .17, -.02, .465, head); eye.rotation.z = Math.PI; });
+  const mouth = add(new THREE.TorusGeometry(.07, .014, hs(6, 3), hs(14, 6), Math.PI), GOLD_DARK, 0, -.17, .46, head); mouth.rotation.z = Math.PI;
+  const arm = (sd, rx, rz) => { const g = new THREE.Group(); g.position.set(sd * .36, .56, .08); up.add(g); add(new THREE.CapsuleGeometry(.1, .24, hs(4, 2), hs(8, 5)), GOLD, 0, -.18, 0, g); add(new THREE.SphereGeometry(.085, hs(10, 6), hs(8, 4)), GOLD, 0, -.4, 0, g); g.rotation.set(rx, 0, rz); return g; };
+  const legs = () => [-.15, .15].forEach((x) => { add(new THREE.CapsuleGeometry(.1, .14, hs(4, 2), hs(8, 5)), GOLD, x, .2, 0, G); add(new THREE.SphereGeometry(.11, hs(10, 6), hs(8, 4)), GOLD, x, .05, .05, G, 1, .6, 1.4); });
+  const crossLegs = () => { add(new THREE.SphereGeometry(.5, hs(18, 6), hs(10, 4)), GOLD, 0, .12, .08, G, 1, .32, .8); up.position.y = .2; };
   const prop = (geo, m, x, y, z) => add(geo, m, x, y, z);
   if (pose === "hap") { legs(); arm(-1, -1.3, .95); arm(1, -1.3, -.95); }
   else if (pose === "sit") { crossLegs(); arm(-1, -.7, .7); arm(1, -.7, -.7); }
-  else if (pose === "bow") { add(new THREE.SphereGeometry(.45, 16, 10), GOLD, 0, .14, -.1, G, 1, .35, 1); up.position.set(0, .25, .05); up.rotation.x = .95; arm(-1, -2.4, .3); arm(1, -2.4, -.3); }
-  else if (pose === "moktak") { crossLegs(); arm(-1, -1.0, .5); arm(1, -1.4, -.4); prop(new THREE.SphereGeometry(.16, 12, 10), GOLD_DARK, -.08, .38, .5).scale.set(1.2, .9, 1); prop(new THREE.CylinderGeometry(.025, .025, .45, 6), GOLD_DARK, .16, .55, .45).rotation.z = 1; }
-  else if (pose === "lotus") { legs(); arm(-1, -1.5, .7); arm(1, -1.5, -.7); for (let k = 0; k < 7; k++) { const pt = prop(new THREE.SphereGeometry(.09, 8, 6), GOLD, Math.cos(k / 7 * 6.28) * .08, .78, .52 + Math.sin(k / 7 * 6.28) * .08); pt.scale.set(.6, 1.4, .6); pt.rotation.set(Math.sin(k) * .5, 0, Math.cos(k / 7 * 6.28) * .5); } }
+  else if (pose === "bow") { add(new THREE.SphereGeometry(.45, hs(16, 6), hs(10, 4)), GOLD, 0, .14, -.1, G, 1, .35, 1); up.position.set(0, .25, .05); up.rotation.x = .95; arm(-1, -2.4, .3); arm(1, -2.4, -.3); }
+  else if (pose === "moktak") { crossLegs(); arm(-1, -1.0, .5); arm(1, -1.4, -.4); prop(new THREE.SphereGeometry(.16, hs(12, 6), hs(10, 4)), GOLD_DARK, -.08, .38, .5).scale.set(1.2, .9, 1); prop(new THREE.CylinderGeometry(.025, .025, .45, hs(6, 6)), GOLD_DARK, .16, .55, .45).rotation.z = 1; }
+  else if (pose === "lotus") { legs(); arm(-1, -1.5, .7); arm(1, -1.5, -.7); for (let k = 0; k < 7; k++) { const pt = prop(new THREE.SphereGeometry(.09, hs(8, 6), hs(6, 4)), GOLD, Math.cos(k / 7 * 6.28) * .08, .78, .52 + Math.sin(k / 7 * 6.28) * .08); pt.scale.set(.6, 1.4, .6); pt.rotation.set(Math.sin(k) * .5, 0, Math.cos(k / 7 * 6.28) * .5); } }
   else if (pose === "wave") { legs(); arm(-1, -.2, .25); arm(1, 0, -2.6); }
   else if (pose === "read") { crossLegs(); arm(-1, -1.2, .6); arm(1, -1.2, -.6); const bk = prop(new THREE.BoxGeometry(.5, .06, .36), GOLD_DARK, 0, .5, .45); bk.rotation.x = -.7; }
-  else if (pose === "bead") { legs(); arm(-1, -1.1, .9); arm(1, -.9, -.6); const bd = prop(new THREE.TorusGeometry(.14, .03, 6, 16), GOLD_DARK, -.02, .42, .44); bd.rotation.x = 1.2; }
+  else if (pose === "bead") { legs(); arm(-1, -1.1, .9); arm(1, -.9, -.6); const bd = prop(new THREE.TorusGeometry(.14, .03, hs(6, 3), hs(16, 6)), GOLD_DARK, -.02, .42, .44); bd.rotation.x = 1.2; }
   else if (pose === "sleep") { crossLegs(); arm(-1, -.5, .4); arm(1, -.5, -.4); head.rotation.z = .5; head.position.x = .12; }
   G.updateMatrixWorld(true);
   const byMat = new Map();
   G.traverse((o) => { if (!o.isMesh) return; const g = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone(); g.applyMatrix4(o.matrixWorld); for (const k of Object.keys(g.attributes)) if (!["position", "normal", "uv"].includes(k)) g.deleteAttribute(k); (byMat.get(o.material) || byMat.set(o.material, []).get(o.material)).push(g); });
   const out = [...byMat].map(([m, gs]) => [mergeGeometries(gs), m]);
-  return (dongjaGeoCache[pose] = out);
+  return (dongjaGeoCache[ck] = out);
 }
 function placeDongja(pose, x, y, z, s = .4, ry = 0, parent = scene) {
   const g = new THREE.Group(); for (const [geo, m] of dongjaGeo(pose)) g.add(new THREE.Mesh(geo, m));
@@ -1306,7 +1312,7 @@ const fade = (fn) => { const f = $("fadeOut"); f.classList.add("on"); setTimeout
 function enterRoom(k) {
   if (!player) return; standUp(); stopAutoBow(); pendingSeat = null; autoPath = null;
   fade(() => {
-    roomReturn = layoutW(ROOMS[k].x, ROOMS[k].z + 3.6); inRoom = k; pray = null; setupRoom(k);
+    roomReturn = layoutW(ROOMS[k].x, ROOMS[k].z + 3.6); inRoom = k; roomG.visible = true; pray = null; setupRoom(k);
     hideWorld(true); if (player.aura) player.aura.visible = false;
     camTarget.set(RO.x, 1.45, RO.z - 2.6); camera.position.set(RO.x, 2.5, RO.z + 3.15);
     player.pos.set(RO.x, 0, RO.z + .6); player.target.copy(player.pos); player.yaw = Math.PI; player.root.rotation.y = Math.PI; player.y = 0; player.sitting = true;
@@ -1531,7 +1537,7 @@ function updateDipper(dt, now, t) {
   const nicheTex = canvasTex(256, 256, (x, w, h) => { x.fillStyle = "#4a1610"; x.fillRect(0, 0, w, h); const g = x.createRadialGradient(w / 2, h * .45, 10, w / 2, h * .45, w * .5); g.addColorStop(0, "rgba(255,200,120,.55)"); g.addColorStop(1, "rgba(255,200,120,0)"); x.fillStyle = g; x.fillRect(0, 0, w, h);
     x.strokeStyle = "#d9b44a"; x.lineWidth = 10; x.strokeRect(5, 5, w - 10, h - 10); x.lineWidth = 3; x.beginPath(); x.moveTo(30, h - 22); x.quadraticCurveTo(w / 2, 10, w - 30, h - 22); x.stroke(); });
   const winMat = new THREE.MeshStandardMaterial({ map: DOOR_TEX, emissive: "#ffe6b8", emissiveMap: DOOR_TEX, emissiveIntensity: .45, roughness: .8 });
-  const sitParts = dongjaGeo("sit");
+  const sitParts = dongjaGeo("sit", true);
   [-1, 1].forEach((sd) => {
     const ry = -sd * Math.PI / 2, X = sd * WX;
     // 탱화 세 폭 (금테 액자)
@@ -1838,7 +1844,7 @@ const seaG = new THREE.Group(); scene.add(seaG);
   const postM = M("#5c6168", { roughness: .6, metalness: .3 });
   const postI = new THREE.InstancedMesh(new THREE.CylinderGeometry(.03, .03, 1.25, 6), postM, posts.length), o = new THREE.Object3D();
   posts.forEach(([x, z], i) => { o.position.set(x, .62, z); o.rotation.set(0, 0, 0); o.scale.set(1, 1, 1); o.updateMatrix(); postI.setMatrixAt(i, o.matrix); }); seaG.add(postI);
-  const lampGeo = LOTUS.white.clone(); lampGeo.scale(.72, .72, .72);
+  const lampGeo = LOTUS.lite.clone(); lampGeo.scale(.72, .72, .72);
   const lampM = new THREE.MeshStandardMaterial({ color: "#fbfaf5", emissive: "#fff3d8", emissiveIntensity: .25, roughness: .7 }); SEA.lampM = lampM;
   const lampI = new THREE.InstancedMesh(lampGeo, lampM, lamps.length), tagI = new THREE.InstancedMesh(new THREE.PlaneGeometry(.11, .3), M("#f6f3ea", { side: THREE.DoubleSide }), lamps.length);
   lamps.forEach(([x, z, r], i) => { o.position.set(x, 1.02, z); o.rotation.set(0, r, 0); o.updateMatrix(); lampI.setMatrixAt(i, o.matrix); o.position.set(x, .62, z); o.updateMatrix(); tagI.setMatrixAt(i, o.matrix); });
@@ -2170,7 +2176,7 @@ const bellPivot = new THREE.Group(); bellPivot.userData.t0 = 0;
   // 종을 매다는 고리(천장에서 내려옴) + 흔들리는 축
   bellPivot.position.y = .62 + PH - .25; g.add(bellPivot);
   const bell = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.6, 3, 16), M("#5a5a4a", { metalness: .7, roughness: .4 })); bell.position.y = -1.7; bellPivot.add(bell);
-  { const bl = new THREE.PointLight("#ffd9a0", 10, 7, 1.5); bl.position.set(1.4, 2.4, 1.4); g.add(bl); } // 처마 밑 어두운 종을 은은하게
+  { const bl = new THREE.PointLight("#ffd9a0", 10, 7, 1.5); bl.position.set(1.4, 2.4, 1.4); g.add(bl); localLights.push(bl); } // 처마 밑 어두운 종을 은은하게
   // 실제 범종 3D 스캔(assets/bell.glb)이 있으면 그 모델로 바꿔요
   lazy(() => new GLTFLoader().load("assets/bell.glb", (gltf) => {
     const m = gltf.scene; const bb = new THREE.Box3().setFromObject(m), size = bb.getSize(new THREE.Vector3());
@@ -2451,7 +2457,6 @@ function applyLook(m, l) {
     g = new THREE.Group();
     const stick = new THREE.Mesh(new THREE.CylinderGeometry(.012, .012, .7, 6), M("#6b4a32")); stick.position.y = .35; g.add(stick);
     const lamp = new THREE.Mesh(new THREE.SphereGeometry(.14, 14, 10), new THREE.MeshStandardMaterial({ color: "#f2a65a", emissive: "#f28a3a", emissiveIntensity: 1.3 })); lamp.scale.y = 1.25; lamp.position.y = .85; g.add(lamp);
-    const glow = new THREE.PointLight("#ffb466", 1.2, 2.5, 2); glow.position.y = .85; g.add(glow);
     g.position.set(.5, .45, .18); g.rotation.z = -.15; m.body.add(g);
   } else if (kind === "crown") {
     g = new THREE.Group(); const cols = ["#f2d05a", "#f3eee3", "#f2a0b8", "#b9d3ea"];
@@ -2567,7 +2572,7 @@ function applyAura(m, lv) {
   const g = new THREE.Group(); const c = lv >= 5 ? "#ffe9a8" : lv >= 4 ? "#f2c66a" : "#d9b44a";
   const ring = new THREE.Mesh(new THREE.TorusGeometry(.62, lv >= 4 ? .035 : .022, 8, 40), new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: .9 })); g.add(ring);
   if (lv >= 4) { const disc = new THREE.Mesh(new THREE.CircleGeometry(.6, 32), new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: .18 })); g.add(disc); }
-  if (lv >= 5) { const outer = new THREE.Mesh(new THREE.TorusGeometry(.78, .02, 8, 48), new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: .6 })); g.add(outer); const l = new THREE.PointLight("#ffd98a", 1.5, 3, 2); g.add(l); }
+  if (lv >= 5) { const outer = new THREE.Mesh(new THREE.TorusGeometry(.78, .02, 8, 48), new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: .6 })); g.add(outer); }
   g.position.set(0, .05, -.35); m.head.add(g); m.aura = g;
 }
 
@@ -3938,12 +3943,12 @@ function tick() {
   requestAnimationFrame(tick);
 }
 /* ---------- 휴대폰에서 부드럽게: 먼 건물은 잠시 그리지 않고, 느리면 화면 해상도를 조금 낮춰요 ---------- */
-let cullList = null, cullAt = 0;
+let cullList = null, cullAt = 0, CULL_R = 92; // 느린 기기에서는 더 가까이까지만 그려요 (안개 속이라 티가 덜 나요)
 function cullFar(now) {
   if (!player || now < cullAt) return; cullAt = now + 400;
   if (inRoom || inGrotto || inCave) return;
   if (!cullList) cullList = scene.children.filter((o) => o !== ground && !o.userData.monk && !o.isLight && !o.userData.farHill && o !== seaG && o !== starField && o !== moonBall && o !== lanternGroup && o !== dipper.g && o !== roomG && o !== grottoG && o !== caveG && (Math.abs(o.position.x) + Math.abs(o.position.z) > .001)).map((o) => ({ o, p: o.position.clone() }));
-  const px = camera.position.x, pz = camera.position.z, R2 = 92 * 92;
+  const px = camera.position.x, pz = camera.position.z, R2 = CULL_R * CULL_R;
   for (const c of cullList) { const dx = c.p.x - px, dz = c.p.z - pz; const want = dx * dx + dz * dz < R2; if (c.o.userData.culled !== !want) { c.o.userData.culled = !want; if (!want) c.o.visible = false; else if (!worldHidden.includes(c.o)) c.o.visible = true; } }
 }
 let resT = 0, resN = 0, resLowAt = 0;
@@ -3978,13 +3983,13 @@ applyLayout();
    · 대웅전 문으로 드는 햇살 줄기와 떠다니는 먼지
    · 하늘에 흐르는 구름, 계절 따라 꽃잎 · 반딧불 · 단풍잎 · 눈
    ========================================================= */
-const FX = { on: true, slowN: 0, phase: "day", hallBox: null, season: "", sky: null, shafts: null, dust: null, parts: null };
+const FX = { on: true, slowN: 0, lightAt: 0, phase: "day", hallBox: null, season: "", sky: null, shafts: null, dust: null, parts: null };
 // 빛번짐: 촛불 · 등불 둘레에 부드러운 빛무리 (후처리 대신 가벼운 빛무리 그림이라 휴대폰에서도 부담이 적어요)
 function fxResize() {}
 function renderFrame() { renderer.render(scene, camera); }
 const GLOW_TEX = canvasTex(128, 128, (x, w) => { const r = x.createRadialGradient(64, 64, 0, 64, 64, 64); r.addColorStop(0, "rgba(255,255,255,1)"); r.addColorStop(.18, "rgba(255,255,255,.55)"); r.addColorStop(.5, "rgba(255,255,255,.14)"); r.addColorStop(1, "rgba(255,255,255,0)"); x.fillStyle = r; x.fillRect(0, 0, w, w); });
 GLOW_TEX.wrapS = GLOW_TEX.wrapT = THREE.ClampToEdgeWrapping;
-const glowMats = [];
+const glowMats = [], glowSprites = [];
 function addGlows() {
   const list = [], ws = new THREE.Vector3(), skipRoots = new Set([lanternGroup]);
   scene.traverse((o) => {
@@ -3997,7 +4002,7 @@ function addGlows() {
   });
   list.slice(0, 220).forEach(({ o, r, flame, c }) => {
     const gm = new THREE.SpriteMaterial({ map: GLOW_TEX, color: c, transparent: true, opacity: .5, blending: THREE.AdditiveBlending, depthWrite: false }); gm.userData.k = flame ? 1 : .8; glowMats.push(gm);
-    const sp = new THREE.Sprite(gm); o.getWorldScale(ws); const size = (flame ? 9 : 5.5) * r; sp.scale.set(size / ws.x, size / ws.y, 1); sp.userData.glow = true; sp.raycast = () => {}; o.add(sp);
+    const sp = new THREE.Sprite(gm); o.getWorldScale(ws); const size = (flame ? 9 : 5.5) * r; sp.scale.set(size / ws.x, size / ws.y, 1); sp.userData.glow = true; sp.raycast = () => {}; o.add(sp); glowSprites.push(sp);
   });
 }
 // 해 · 노을 · 밤에 따라 세기를 바꿔요
@@ -4070,6 +4075,7 @@ function fxRespawn(i, anyY) {
 let fxSeasonAt = 0;
 function updateFx(dt, t) {
   WIND.value = t;
+  if (t > FX.lightAt) { FX.lightAt = t + .5; manageLights(); }
   if (!FX.hallBox) { FX.hallBox = new THREE.Box3().setFromObject(hallG); FX.hallBox.expandByScalar(.5); addGlows(); fxPhase(); }
   const night = FX.phase === "night", dusk = FX.phase === "dusk";
   // 햇살 줄기: 낮에는 금빛, 노을엔 주황, 밤엔 달빛처럼 아주 옅게
@@ -4093,8 +4099,56 @@ function updateFx(dt, t) {
   }
   P.pts.geometry.attributes.position.needsUpdate = true; if (P.mode === "firefly") P.pts.geometry.attributes.color.needsUpdate = true;
 }
+
+// 조명 관리: 지금 보이는 곳의 조명만 켜요 (조명 수가 곧 화면 전체의 계산량이라 가장 효과가 커요)
+function manageLights() {
+  const c = camera.position, away = inRoom || inGrotto || inCave;
+  const nearHall = !away && Math.abs(c.x) < 24 && c.z < -4 && c.z > -48;
+  [buddhaSpot, buddhaRim, hallLight, ...hallSideLights].forEach((l) => (l.visible = nearHall));
+  [pagodaLamp, kitchenLight, ...localLights].forEach((l) => { const p = l.getWorldPosition(_lv); l.visible = !away && Math.hypot(p.x - c.x, p.z - c.z) < 30; });
+  shrineLight.visible = !away && shrineLight.intensity > 0 && Math.hypot(21 - c.x, -3.4 - c.z) < 30;
+  roomG.visible = !!inRoom;
+  // 빛무리도 가까운 것만
+  for (const g of glowSprites) { const p = g.getWorldPosition(_lv); g.visible = Math.hypot(p.x - c.x, p.z - c.z) < 45; }
+}
+const _lv = new THREE.Vector3();
 // 느린 기기: 해상도를 다 낮춰도 느리면 빛번짐을 꺼요
-function fxPerf(fps) { if (!FX.on) return; if (fps < 26 && pixelRatio <= 1) { if (++FX.slowN >= 2) { FX.on = false; FX.dust.visible = false; FX.parts.pts.geometry.setDrawRange(0, 120); } } else FX.slowN = 0; }
+function fxPerf(fps) { if (fps < 34) CULL_R = Math.max(62, CULL_R - 10); else if (fps > 55 && CULL_R < 92) CULL_R = Math.min(92, CULL_R + 5);
+  if (!FX.on) return; if (fps < 26 && pixelRatio <= 1) { if (++FX.slowN >= 2) { FX.on = false; FX.dust.visible = false; FX.parts.pts.geometry.setDrawRange(0, 120); } } else FX.slowN = 0; }
+
+// 정적 물체 합치기: 마당에 흩어진 돌 · 나무 · 기둥 조각들을 구역(32m)별 · 재질별로 한 덩어리로 묶어 그리기 횟수를 줄여요
+(function mergeStatic() {
+  const keep = new Set([ground, mountMesh, stream, ...cushions]);
+  const groups = new Map();
+  for (const o of [...scene.children]) {
+    if (!o.isMesh || o.isInstancedMesh || o.children.length || keep.has(o) || Object.keys(o.userData).length) continue;
+    const m = o.material; if (!m || Array.isArray(m) || m.isMeshBasicMaterial || m.transparent || m.onBeforeCompile?.toString().includes("uWind")) continue;
+    if (m.emissive && m.emissiveIntensity > .3 && (m.emissive.r + m.emissive.g + m.emissive.b) > .3) continue;
+    if (!o.visible) continue;
+    o.updateMatrixWorld(true); const p = o.getWorldPosition(new THREE.Vector3());
+    const key = m.uuid + "|" + Math.floor(p.x / 32) + "," + Math.floor(p.z / 32) + "|" + Object.keys(o.geometry.attributes).sort().join(",");
+    if (!groups.has(key)) groups.set(key, { m, list: [], cx: (Math.floor(p.x / 32) + .5) * 32, cz: (Math.floor(p.z / 32) + .5) * 32 });
+    groups.get(key).list.push(o);
+  }
+  let merged = 0;
+  groups.forEach(({ m, list, cx, cz }) => {
+    if (list.length < 3) return;
+    const gs = list.map((o) => { const g = (o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone()); g.applyMatrix4(o.matrixWorld); g.translate(-cx, 0, -cz); return g; });
+    const mg = mergeGeometries(gs); if (!mg) return; gs.forEach((g) => g.dispose());
+    const mesh = new THREE.Mesh(mg, m); mesh.position.set(cx, 0, cz); scene.add(mesh); list.forEach((o) => scene.remove(o)); merged += list.length;
+  });
+  // 건물 묶음 안의 조각들도 재질별로 합쳐요 (움직이는 묶음은 빼고)
+  const skipG = new Set([lanternGroup, riceGroup, giwaTiles, dipper.g, roomG, player?.root].filter(Boolean));
+  const okMesh = (o) => o.isMesh && !o.isInstancedMesh && !o.children.length && !keep.has(o) && !Object.keys(o.userData).length && o.visible && o.material && !Array.isArray(o.material) && !o.material.isMeshBasicMaterial && !o.material.transparent && !(o.material.emissive && o.material.emissiveIntensity > .3 && (o.material.emissive.r + o.material.emissive.g + o.material.emissive.b) > .3);
+  pungs.forEach((q) => skipG.add(q)); skipG.add(statue); skipG.add(bellPivot); skipG.add(roomStatue); skipG.add(incense);
+  const allG = []; (function walk(n) { for (const c of n.children) { if (skipG.has(c) || c.userData.monk) continue; if (c.children.length && !c.isMesh) { allG.push(c); walk(c); } } })(scene);
+  for (const g of allG) {
+    const byM = new Map(); for (const o of g.children) { if (!okMesh(o)) continue; const k = o.material.uuid + "|" + Object.keys(o.geometry.attributes).sort().join(","); if (!byM.has(k)) byM.set(k, []); byM.get(k).push(o); }
+    byM.forEach((list) => { if (list.length < 3) return; const gs = list.map((o) => { o.updateMatrix(); const q = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone(); q.applyMatrix4(o.matrix); return q; });
+      const mg = mergeGeometries(gs); if (!mg) return; const mesh = new THREE.Mesh(mg, list[0].material); g.add(mesh); list.forEach((o) => g.remove(o)); merged += list.length; });
+  }
+  console.log("[달빛암] 합친 물체", merged);
+})();
 renderLanterns(me.localWishes);
 for (let i = 0; i < Math.min(me.rice || 0, RICE_SPOTS.length); i++) addRiceBag(false);
 renderGiwa(me.localGiwa);
