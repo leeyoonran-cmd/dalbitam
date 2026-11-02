@@ -774,8 +774,6 @@ const candles = [];
 const ALTAR_F = BUDDHA_Z + 2.4; // 불단 앞
 const hallLight = new THREE.PointLight("#ffb466", 60, 40, 1.4); hallLight.position.set(0, 8, -27); scene.add(hallLight);
 [-10, 10].forEach((x) => { const l = new THREE.PointLight("#ffc27a", 22, 22, 1.6); l.position.set(x, 7.5, -30); scene.add(l); });
-// 법당 위쪽에 매단 연등 줄
-for (let row = 0; row < 3; row++) for (let i = 0; i < 9; i++) { const c = ["#f2a65a", "#e86a5a", "#f2d05a", "#f29ac8"][(i + row) % 4]; const l = new THREE.Mesh(new THREE.SphereGeometry(.38, 12, 10), new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: .8 })); l.scale.y = 1.25; l.position.set(-12 + i * 3, 9.6 - Math.sin(i / 8 * Math.PI) * .6, -30 + row * 5); scene.add(l); }
 // 불전 공양상: 붉은 옻칠 상 위에 향로 · 촛대 한 쌍 · 청수 · 과일 고임 · 떡 — 좌우 대칭으로 가지런히
 const TABLE_Z = ALTAR_F + .55, TABLE_TOP = 1.5;
 const altarTable = new THREE.Group(); altarTable.position.set(0, 0, TABLE_Z); scene.add(altarTable);
