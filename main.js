@@ -1117,18 +1117,20 @@ function updateDipper(dt, now, t) {
 
 /* 계조암: 법당 뒤로 솟은 화강암 바위 무리와 그 위의 흔들바위 */
 const rockingStone = (() => {
-  const C = { x: 0, z: -38 };
+  const C = { x: 0, z: -38 }, tops = [];
   const RZ = -11, RY = 0, K = 2.4; // 높아진 대웅전 뒤로 더 크게 솟게
-  [[-10, 4, -36, 6, 5, 4], [-3, 6, -39, 7, 6.5, 4.5], [5, 5.2, -37.5, 6.5, 5.4, 4.2], [12, 3.6, -35.5, 5, 3.8, 3.6], [-15, 2.6, -34.5, 4, 2.8, 3.4], [16, 2.4, -33.8, 3.6, 2.6, 3],
-   [0, 10.5, -40.5, 5, 3.4, 3.4], [-7, 9, -40, 3.6, 3, 3], [8.5, 8.6, -39.5, 3.4, 2.6, 3]].forEach(([x, y, z, sx, sy, sz], i) => rock(1, sx * 1.4, sy * K, sz * 1.3, x * 1.3, y * K + RY, z + RZ, i * .7));
+  [[-10, 4, -36, 6, 5, 4], [-3, 6, -39, 7, 6.5, 4.5], [5, 5.2, -37.5, 6.5, 5.4, 4.2], [10, 3.6, -35.5, 5, 3.8, 3.6], [-15, 2.6, -34.5, 4, 2.8, 3.4],
+   [0, 10.5, -40.5, 5, 3.4, 3.4], [-7, 9, -40, 3.6, 3, 3], [8.5, 8.6, -39.5, 3.4, 2.6, 3]].forEach(([x, y, z, sx, sy, sz], i) => { // 모든 바위가 땅에서부터 솟도록 (공중에 뜨지 않게)
+    const top = (y + sy) * K, h = top * .62; rock(1, sx * 1.4, h, sz * 1.3, x * 1.3, top - h + RY, z + RZ, i * .7); /* 아래쪽을 땅에 묻어 밑동이 넓게 */ tops.push({ x: x * 1.3, z: z + RZ, rx: sx * 1.4 * .8, rz: sz * 1.3 * .8, top }); });
+  const topAt = (x, z) => tops.reduce((m, t) => (((x - t.x) / t.rx) ** 2 + ((z - t.z) / t.rz) ** 2 < 1 ? Math.max(m, t.top * .92) : m), 0);
   // 흔들바위를 받치는 평평한 너럭바위
   rock(1, 3.6, .9, 3, 9, 9.8 * K, -38.3 + RZ, .3);
   const g = new THREE.Group(); g.position.set(9, 9.8 * K + .85, -38.3 + RZ); g.scale.setScalar(1.5); scene.add(g);
   const stone = rock(1, 1.7, 1.5, 1.45, 0, 1.45, 0, 0, g);
   const sg = textSprite("흔들바위", { size: 34, color: "#f3e6c4", bg: "rgba(40,30,20,.6)", pad: 12 }); sg.material.depthTest = true; sg.position.set(0, 3.6, 0); sg.scale.multiplyScalar(.9); g.add(sg);
   // 바위 틈 소나무
-  [[-12, 7.2, -35], [-4.5, 11.8, -38], [11, 6.4, -35], [2, 12.5, -40], [-8.5, 10.6, -39], [14.5, 5, -33.5]].forEach(([x, y, z]) => {
-    const t = new THREE.Group(); t.position.set(x * 1.3, y * K + RY, z + RZ); t.scale.setScalar(1.8); scene.add(t);
+  [[-12, 7.2, -35], [-4.5, 11.8, -38], [11, 6.4, -35], [2, 12.5, -40], [-8.5, 10.6, -39]].forEach(([x, y, z]) => {
+    const t = new THREE.Group(); t.position.set(x * 1.3, topAt(x * 1.3, z + RZ) - .3, z + RZ); t.scale.setScalar(1.8); scene.add(t);
     const tr = cyl(.12, .2, 1.6, mat.trunk, 0, .8, 0, 6, t); tr.rotation.z = rand(-.25, .25);
     [[1.3, .5, 1.5], [1, .4, 2.0], [.7, .35, 2.4]].forEach(([r, h, yy]) => { const c = new THREE.Mesh(new THREE.CylinderGeometry(r * .9, r, h, 7), mat.leaf2); c.position.set(rand(-.2, .2), yy, rand(-.2, .2)); c.scale.z = .7; t.add(c); });
   });
@@ -2270,7 +2272,7 @@ function applyLayout() {
       const bb = new THREE.Box3().setFromObject(o), c = bb.getCenter(new THREE.Vector3()), sz = bb.getSize(new THREE.Vector3());
       if (bb.isEmpty() || (Math.abs(c.x) < 3 && Math.abs(c.z) < 3 && sz.x < 6 && sz.z < 6)) return;
       [...o.children].forEach(visit); return; }
-    const p = repOf(o); const k = (Math.abs(p.x) < 16.2 && p.z > -56 && p.z < -12.9) ? CL.hall : clusterOfOrig(p.x, p.z); if (!k) return; // 대웅전 뒤 바위는 대웅전과 함께
+    const p = repOf(o); const k = (Math.abs(p.x) < 24 && p.z > -56 && p.z < -12.9 && !clusterOfOrig(p.x, p.z)?.id?.match(/sanshin|jijang|janggyeong|seokgul|kitchen|gwaneum|chilseong/)) ? CL.hall : clusterOfOrig(p.x, p.z); if (!k) return; // 대웅전 뒤 바위는 대웅전과 함께
     if (atOrigin && (o.isMesh || o.isLine || o.isPoints)) { // 원점에 두고 모양을 옮겨 둔 것: 위치만 무리만큼 옮겨요
       const w = layoutW(p.x, p.z, k); o.position.x += w.x - p.x; o.position.z += w.z - p.z; if (k.s !== 1) { /* 크기는 그대로 */ } return; }
     moveObj(o, k);
@@ -2278,32 +2280,6 @@ function applyLayout() {
   [...scene.children].forEach(visit);
   // 원래 길은 지우고, 새 자리에 맞춰 길을 다시 깔아요
   roadTiles.forEach((t) => scene.remove(t));
-  const placed = [];
-  const wet = (x, z) => { // 물 위에는 길을 깔지 않아요 (계곡 · 월지 · 바다)
-    const o = layoutO(x, z); if (!o) return false;
-    if (o.k.id === "walk" && Math.abs(o.x - 11) < 2.2) return true;
-    if (o.k.id === "wolji" && Math.abs(o.x - WJ.x) < WJ.w / 2 + 1 && Math.abs(o.z - WJ.z) < WJ.d / 2 + 1) return true;
-    if (o.k.id === "sea" && o.z < -40) return true;
-    return blocked0(o.x, o.z); };
-  const tile = (x, z, ry = 0, force) => { if (!force && (wet(x, z) || placed.some((p) => Math.hypot(p.x - x, p.z - z) < 1.15))) return; placed.push({ x, z }); const b = box(2.2, .06, 1, mat.darkStone, x, .03, z); b.rotation.y = ry; };
-  for (let z = -12.5; z < 62; z += 1.3) tile(z > 20 ? Math.sin((z - 20) * .15) * 1.5 : 0, z, 0, true); // 대웅전 → 마당 → 산책길 (어긋남 없이 한 줄로)
-  const lane = (a, b) => { const L = Math.hypot(b.x - a.x, b.z - a.z), ry = Math.atan2(b.x - a.x, b.z - a.z); for (let d = 1.3; d < L; d += 1.3) tile(a.x + (b.x - a.x) * d / L, a.z + (b.z - a.z) * d / L, ry); };
-  const Y = (x, z) => layoutW(x, z, CL.yard), G = (x, z) => layoutW(x, z);
-  lane({ x: 1.6, z: 2 }, G(21, -2.4)); lane(G(21, -2.4), G(34, -3.2)); lane(G(34, -3.2), G(34, -17.2));
-  lane({ x: -1.6, z: 2 }, G(-21, -1.2)); lane(G(-21, -1.2), G(-34, -3.2)); lane(G(-34, -3.2), G(SG.door.x, SG.door.z + 2.6));
-  lane(Y(15, 8), G(WJ.x - WJ.w / 2 - 1.8, WJ.z)); lane(G(34, -17.2), G(JG.x, JG.z + JG.d / 2 + 3.4));
-  lane({ x: 1.6, z: -9 }, layoutW(18.6, -13, CL.sea));
-  lane({ x: -1.2, z: 27 }, G(TRAIL[0].x + 1.2, TRAIL[0].z)); lane(Y(15, 9), G(CAVE.x - 2.4, CAVE.z - 2.4));
-  // 전각 사이 빈 땅에 소나무 · 둥근 나무 · 바위를 흩어 심어요 (길과 전각은 비켜서)
-  { let n = 0; for (let i = 0; i < 2500 && n < 90; i++) { const x = rand(-70, 70), z = rand(-68, 66);
-      if (layoutO(x, z) || blocked(x, z)) continue; let near = false; for (const k of CLUSTERS) { if (k.id === "sea") continue; const hw = (k.r[1] - k.r[0]) / 2 * k.s + 3, hd = (k.r[3] - k.r[2]) / 2 * k.s + 3, cx = k.n[0] + ((k.r[0] + k.r[1]) / 2 - k.c[0]) * k.s, cz = k.n[1] + ((k.r[2] + k.r[3]) / 2 - k.c[1]) * k.s; if (Math.abs(x - cx) < hw && Math.abs(z - cz) < hd) { near = true; break; } }
-      if (near || placed.some((p) => Math.hypot(p.x - x, p.z - z) < 3.2) || Math.hypot(x, z - 10) < 20 || (z < -40 && Math.abs(x - 18.6) < 4)) continue; n++;
-      const t = new THREE.Group(); t.position.set(x, 0, z); scene.add(t); camHide.push(t); cyl(.16, .24, 1.6, mat.trunk, 0, .8, 0, 6, t);
-      if (n % 3) { const c1 = new THREE.Mesh(new THREE.ConeGeometry(1.3, 2.6, 7), mat.leaf2); c1.position.y = 2.4; t.add(c1); const c2 = new THREE.Mesh(new THREE.ConeGeometry(.95, 2, 7), mat.leaf); c2.position.y = 3.6; t.add(c2); }
-      else { const c = new THREE.Mesh(new THREE.SphereGeometry(1.5, 10, 8), mat.leaf); c.position.y = 2.6; c.scale.y = .85; t.add(c); }
-      t.scale.setScalar(rand(.8, 1.35)); t.rotation.y = rand(0, 6); }
-    for (let i = 0, m = 0; i < 800 && m < 40; i++) { const x = rand(-70, 70), z = rand(-68, 66); if (layoutO(x, z) || placed.some((p) => Math.hypot(p.x - x, p.z - z) < 2)) continue; m++;
-      const r = new THREE.Mesh(new THREE.DodecahedronGeometry(rand(.25, .7), 0), mat.stone); r.position.set(x, .1, z); r.rotation.set(rand(0, 3), rand(0, 3), 0); r.scale.y = .6; scene.add(r); } }
   // 대웅전 앞 돌마당(월대): 대웅전 계단에서 마당까지 화강암을 깔고, 왼쪽에 기와 불사 단
   { const tex = canvasTex(256, 256, (x, w, h) => { noise(x, w, h, "#a39d90", .16, 6000, 2); x.strokeStyle = "rgba(60,55,45,.35)"; x.lineWidth = 2; for (let i = 0; i <= 4; i++) { x.beginPath(); x.moveTo(0, i * 64); x.lineTo(w, i * 64); x.stroke(); } for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) { const xx = c * 64 + (r % 2) * 32; x.beginPath(); x.moveTo(xx, r * 64); x.lineTo(xx, r * 64 + 64); x.stroke(); } }, 10, 3);
     const plaza = new THREE.Mesh(new THREE.BoxGeometry(32, .08, 9), new THREE.MeshStandardMaterial({ map: tex, roughness: .95 })); plaza.position.set(0, .04, -9.3); scene.add(plaza);
@@ -2314,6 +2290,74 @@ function applyLayout() {
       if (i < 2) { const c1 = new THREE.Mesh(new THREE.ConeGeometry(1.5, 3, 7), mat.leaf2); c1.position.y = 3; t.add(c1); const c2 = new THREE.Mesh(new THREE.ConeGeometry(1.1, 2.3, 7), mat.leaf); c2.position.y = 4.4; t.add(c2); }
       else { const c = new THREE.Mesh(new THREE.SphereGeometry(1.7, 10, 8), mat.leaf); c.position.y = 3.4; t.add(c); }
       worldBlocks.push({ x1: x - .4, x2: x + .4, z1: z - .4, z2: z + .4 }); }); }
+  const placed = [];
+  const wet = (x, z) => { // 물 위 · 막힌 곳에는 길을 깔지 않아요
+    if (worldBlocks.some((b) => x > b.x1 - .6 && x < b.x2 + .6 && z > b.z1 - .6 && z < b.z2 + .6)) return true;
+    const o = layoutO(x, z); if (!o) return false;
+    if (o.k.id === "walk" && Math.abs(o.x - 11) < 2.4) return true;
+    if (o.k.id === "wolji" && Math.abs(o.x - WJ.x) < WJ.w / 2 + 1 && Math.abs(o.z - WJ.z) < WJ.d / 2 + 1) return true;
+    if (o.k.id === "sea" && o.z < -40) return true;
+    if (o.k.id === "yard" && Math.abs(o.x) < 15 && o.z > -10 && o.z < 11) return true; // 마당 흙바닥 안은 그대로
+    return blocked0(o.x, o.z) || blocked0(o.x + .7, o.z) || blocked0(o.x - .7, o.z) || blocked0(o.x, o.z + .7) || blocked0(o.x, o.z - .7); };
+  const tile = (x, z, ry = 0, force) => { placed.push({ x, z }); const b = box(2.2, .06, 1, mat.darkStone, x, .03, z); b.rotation.y = ry; };
+  for (let z = -4.6; z < 62; z += 1.3) tile(z > 20 ? Math.sin((z - 20) * .15) * 1.5 : 0, z, 0, true); // 마당 → 산책길 한 줄 (대웅전 앞은 돌마당)
+  // 이어진 길: 막힌 곳은 옆으로 비켜 돌아가고, 이미 깔린 돌과 겹치면 건너뛰어요
+  const path = (...pts) => { for (let i = 0; i < pts.length - 1; i++) { const a = pts[i], b = pts[i + 1], L = Math.hypot(b[0] - a[0], b[1] - a[1]), ry = Math.atan2(b[0] - a[0], b[1] - a[1]), nx = (b[1] - a[1]) / L, nz = -(b[0] - a[0]) / L;
+      for (let d = i ? 0 : .65; d <= L; d += 1.3) { const bx = a[0] + (b[0] - a[0]) * d / L, bz = a[1] + (b[1] - a[1]) * d / L; let x = bx, z = bz, ok = !wet(x, z);
+        for (const off of [1.3, -1.3, 2.6, -2.6, 3.9, -3.9]) { if (ok) break; x = bx + nx * off; z = bz + nz * off; ok = !wet(x, z); }
+        if (!ok || placed.some((p) => Math.hypot(p.x - x, p.z - z) < 1.05)) continue; tile(x, z, ry); } } };
+  const G = (x, z, k) => { const w = layoutW(x, z, k); return [w.x, w.z]; };
+  const FZ = 19; // 마당 남쪽 끝을 따라 동서로 잇는 앞길
+  path([16.5, FZ], [72, FZ]); path([-16.5, FZ], [-72, FZ]);
+  [G(21, -2.4), G(34, -3.2), G(-21, -1.2), G(-34, -3.2)].forEach((d) => path([d[0], FZ], d));
+  { const d = G(34, -17.2); path([72, FZ], [72, -20], [d[0], -20], d); }
+  { const d = G(JG.x, JG.z + JG.d / 2 + 3.4); path([48, -20], [48, -46], [d[0], d[1] + 2], d); }
+  { const d = G(WJ.x - WJ.w / 2 - 1.8, WJ.z); path([d[0], FZ], [d[0], d[1] + 1]); }
+  { const d = G(SG.door.x, SG.door.z + 2.6); path([-50, FZ], [-50, -36], [d[0], -38], d); }
+  { const s0 = G(18.6, -14, CL.sea); path([16.6, -6], [18.6, -12], [18.6, s0[1] + 1.2]); }
+  { const d = G(CAVE.x - 2.4, CAVE.z - 2.4); path([34, FZ], [34, 32], d); }
+  { const d = G(TRAIL[0].x + 1.2, TRAIL[0].z); path([-1.4, 27], [-20, 34], d); }
+  // 조경: 소나무 · 둥근 나무 · 단풍 · 벚나무 · 대나무 숲 · 꽃덤불 · 바위 · 풀 (길과 전각은 비켜서)
+  { const nearCluster = (x, z, pad) => CLUSTERS.some((k) => { if (k.id === "sea") return false; const hw = (k.r[1] - k.r[0]) / 2 * k.s + pad, hd = (k.r[3] - k.r[2]) / 2 * k.s + pad, cx = k.n[0] + ((k.r[0] + k.r[1]) / 2 - k.c[0]) * k.s, cz = k.n[1] + ((k.r[2] + k.r[3]) / 2 - k.c[1]) * k.s; return Math.abs(x - cx) < hw && Math.abs(z - cz) < hd; });
+    const free = (x, z, rTile, pad = 2.5) => !layoutO(x, z) && !blocked(x, z) && !nearCluster(x, z, pad) && !placed.some((p) => Math.hypot(p.x - x, p.z - z) < rTile) && Math.hypot(x, z + 4) > 21 && !(z < -38 && Math.abs(x - 18.6) < 4.5) && Math.abs(z - FZ) > 1.5;
+    const landG = new THREE.Group(); scene.add(landG);
+    const maple = M("#b5452c"), maple2 = M("#d9773a"), cherry = M("#f2b8c6"), bamboo = M("#6f9a4a"), bambooL = M("#4f7a36");
+    const kinds = ["pine", "pine", "pine", "round", "maple", "maple", "cherry", "bamboo"];
+    let n = 0;
+    for (let i = 0; i < 4000 && n < 110; i++) { const x = rand(-72, 72), z = rand(-68, 66); if (!free(x, z, 3)) continue;
+      const kind = kinds[n % kinds.length]; n++;
+      // 같은 종류를 2~3그루씩 모여 심어 자연스럽게
+      const grp = kind === "bamboo" ? 1 : 1 + (Math.random() < .5 ? 1 : 0) + (Math.random() < .3 ? 1 : 0);
+      for (let g2 = 0; g2 < grp; g2++) { const tx = x + (g2 ? rand(-2.6, 2.6) : 0), tz = z + (g2 ? rand(-2.6, 2.6) : 0); if (g2 && !free(tx, tz, 2.6, 1.5)) continue;
+        const t = new THREE.Group(); t.position.set(tx, 0, tz); landG.add(t);
+        if (kind === "bamboo") { for (let b = 0; b < 14; b++) { const h = rand(4, 6.5), bx = rand(-1.1, 1.1), bz = rand(-1.1, 1.1); const st = cyl(.05, .06, h, bamboo, bx, h / 2, bz, 6, t); st.rotation.set(rand(-.06, .06), 0, rand(-.06, .06)); const lf = new THREE.Mesh(new THREE.SphereGeometry(.55, 7, 5), bambooL); lf.scale.set(1, .5, 1); lf.position.set(bx, h - .2, bz); t.add(lf); } worldBlocks.push({ x1: tx - 1.3, x2: tx + 1.3, z1: tz - 1.3, z2: tz + 1.3 }); continue; }
+        const trunkH = kind === "pine" ? 1.8 : 2.2; const tr = cyl(.15, .24, trunkH, mat.trunk, 0, trunkH / 2, 0, 6, t); tr.rotation.z = rand(-.12, .12);
+        if (kind === "pine") { [[1.5, .55, 2.0], [1.2, .5, 2.6], [.85, .45, 3.2], [.5, .4, 3.7]].forEach(([r, h, yy]) => { const c = new THREE.Mesh(new THREE.CylinderGeometry(r * .85, r, h, 7), mat.leaf2); c.position.set(rand(-.25, .25), yy, rand(-.25, .25)); c.scale.z = .8; t.add(c); }); }
+        else { const col = kind === "round" ? mat.leaf : kind === "cherry" ? cherry : (Math.random() < .5 ? maple : maple2);
+          [[0, 2.9, 0, 1.5], [.9, 2.6, .3, 1.0], [-.8, 2.7, -.3, 1.05], [.1, 3.6, .2, .9]].forEach(([a2, b2, c2, r]) => { const c = new THREE.Mesh(new THREE.SphereGeometry(r, 9, 7), col); c.position.set(a2, b2, c2); t.add(c); }); }
+        t.scale.setScalar(rand(.85, 1.3)); t.rotation.y = rand(0, 6); worldBlocks.push({ x1: tx - .4, x2: tx + .4, z1: tz - .4, z2: tz + .4 }); } }
+    // 한 번에 그리도록 같은 재질끼리 합쳐요 (휴대폰에서 가볍게)
+    { landG.updateMatrixWorld(true); const byMat = new Map();
+      landG.traverse((o) => { if (!o.isMesh) return; const g = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone(); g.applyMatrix4(o.matrixWorld); for (const k of Object.keys(g.attributes)) if (!["position", "normal", "uv"].includes(k)) g.deleteAttribute(k); if (!byMat.has(o.material)) byMat.set(o.material, []); byMat.get(o.material).push(g); });
+      scene.remove(landG); byMat.forEach((gs, m) => { const mg = mergeGeometries(gs); if (mg) scene.add(new THREE.Mesh(mg, m)); }); }
+    // 꽃덤불 (철쭉 · 수국) : 길가 가까이 낮게
+    const flowerCols = ["#e86a8a", "#f2a0c0", "#b48ad9", "#f5f0e6", "#e8c04a"];
+    const bushG = new THREE.SphereGeometry(.5, 8, 6); const bushes = flowerCols.map((c) => ({ c, list: [] }));
+    for (let i = 0, m = 0; i < 3000 && m < 140; i++) { const p = placed[Math.floor(Math.random() * placed.length)]; if (!p) break; const a2 = rand(0, 6.28), d = rand(1.9, 3.2), x = p.x + Math.cos(a2) * d, z = p.z + Math.sin(a2) * d;
+      if (layoutO(x, z) || blocked(x, z) || placed.some((q) => Math.hypot(q.x - x, q.z - z) < 1.6) || nearCluster(x, z, 1)) continue; m++; bushes[m % bushes.length].list.push([x, z]); }
+    const o3 = new THREE.Object3D(); const leafG = new THREE.SphereGeometry(.55, 8, 6);
+    const allB = bushes.flatMap((b) => b.list); const base = new THREE.InstancedMesh(leafG, M("#3f6b3a"), allB.length);
+    allB.forEach(([x, z], i) => { o3.position.set(x, .3, z); o3.scale.set(1.2, .7, 1.2); o3.rotation.set(0, i, 0); o3.updateMatrix(); base.setMatrixAt(i, o3.matrix); }); scene.add(base);
+    bushes.forEach((b) => { if (!b.list.length) return; const im = new THREE.InstancedMesh(new THREE.SphereGeometry(.16, 6, 5), new THREE.MeshStandardMaterial({ color: b.c, roughness: .7, emissive: b.c, emissiveIntensity: .12 }), b.list.length * 6); let k = 0;
+      b.list.forEach(([x, z]) => { for (let f = 0; f < 6; f++) { o3.position.set(x + rand(-.5, .5), .55 + rand(0, .2), z + rand(-.5, .5)); o3.scale.setScalar(rand(.8, 1.3)); o3.updateMatrix(); im.setMatrixAt(k++, o3.matrix); } }); scene.add(im); });
+    // 앞길 석등: 14걸음마다 번갈아
+    for (let x = -66; x <= 66; x += 14) { if (Math.abs(x) < 18) continue; const z = FZ + (Math.round(x / 14) % 2 ? 1.9 : -1.9); box(.42, .9, .42, mat.stone, x, .45, z); box(.62, .42, .62, mat.stone, x, 1.12, z); const cap = new THREE.Mesh(new THREE.ConeGeometry(.55, .35, 4), mat.stone); cap.rotation.y = Math.PI / 4; cap.position.set(x, 1.5, z); scene.add(cap); const l = new THREE.Mesh(new THREE.SphereGeometry(.12, 8, 6), mat.flame); l.position.set(x, 1.12, z); scene.add(l); worldBlocks.push({ x1: x - .3, x2: x + .3, z1: z - .3, z2: z + .3 }); }
+    // 바위 · 풀
+    for (let i = 0, m = 0; i < 1500 && m < 50; i++) { const x = rand(-72, 72), z = rand(-68, 66); if (layoutO(x, z) || placed.some((p) => Math.hypot(p.x - x, p.z - z) < 2)) continue; m++;
+      const r = new THREE.Mesh(new THREE.DodecahedronGeometry(rand(.25, .8), 0), mat.stone); r.position.set(x, .1, z); r.rotation.set(rand(0, 3), rand(0, 3), 0); r.scale.y = .6; scene.add(r); }
+    const tuftG = new THREE.ConeGeometry(.08, .45, 3); const tufts = new THREE.InstancedMesh(tuftG, M("#5f7d3a"), 1600); let tn = 0;
+    for (let i = 0; i < 6000 && tn < 1600; i++) { const x = rand(-72, 72), z = rand(-68, 66); if (layoutO(x, z) || placed.some((p) => Math.hypot(p.x - x, p.z - z) < 1.2)) continue; for (let q = 0; q < 4 && tn < 1600; q++) { o3.position.set(x + rand(-.3, .3), .2, z + rand(-.3, .3)); o3.rotation.set(rand(-.3, .3), 0, rand(-.3, .3)); o3.scale.setScalar(rand(.7, 1.3)); o3.updateMatrix(); tufts.setMatrixAt(tn++, o3.matrix); } }
+    tufts.count = tn; scene.add(tufts); }
   // 실제 위치가 필요한 것들
   lanternSlots.forEach((v) => { const w = layoutW(v.x, v.z, CL.yard); v.x = w.x; v.z = w.z; });
   TRAIL.forEach((p) => { const w = layoutW(p.x, p.z, CL.m1); p.x = w.x; p.z = w.z; });
