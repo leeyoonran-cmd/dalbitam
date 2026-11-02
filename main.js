@@ -1094,7 +1094,7 @@ function statueFor(k) {
     const g = new THREE.Group(), h = 1.62, w = h * jijangPhoto.image.width / jijangPhoto.image.height;
     const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshStandardMaterial({ map: jijangPhoto, alphaTest: .4, transparent: true, roughness: .55, metalness: .1, emissive: "#ffffff", emissiveMap: jijangPhoto, emissiveIntensity: .35 }));
     m.position.set(0, h / 2 - .05, 0); g.add(m); statueCache[k] = g; return g; }
-  const g = new THREE.Group(), b = statue.clone(true); g.add(b);
+  const g = new THREE.Group(), b = statue.clone(true); b.visible = true; g.add(b); // 대웅전 본존이 판불로 바뀌어 원래 불상은 숨겨져 있어요 — 전각 불상은 보이게
   const top = new THREE.Box3().setFromObject(b).max.y;
   if (k === "gwaneum") { // 하얀 백자 관음상: 보관 · 정병
     b.traverse((o) => { if (o.isMesh) o.material = PORCELAIN; }); crownOn(g, top, PORCELAIN);
@@ -3942,7 +3942,7 @@ let cullList = null, cullAt = 0;
 function cullFar(now) {
   if (!player || now < cullAt) return; cullAt = now + 400;
   if (inRoom || inGrotto || inCave) return;
-  if (!cullList) cullList = scene.children.filter((o) => o !== ground && !o.userData.monk && !o.isLight && !o.userData.farHill && o !== seaG && o !== starField && o !== moonBall && o !== lanternGroup && o !== dipper.g && (Math.abs(o.position.x) + Math.abs(o.position.z) > .001)).map((o) => ({ o, p: o.position.clone() }));
+  if (!cullList) cullList = scene.children.filter((o) => o !== ground && !o.userData.monk && !o.isLight && !o.userData.farHill && o !== seaG && o !== starField && o !== moonBall && o !== lanternGroup && o !== dipper.g && o !== roomG && o !== grottoG && o !== caveG && (Math.abs(o.position.x) + Math.abs(o.position.z) > .001)).map((o) => ({ o, p: o.position.clone() }));
   const px = camera.position.x, pz = camera.position.z, R2 = 92 * 92;
   for (const c of cullList) { const dx = c.p.x - px, dz = c.p.z - pz; const want = dx * dx + dz * dz < R2; if (c.o.userData.culled !== !want) { c.o.userData.culled = !want; if (!want) c.o.visible = false; else if (!worldHidden.includes(c.o)) c.o.visible = true; } }
 }
