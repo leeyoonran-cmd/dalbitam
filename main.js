@@ -2810,13 +2810,13 @@ function applyLayout() {
   { const s0 = G(18.6, -14, CL.sea); path([16.6, -6], [18.6, -12], [18.6, s0[1] + 1.2]); }
   { const d = G(CAVE.x - 2.4, CAVE.z - 2.4); path([34, FZ], [34, 32], d); }
   { const d = G(TRAIL[0].x + 1.2, TRAIL[0].z); path([-1.4, 27], [-20, 34], d); }
-  // 조경: 소나무 · 둥근 나무 · 단풍 · 벚나무 · 대나무 숲 · 꽃덤불 · 바위 · 풀 (길과 전각은 비켜서)
+  // 조경: 소나무 · 둥근 나무 · 단풍 · 벚나무 · 꽃덤불 · 바위 · 풀 (길과 전각은 비켜서)
   { const nearCluster = (x, z, pad) => CLUSTERS.some((k) => { if (k.id === "sea") return false; const hw = (k.r[1] - k.r[0]) / 2 * k.s + pad, hd = (k.r[3] - k.r[2]) / 2 * k.s + pad, cx = k.n[0] + ((k.r[0] + k.r[1]) / 2 - k.c[0]) * k.s, cz = k.n[1] + ((k.r[2] + k.r[3]) / 2 - k.c[1]) * k.s; return Math.abs(x - cx) < hw && Math.abs(z - cz) < hd; });
     const free = (x, z, rTile, pad = 2.5) => !layoutO(x, z) && !blocked(x, z) && !nearCluster(x, z, pad) && !placed.some((p) => Math.hypot(p.x - x, p.z - z) < rTile) && Math.hypot(x, z + 4) > 21 && !(z < -38 && Math.abs(x - 18.6) < 4.5) && Math.abs(z - FZ) > 1.5;
     const landG = new THREE.Group(); scene.add(landG);
     const maple = M("#b5452c"), maple2 = M("#d9773a"), cherry = M("#f2b8c6"), bamboo = M("#6f9a4a"), bambooL = M("#4f7a36");
     [maple, maple2, cherry, bambooL, mat.leaf, mat.leaf2].forEach((m) => windify(m, .028, 1.7));
-    const kinds = ["pine", "pine", "pine", "round", "maple", "maple", "cherry", "bamboo"];
+    const kinds = ["pine", "pine", "pine", "round", "maple", "maple", "cherry", "round"]; // 대나무 숲은 무엇인지 알아보기 어려워 뺐어요
     let n = 0;
     for (let i = 0; i < 4000 && n < 110; i++) { const x = rand(-72, 72), z = rand(-68, 66); if (!free(x, z, 3)) continue;
       const kind = kinds[n % kinds.length]; n++;
