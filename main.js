@@ -323,7 +323,7 @@ for (let i = 0; i < 14; i++) {
   const a = (i / 14) * Math.PI * 2, r = rand(55, 70);
   if (Math.sin(a) < -.25) continue; // 북쪽은 바다가 탁 트이게 비워 둬요
   const m = new THREE.Mesh(new THREE.ConeGeometry(rand(20, 34), rand(18, 32), 6), M(i % 2 ? "#1d2633" : "#222d3a"));
-  m.position.set(Math.cos(a) * r * 1.9, 6, Math.sin(a) * r * 1.9); m.userData.far = true; scene.add(m);
+  m.position.set(Math.cos(a) * r * 1.9, 6, Math.sin(a) * r * 1.9); m.userData.farHill = true; scene.add(m);
 }
 let starField = null;
 const moonBall = new THREE.Mesh(new THREE.SphereGeometry(3, 24, 16), new THREE.MeshBasicMaterial({ color: "#efe6cc" }));
@@ -2255,7 +2255,7 @@ function applyLayout() {
     if (o.geometry) { o.geometry.computeBoundingBox(); return o.geometry.boundingBox.getCenter(new THREE.Vector3()); }
     return o.position; };
   const visit = (o) => {
-    if (skip.has(o) || o === player?.root || o.userData.far) return;
+    if (skip.has(o) || o === player?.root || o.userData.farHill) return;
     if (explicit.has(o)) { moveObj(o, explicit.get(o)); return; }
     if (o.isLight && !(o.isPointLight || o.isSpotLight)) return;
     if (o.position.y > 19) return; // 하늘의 달 · 별
@@ -2269,15 +2269,22 @@ function applyLayout() {
   [...scene.children].forEach(visit);
   // 원래 길은 지우고, 새 자리에 맞춰 길을 다시 깔아요
   roadTiles.forEach((t) => scene.remove(t));
-  const tile = (x, z, ry = 0) => { const b = box(2.2, .06, 1, mat.darkStone, x, .03, z); b.rotation.y = ry; };
-  for (let z = -12.5; z < 62; z += 1.3) tile(z > 20 ? Math.sin((z - 20) * .15) * 1.5 : 0, z); // 대웅전 → 마당 → 산책길 (어긋남 없이 한 줄로)
-  const lane = (a, b) => { const L = Math.hypot(b.x - a.x, b.z - a.z), ry = Math.atan2(b.x - a.x, b.z - a.z); for (let d = 0; d < L; d += 1.3) tile(a.x + (b.x - a.x) * d / L, a.z + (b.z - a.z) * d / L, ry); };
-  const Y = (x, z) => layoutW(x, z, CL.yard);
-  lane(Y(14, -5), layoutW(21, -2.4)); lane(layoutW(21, -2.4), layoutW(34, -3.2)); lane(layoutW(34, -3.2), layoutW(34, -17.2));
-  lane(Y(-14, -5), layoutW(-21, -1.2)); lane(layoutW(-21, -1.2), layoutW(-34, -3.2)); lane(layoutW(-34, -3.2), layoutW(SG.door.x, SG.door.z + 2.6));
-  lane(Y(15, 8), layoutW(WJ.x - WJ.w / 2 - 1.8, WJ.z)); lane(layoutW(34, -17.2), layoutW(JG.x, JG.z + JG.d / 2 + 3.4));
-  lane(Y(14, -9), layoutW(18.6, -13)); lane(layoutW(18.6, -13, CL.sea), layoutW(18.6, -15, CL.sea));
-  lane({ x: 0, z: 24 }, layoutW(TRAIL[0].x + 1.2, TRAIL[0].z)); lane({ x: 0, z: 30 }, layoutW(CAVE.x - 2.4, CAVE.z - 2.4));
+  const placed = [];
+  const wet = (x, z) => { // 물 위에는 길을 깔지 않아요 (계곡 · 월지 · 바다)
+    const o = layoutO(x, z); if (!o) return false;
+    if (o.k.id === "walk" && Math.abs(o.x - 11) < 2.2) return true;
+    if (o.k.id === "wolji" && Math.abs(o.x - WJ.x) < WJ.w / 2 + 1 && Math.abs(o.z - WJ.z) < WJ.d / 2 + 1) return true;
+    if (o.k.id === "sea" && o.z < -40) return true;
+    return blocked0(o.x, o.z); };
+  const tile = (x, z, ry = 0, force) => { if (!force && (wet(x, z) || placed.some((p) => Math.hypot(p.x - x, p.z - z) < 1.15))) return; placed.push({ x, z }); const b = box(2.2, .06, 1, mat.darkStone, x, .03, z); b.rotation.y = ry; };
+  for (let z = -12.5; z < 62; z += 1.3) tile(z > 20 ? Math.sin((z - 20) * .15) * 1.5 : 0, z, 0, true); // 대웅전 → 마당 → 산책길 (어긋남 없이 한 줄로)
+  const lane = (a, b) => { const L = Math.hypot(b.x - a.x, b.z - a.z), ry = Math.atan2(b.x - a.x, b.z - a.z); for (let d = 1.3; d < L; d += 1.3) tile(a.x + (b.x - a.x) * d / L, a.z + (b.z - a.z) * d / L, ry); };
+  const Y = (x, z) => layoutW(x, z, CL.yard), G = (x, z) => layoutW(x, z);
+  lane({ x: 1.6, z: 2 }, G(21, -2.4)); lane(G(21, -2.4), G(34, -3.2)); lane(G(34, -3.2), G(34, -17.2));
+  lane({ x: -1.6, z: 2 }, G(-21, -1.2)); lane(G(-21, -1.2), G(-34, -3.2)); lane(G(-34, -3.2), G(SG.door.x, SG.door.z + 2.6));
+  lane(Y(15, 8), G(WJ.x - WJ.w / 2 - 1.8, WJ.z)); lane(G(34, -17.2), G(JG.x, JG.z + JG.d / 2 + 3.4));
+  lane({ x: 1.6, z: -9 }, layoutW(18.6, -13, CL.sea));
+  lane({ x: -1.2, z: 27 }, G(TRAIL[0].x + 1.2, TRAIL[0].z)); lane(Y(15, 9), G(CAVE.x - 2.4, CAVE.z - 2.4));
   // 실제 위치가 필요한 것들
   lanternSlots.forEach((v) => { const w = layoutW(v.x, v.z, CL.yard); v.x = w.x; v.z = w.z; });
   TRAIL.forEach((p) => { const w = layoutW(p.x, p.z, CL.m1); p.x = w.x; p.z = w.z; });
