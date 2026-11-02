@@ -2274,8 +2274,10 @@ function hangLantern(w, i, slot) {
       const tg = textSprite(lit ? "✨ 내 연등" : "내 연등 (불을 켜 보세요)", { size: 30, color: lit ? "#fff2c4" : "#f3e6c4", bg: lit ? "rgba(120,70,10,.72)" : "rgba(16,21,29,.6)", pad: 10 });
       tg.scale.multiplyScalar(.55); tg.position.y = .78; tg.raycast = () => {}; m.add(tg); m.userData.mine = { tag: tg };
       if (lit) {
-        const bm = new THREE.Mesh(new THREE.CylinderGeometry(.07, .16, 16, 12, 1, true), new THREE.MeshBasicMaterial({ map: BEAM_TEX, color: new THREE.Color(color).lerp(new THREE.Color("#fff6d8"), .5), transparent: true, opacity: .45, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false }));
-        bm.position.y = 8.2; bm.raycast = () => {}; m.add(bm); m.userData.mine.beam = bm;
+        // 하늘로 천천히 피어오르는 작은 빛방울 (멀리서도 내 연등 자리가 보여요)
+        const rise = new THREE.Group(); m.add(rise); m.userData.mine.beam = rise;
+        for (let k = 0; k < 14; k++) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: k % 3 ? new THREE.Color(color).lerp(new THREE.Color("#fff6d8"), .55) : "#fff3c0", transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
+          sp.userData.ph = k / 14; sp.userData.sx = (Math.random() - .5) * .5; sp.userData.sz = (Math.random() - .5) * .5; sp.raycast = () => {}; rise.add(sp); }
         const orb = new THREE.Group(); m.add(orb); m.userData.mine.orb = orb;
         for (let k = 0; k < 6; k++) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: k % 2 ? "#fff3c0" : color, transparent: true, opacity: .9, depthWrite: false, blending: THREE.AdditiveBlending })); const a = k / 6 * Math.PI * 2; sp.position.set(Math.cos(a) * .72, (k % 3 - 1) * .16, Math.sin(a) * .72); sp.scale.setScalar(.24); sp.raycast = () => {}; orb.add(sp); }
         if (m.userData.halo) m.userData.halo.scale.setScalar(2.2);
@@ -3978,7 +3980,7 @@ function tick() {
   rockingStone.rotation.z = Math.sin(t * .9) * .025; rockingStone.rotation.x = Math.sin(t * .63) * .012;
   lanternGroup.children.forEach((l, i) => {
     l.rotation.z = Math.sin(t * .8 + i) * .06;
-    const my = l.userData.mine; if (my) { my.tag.position.y = .78 + Math.sin(t * 2) * .05; if (my.orb) my.orb.rotation.y = t * 1.3; if (my.beam) { my.beam.rotation.z = -l.rotation.z; my.beam.material.opacity = .26 + Math.sin(t * 1.6) * .08; } }
+    const my = l.userData.mine; if (my) { my.tag.position.y = .78 + Math.sin(t * 2) * .05; if (my.orb) my.orb.rotation.y = t * 1.3; if (my.beam) { my.beam.rotation.z = -l.rotation.z; for (const sp of my.beam.children) { const u = sp.userData, k = (t * .12 + u.ph) % 1; sp.position.set(u.sx * (1 + k) + Math.sin(t * .9 + u.ph * 9) * .12, .5 + k * 7, u.sz * (1 + k)); sp.scale.setScalar(.22 + k * .18); sp.material.opacity = Math.sin(k * Math.PI) * .75; } } }
     const w = l.userData.wish, fa = w && w.flashAt;
     if (fa && now - fa < 4000) { const p = (now - fa) / 4000; const s = 1 + Math.sin(p * Math.PI * 6) * .25 * (1 - p); l.scale.set(s, 1.2 * s, s); if (l.userData.halo) l.userData.halo.scale.setScalar(1.6 + (1 - p) * 2.4); }
     else if (l.userData.halo) l.userData.halo.material.opacity = (kindOf(w) === "gold" ? .7 : .45) + Math.sin(t * 2 + i) * .08;
