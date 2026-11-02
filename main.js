@@ -1160,10 +1160,13 @@ block(-3.75, -2.2, BUDDHA_Z + 2.1, BUDDHA_Z + 3); block(2.2, 3.75, BUDDHA_Z + 2.
 const GIWA = { x: -5.2, z: -12.6, cols: 8, rows: 3 };
 const giwaGroup = new THREE.Group(); giwaGroup.position.set(GIWA.x, 0, GIWA.z); scene.add(giwaGroup); camSolidGroups.push(giwaGroup);
 const giwaTiles = new THREE.Group(); giwaGroup.add(giwaTiles);
-for (let r = 0; r < GIWA.rows; r++) { const h = .35 + r * .42; box(4.3, h, .55, mat.wood, 0, h / 2, -r * .55, giwaGroup); }
-{ const sg = textSprite("기와 불사 · 소원 기와", { size: 34, color: "#f3e6c4", bg: "#3b2414", pad: 14 }); sg.material.depthTest = true; sg.scale.multiplyScalar(.5); sg.position.set(0, 2.45, -.6); giwaGroup.add(sg);
-  [-2.25, 2.25].forEach((x) => { cyl(.06, .07, 2.4, mat.pillar, x, 1.2, -.6, 8, giwaGroup); }); }
-block(GIWA.x - 2.3, GIWA.x + 2.3, GIWA.z - 1.5, GIWA.z + .35);
+// 기와 불사 단: 화강암 기단 위에 계단식 나무 단, 네 기둥과 작은 기와지붕 (대웅전과 같은 결)
+box(5.6, .3, 2.9, mat.stone, 0, .15, -.55, giwaGroup); box(5.2, .06, 2.5, M("#a8a296"), 0, .33, -.55, giwaGroup);
+for (let r = 0; r < GIWA.rows; r++) { const h = .35 + r * .42; box(4.3, h, .55, M("#6b4a2e"), 0, .3 + h / 2, -r * .55, giwaGroup); }
+{ [[-2.4, .55], [2.4, .55], [-2.4, -1.65], [2.4, -1.65]].forEach(([x, z]) => cyl(.09, .1, 2.7, mat.pillar, x, 1.65, z, 10, giwaGroup));
+  box(5.1, .18, .16, mat.green, 0, 2.95, .55, giwaGroup); box(5.1, .18, .16, mat.green, 0, 2.95, -1.65, giwaGroup);
+  koreanRoof(2.9, 1.5, .9, giwaGroup, 3.02, { lift: .25 }).forEach((e, i) => { if (i < 2) addPung(giwaGroup, e, .8); });
+  const sg = textSprite("기와 불사 · 소원 기와", { size: 34, color: "#f3e6c4", bg: "#3b2414", pad: 14 }); sg.material.depthTest = true; sg.scale.multiplyScalar(.5); sg.position.set(0, 2.6, .62); giwaGroup.add(sg); }
 const giwaGeo = new THREE.CylinderGeometry(.22, .24, .5, 18, 1, true, -Math.PI * .4, Math.PI * .8);
 function giwaTexture(text, nick) {
   return canvasTex(256, 320, (x, w, h) => {
@@ -1181,7 +1184,7 @@ function renderGiwa(list) {
   list.slice(0, GIWA.cols * GIWA.rows).forEach((gw, i) => {
     const r = Math.floor(i / GIWA.cols), c = i % GIWA.cols, h = .35 + r * .42;
     const m = new THREE.Mesh(giwaGeo, (() => { const tx = giwaTexture(gw.text, gw.nick); return new THREE.MeshStandardMaterial({ map: tx, emissiveMap: tx, emissive: "#ffffff", emissiveIntensity: .32, roughness: .55, metalness: .1, side: THREE.DoubleSide }); })());
-    m.position.set(-1.85 + c * .53, h + .27, -r * .55 + .02); m.rotation.x = -.18; m.userData.giwa = gw; giwaTiles.add(m);
+    m.position.set(-1.85 + c * .53, .3 + h + .27, -r * .55 + .02); m.rotation.x = -.18; m.userData.giwa = gw; giwaTiles.add(m);
     if (gw.flashAt) m.userData.popAt = gw.flashAt;
   });
 }
@@ -1686,7 +1689,7 @@ function updateCave(dt, t) {
 }
 
 // 마당 둘레 나무와 석등
-[[-14.5, 3.5], [12, 6], [-10, -12], [10, -12], [12.5, 1]].forEach(([x, z]) => {
+[[-14.5, 3.5], [12, 6], [12.5, 1]].forEach(([x, z]) => {
   const t = new THREE.Group(); t.position.set(x, 0, z); scene.add(t); camHide.push(t); cyl(.22, .3, 2.4, mat.trunk, 0, 1.2, 0, 6, t);
   const c = new THREE.Mesh(new THREE.SphereGeometry(1.8, 10, 8), mat.leaf); c.position.y = 3.4; t.add(c); block(x - .4, x + .4, z - .4, z + .4); });
 [[-4.6, 7.6], [4.6, 7.6]].forEach(([x, z]) => { box(.5, 1, .5, mat.stone, x, .5, z); box(.7, .5, .7, mat.stone, x, 1.25, z); const l = new THREE.Mesh(new THREE.SphereGeometry(.15, 8, 6), mat.flame); l.position.set(x, 1.25, z + .36); scene.add(l); block(x - .4, x + .4, z - .4, z + .4); });
@@ -2237,8 +2240,10 @@ function layoutO(x, z) {
 // 지도 표시용: 빈 땅이면 가장 가까운 무리 기준으로 되돌려요
 function layoutONear(x, z) { const o = layoutO(x, z); if (o) return o; let best = null, bd = 1e9; for (const k of CLUSTERS) { if (k.id === "sea") continue; const d = Math.hypot(x - k.n[0], z - k.n[1]); if (d < bd) { bd = d; best = k; } } return { x: best.c[0] + (x - best.n[0]) / best.s, z: best.c[1] + (z - best.n[1]) / best.s }; }
 const Wv = (x, z) => { const w = layoutW(x, z); return new THREE.Vector3(w.x, 0, w.z); };
+const worldBlocks = []; // 넓힌 뒤 실제 위치에 놓은 것들
 function blocked(x, z) {
   if (!LAYOUT_ON) return blocked0(x, z);
+  for (const b of worldBlocks) if (x > b.x1 - .3 && x < b.x2 + .3 && z > b.z1 - .3 && z < b.z2 + .3) return true;
   const o = layoutO(x, z); if (o) return blocked0(o.x, o.z);
   return Math.abs(x) > 74 || z > 70 || z < -72; // 전각 사이 빈 땅은 자유롭게 걸어요
 }
@@ -2299,6 +2304,16 @@ function applyLayout() {
       t.scale.setScalar(rand(.8, 1.35)); t.rotation.y = rand(0, 6); }
     for (let i = 0, m = 0; i < 800 && m < 40; i++) { const x = rand(-70, 70), z = rand(-68, 66); if (layoutO(x, z) || placed.some((p) => Math.hypot(p.x - x, p.z - z) < 2)) continue; m++;
       const r = new THREE.Mesh(new THREE.DodecahedronGeometry(rand(.25, .7), 0), mat.stone); r.position.set(x, .1, z); r.rotation.set(rand(0, 3), rand(0, 3), 0); r.scale.y = .6; scene.add(r); } }
+  // 대웅전 앞 돌마당(월대): 대웅전 계단에서 마당까지 화강암을 깔고, 왼쪽에 기와 불사 단
+  { const tex = canvasTex(256, 256, (x, w, h) => { noise(x, w, h, "#a39d90", .16, 6000, 2); x.strokeStyle = "rgba(60,55,45,.35)"; x.lineWidth = 2; for (let i = 0; i <= 4; i++) { x.beginPath(); x.moveTo(0, i * 64); x.lineTo(w, i * 64); x.stroke(); } for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) { const xx = c * 64 + (r % 2) * 32; x.beginPath(); x.moveTo(xx, r * 64); x.lineTo(xx, r * 64 + 64); x.stroke(); } }, 10, 3);
+    const plaza = new THREE.Mesh(new THREE.BoxGeometry(32, .08, 9), new THREE.MeshStandardMaterial({ map: tex, roughness: .95 })); plaza.position.set(0, .04, -9.3); scene.add(plaza);
+    [-1, 1].forEach((sd) => { box(.5, .22, 9, mat.stone, sd * 16, .11, -9.3); });
+    giwaGroup.position.set(-9.6, 0, -8.2); worldBlocks.push({ x1: -12.6, x2: -6.6, z1: -10.6, z2: -7.4 });
+    giwaGroup.scale.setScalar(1.15);
+    [[-19, -10.5], [19, -10.5], [-19, -4], [19, -4]].forEach(([x, z], i) => { const t = new THREE.Group(); t.position.set(x, 0, z); scene.add(t); camHide.push(t); cyl(.22, .3, 2.6, mat.trunk, 0, 1.3, 0, 6, t);
+      if (i < 2) { const c1 = new THREE.Mesh(new THREE.ConeGeometry(1.5, 3, 7), mat.leaf2); c1.position.y = 3; t.add(c1); const c2 = new THREE.Mesh(new THREE.ConeGeometry(1.1, 2.3, 7), mat.leaf); c2.position.y = 4.4; t.add(c2); }
+      else { const c = new THREE.Mesh(new THREE.SphereGeometry(1.7, 10, 8), mat.leaf); c.position.y = 3.4; t.add(c); }
+      worldBlocks.push({ x1: x - .4, x2: x + .4, z1: z - .4, z2: z + .4 }); }); }
   // 실제 위치가 필요한 것들
   lanternSlots.forEach((v) => { const w = layoutW(v.x, v.z, CL.yard); v.x = w.x; v.z = w.z; });
   TRAIL.forEach((p) => { const w = layoutW(p.x, p.z, CL.m1); p.x = w.x; p.z = w.z; });
@@ -2424,7 +2439,7 @@ function actionsFor(z) {
   if (z === "cave") return [A(pray && pray.timer ? "⏸️" : "🐯", pray && pray.timer ? "기도 멈추기" : "산신기도", togglePray, true), A("🙇", "절", doBow), A("🪵", "목탁", doMok), A("🚪", "나가기", leaveCave)];
   if (z === "seokgul") return [A("🚪", "석굴암 들어가기", enterGrotto, true), greetA, beadA];
   if (z === "searock" || z === "sea") { const wv = loopEls.wave && !loopEls.wave.paused; return [...(z === "searock" ? [A(pray && pray.timer ? "⏸️" : "🐉", pray && pray.timer ? "기도 멈추기" : "용왕기도", togglePray, true), A("🙇", "절", doBow)] : []), A("🍙", "물고기 밥 주기", doFeed, true), A("🐟", "방생하기", doRelease), A(wv ? "⏹️" : "🌊", wv ? "파도 소리 끄기" : "파도 소리", doWave), A("🏮", "바다 연등", () => openWish("sea")), greetA]; }
-  if (z === "field") return [greetA, wishA, beadA];
+  if (z === "field") return [A("🏯", "기와 소원", openGiwa), greetA, wishA, beadA];
   if (z === "seapath") return [A("🏮", "바다 연등", () => openWish("sea"), true), greetA, beadA];
   if (z === "walk") return [A("🌊", "계곡 소리", doNature, true), A("⛰️", "달빛봉 오르기", doClimb, true), greetA, beadA];
   if (z === "mountain") return [A(autoPath?.climb ? "⏸️" : "⛰️", autoPath?.climb ? "멈추기" : "정상까지 오르기", doClimb, true), A("🌬️", "바람 소리", doNature), greetA, beadA];
@@ -3026,7 +3041,7 @@ $("giwaBtn").addEventListener("click", async () => {
 });
 $("prayToggle").addEventListener("click", () => { ac(); togglePray(); });
 $("giwaInput").addEventListener("keydown", (e) => { if (e.key === "Enter") $("giwaBtn").click(); });
-function goGiwa() { if (!player) return; standUp(); pendingSeat = null; autoPath = null; player.pos.copy(Wv(GIWA.x, GIWA.z + 2.2)); player.target.copy(player.pos); camYaw = 0; lastMoveTx = 0; sendPresence(); }
+function goGiwa() { if (!player) return; standUp(); pendingSeat = null; autoPath = null; player.pos.set(giwaGroup.position.x, 0, giwaGroup.position.z + 2.6); player.target.copy(player.pos); camYaw = 0; lastMoveTx = 0; sendPresence(); }
 async function loadGiwa() {
   if (!sb) { giwas = me.localGiwa.slice(); renderGiwaList(); return; }
   const { data, error } = await sb.from("giwa").select("id,text,nick,created_at").order("created_at", { ascending: false }).limit(40);
