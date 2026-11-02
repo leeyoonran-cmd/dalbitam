@@ -841,7 +841,8 @@ const altarTable = new THREE.Group(); altarTable.position.set(0, 0, TABLE_Z); sc
   // 촛대 한 쌍
   [-1.45, 1.45].forEach((x) => { const cs = new THREE.Group(); cs.position.set(x, TABLE_TOP, 0); altarTable.add(cs);
     cs.add(lathe([[0, 0], [.17, 0], [.18, .03], [.1, .06], [.05, .1], [.04, .5], [.06, .53], [.04, .56], [.13, .6], [.14, .63], [0, .63]], BRASS, 28));
-    const cnd = new THREE.Mesh(new THREE.CylinderGeometry(.055, .06, .5, 16), new THREE.MeshStandardMaterial({ color: "#f5ecd8", roughness: .55, emissive: "#ffcf88", emissiveIntensity: .12 })); cnd.position.y = .88; cs.add(cnd);
+    const cnd = new THREE.Mesh(new THREE.CylinderGeometry(.042, .046, .5, 16), new THREE.MeshStandardMaterial({ color: "#b02a1e", roughness: .45 })); cnd.position.y = .88; cs.add(cnd);
+    [.72, 1.04].forEach((y) => { const bd = new THREE.Mesh(new THREE.CylinderGeometry(.047, .047, .03, 16), TRIM); bd.position.y = y; cs.add(bd); });
     const wick = new THREE.Mesh(new THREE.CylinderGeometry(.006, .006, .04, 4), M("#2a1a10")); wick.position.y = 1.15; cs.add(wick);
     const f = new THREE.Mesh(new THREE.SphereGeometry(.05, 10, 8), mat.flame); f.scale.y = 1.9; f.position.set(x, TABLE_TOP + 1.22, TABLE_Z); scene.add(f); candles.push(f); });
   // 청수 그릇 (뚜껑 덮은 놋 다기)
@@ -956,8 +957,6 @@ function placeDongja(pose, x, y, z, s = .4, ry = 0, parent = scene) {
   // 불단 위 네 귀퉁이
   [[-2.2, .55, "lotus"], [2.2, .55, "lotus"], [-1.8, .78, "hap"], [1.8, .78, "hap"]].forEach(([x, z, p]) => placeDongja(p, x, 1.08, z, .3, 0, buddhaRoot));
   // 불단 앞에서 절하는 동자승
-  [-2.4, 2.4].forEach((x) => { placeDongja("bow", x, .55, ALTAR_F + 1.75, .42, Math.PI); });
-  block(-2.8, 2.8, ALTAR_F + 1.3, ALTAR_F + 2.1);
   // 양쪽 벽을 따라 참선하는 동자승
   [-33, -29.5, -26, -22.5, -19, -15.5].forEach((z, i) => [-1, 1].forEach((sd) => { placeDongja(["sit", "sleep", "moktak", "read", "hap", "bead"][(i + (sd > 0 ? 3 : 0)) % 6], sd * 14.1, .55, z, .42, -sd * Math.PI / 2); block(sd * 14.1 - .35, sd * 14.1 + .35, z - .35, z + .35); }));
 }
@@ -2529,7 +2528,7 @@ function makeMonk(nick, isMe) {
 
 /* ---------- 함께 수행하는 동자승: 빈 방석에 같은 법복을 입고 앉아 절해요 ---------- */
 const npcs = [];
-const NPC_MAX = 30;
+const NPC_MAX = 15;
 function buildNpcs() {
   // 앞줄부터 가운데 위주로 자리를 골라요
   const seats = hallSeats.slice().sort((a, b) => (b.z - a.z) * 0 + (a.z - b.z) * -1 + (Math.abs(a.x) - Math.abs(b.x)) * .4).sort((a, b) => (Math.round(a.z) - Math.round(b.z)) || (Math.abs(a.x) - Math.abs(b.x)));
@@ -2544,7 +2543,7 @@ function updateNpcs(dt, now) {
   const inHall = zone === "hall" || (player && player.pos.z < -10 && Math.abs(player.pos.x) < 18);
   if (now > npcCheck) {
     npcCheck = now + 500;
-    const want = Math.max(6, NPC_MAX - others.size * 2); let shown = 0;
+    const want = Math.max(4, NPC_MAX - others.size * 2); let shown = 0;
     for (const m of npcs) {
       const taken = (player && Math.hypot(player.pos.x - m.seat.x, player.pos.z - m.seat.z) < .9) || (pendingSeat && pendingSeat.x === m.seat.x && pendingSeat.z === m.seat.z) || [...others.values()].some((o) => Math.hypot(o.monk.pos.x - m.seat.x, o.monk.pos.z - m.seat.z) < .9);
       m.root.visible = inHall && !taken && shown < want; if (m.root.visible) shown++;
@@ -4025,7 +4024,7 @@ fxPhase(); setInterval(fxPhase, 60000);
   const pm = new THREE.MeshBasicMaterial({ map: pt, color: "#ffd9a0", transparent: true, opacity: .22, blending: THREE.AdditiveBlending, depthWrite: false, fog: false });
   const patch = new THREE.Mesh(new THREE.PlaneGeometry(22, 5), pm); patch.rotation.x = -Math.PI / 2; patch.position.set(.6, .58, fz - run - .5); g.add(patch); g.userData.patch = pm;
   // 햇살 속 먼지
-  const N = 180, pos = new Float32Array(N * 3); for (let i = 0; i < N; i++) { pos[i * 3] = rand(-11, 11); pos[i * 3 + 1] = rand(1, 9); pos[i * 3 + 2] = rand(fz - 9, fz - .5); }
+  const N = 180, pos = new Float32Array(N * 3); for (let i = 0; i < N; i++) { pos[i * 3] = rand(-11, 11); pos[i * 3 + 1] = rand(3, 9.5); pos[i * 3 + 2] = rand(fz - 9, fz - .5); }
   const dg = new THREE.BufferGeometry(); dg.setAttribute("position", new THREE.BufferAttribute(pos, 3));
   const dot = canvasTex(32, 32, (x, w) => { const r = x.createRadialGradient(16, 16, 0, 16, 16, 16); r.addColorStop(0, "rgba(255,255,255,1)"); r.addColorStop(1, "rgba(255,255,255,0)"); x.fillStyle = r; x.fillRect(0, 0, w, w); });
   const dust = new THREE.Points(dg, new THREE.PointsMaterial({ map: dot, color: "#fff0c8", size: .09, transparent: true, opacity: .7, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
@@ -4076,7 +4075,7 @@ function updateFx(dt, t) {
   // 햇살 줄기: 낮에는 금빛, 노을엔 주황, 밤엔 달빛처럼 아주 옅게
   const S = FX.shafts; if (S) { const sm = S.userData.sm; sm.opacity = night ? .09 : dusk ? .26 : .34 + Math.sin(t * .3) * .04; sm.color.set(night ? "#9fb6e8" : dusk ? "#ffb878" : "#ffe2a8"); S.userData.patch.opacity = night ? .08 : dusk ? .22 : .3;
     FX.dust.material.opacity = night ? .25 : .7; const p = FX.dust.geometry.attributes.position, fz = S.userData.fz;
-    for (let i = 0; i < p.count; i++) { let y = p.getY(i) + dt * (.05 + Math.sin(t * .5 + i) * .04), x = p.getX(i) + Math.sin(t * .3 + i * 1.7) * dt * .08; if (y > 9.5) y = 1; p.setXY(i, x, y); } p.needsUpdate = true; }
+    for (let i = 0; i < p.count; i++) { let y = p.getY(i) + dt * (.05 + Math.sin(t * .5 + i) * .04), x = p.getX(i) + Math.sin(t * .3 + i * 1.7) * dt * .08; if (y > 9.5) y = 3; p.setXY(i, x, y); } p.needsUpdate = true; }
   // 구름: 천천히 하늘을 돌아요
   if (FX.sky) FX.sky.children.forEach((s) => { s.userData.a += dt * .004; s.position.x = Math.cos(s.userData.a) * s.userData.r; s.position.z = Math.sin(s.userData.a) * s.userData.r; s.material.opacity = night ? .18 : dusk ? .7 : .82; s.material.color.set(night ? "#3a4660" : dusk ? "#ffc2a0" : "#ffffff"); });
   FX.sky.visible = !(inRoom || inGrotto || inCave);
