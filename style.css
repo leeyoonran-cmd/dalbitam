@@ -292,3 +292,12 @@ html[lang=en] .en-only{display:block}
 .coach .primary{width:100%;padding:8px}
 #actions button.coach-hi{position:relative;outline:2px solid #f5c542;border-radius:14px;animation:coachPulse 1.2s ease-in-out infinite}
 @keyframes coachPulse{50%{box-shadow:0 0 0 6px rgba(245,197,66,.35)}}
+
+/* 내 연등 보러 가기 */
+.my-go{display:block;width:100%;margin:10px 0 2px}
+.my-go[hidden]{display:none}
+.map-box .mk-mine{cursor:pointer}
+.map-box .mk-mine text{font-size:3.2px;fill:#ffe6a0;text-anchor:middle;font-weight:700;paint-order:stroke;stroke:#2a1a0c;stroke-width:.6px}
+.map-box .mk-mine .core{fill:#f5c542;stroke:#fff6d0;stroke-width:.4}
+.map-box .mk-mine .pulse{fill:none;stroke:#f5c542;stroke-width:.5;animation:mkpulse 1.6s ease-out infinite;transform-box:fill-box;transform-origin:center}
+@keyframes mkpulse{from{transform:scale(.6);opacity:1}to{transform:scale(2.2);opacity:0}}

@@ -1,7 +1,10 @@
 import * as THREE from "three";
 import { CONFIG } from "./config.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
-import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { GLTFLoader as GLTFLoaderBase } from "three/addons/loaders/GLTFLoader.js";
+import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
+// 3D 파일은 압축(meshopt · webp)해 두어 4분의 1 크기로 받아요
+class GLTFLoader extends GLTFLoaderBase { constructor(m) { super(m); this.setMeshoptDecoder(MeshoptDecoder); } }
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { Reflector } from "three/addons/objects/Reflector.js";
 
@@ -230,7 +233,7 @@ let pixelRatio = Math.min(window.devicePixelRatio, 1.75); renderer.setPixelRatio
 // 무거운 파일(3D 스캔 · 그림)은 입장하고 조금 뒤, 여유 있을 때 불러와요 → 첫 화면이 빨리 떠요
 const lazyQ = []; let lazyGo = false;
 function lazy(fn) { if (lazyGo) fn(); else lazyQ.push(fn); }
-function startLazy() { if (lazyGo) return; lazyGo = true; const run = () => { const f = lazyQ.shift(); if (!f) return; try { f(); } catch (e) { console.warn(e); } (window.requestIdleCallback || ((c) => setTimeout(c, 400)))(run); }; setTimeout(run, 2500); }
+function startLazy() { if (lazyGo) return; lazyGo = true; const run = () => { const f = lazyQ.shift(); if (!f) return; try { f(); } catch (e) { console.warn(e); } window.requestIdleCallback ? requestIdleCallback(run, { timeout: 1500 }) : setTimeout(run, 400); }; setTimeout(run, 2000); }
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
@@ -775,8 +778,8 @@ let ALTAR_MATS = null;
 const buddhaSpot = new THREE.SpotLight("#ffd9a0", 260, 30, .5, .6, 1.2); buddhaSpot.position.set(0, 11, BUDDHA_Z + 10); buddhaSpot.target.position.set(0, 5.8, BUDDHA_Z); scene.add(buddhaSpot, buddhaSpot.target);
 const buddhaRim = new THREE.PointLight("#ffcf88", 26, 11, 1.5); buddhaRim.position.set(0, 9, BUDDHA_Z - 3); scene.add(buddhaRim);
 // buddha.glb(국립박물관 석불좌상 3D 스캔)로 본존불 몸을 바꾸고 금으로 입혀요 — 연꽃 대좌 · 두광은 그대로
-fetch("buddha.glb", { method: "HEAD" }).then((r) => {
-  if (!r.ok || !(r.headers.get("content-type") || "").match(/gltf|octet|model|binary/)) return;
+// 전각 불상용 스캔 몸 — 첫 화면에는 안 쓰여서 입장 뒤 천천히 받아요
+lazy(() => {
   new GLTFLoader().load("buddha.glb", (gltf) => {
     const m = gltf.scene;
     m.traverse((o) => { if (o.isMesh) { o.geometry.computeVertexNormals(); o.material = new THREE.MeshStandardMaterial({ color: "#eab45a", vertexColors: true, metalness: .95, roughness: .36, envMap: goldEnv, envMapIntensity: 1.25 }); } });
@@ -785,8 +788,9 @@ fetch("buddha.glb", { method: "HEAD" }).then((r) => {
     [...statue.children].forEach((o, i) => { if (i < nB || o.userData.keep) return; if (o.position.z < -.5 && o.position.y > 3) o.position.set(.1, 4.95, -.62); else statue.remove(o); });
     if (hg) { hg.position.set(.1, .86, -.1); statue.userData.head.scale.setScalar(1.01); }
     statue.add(m);
-  });
-}).catch(() => {});
+    for (const k in statueCache) delete statueCache[k]; if (inRoom) { roomStatue.clear(); roomStatue.add(statueFor(inRoom)); }
+  }, undefined, () => {});
+});
 const PANBUL_H = 6.8, PANBUL_SIDE_H = 5.6, PANBUL_LEG = 2.75 / 19.72; // 판불 높이 · 아래 꽂는 촉(불단 속으로 숨겨요)
 // 국가유산청 3D 에셋: 경주 동궁과 월지 출토 금동보살좌상 판불 (공공누리) — 불러오면 본존 자리에 모셔요
 new GLTFLoader().load("assets/panbul.glb", (gltf) => {
@@ -2249,6 +2253,7 @@ function renderLanterns(list) {
   const yard = list.filter((w) => w.place !== "sea").slice(0, lanternSlots.length), sea = list.filter((w) => w.place === "sea").slice(0, seaSlots.length);
   yard.forEach((w, i) => hangLantern(w, i, lanternSlots[i]));
   sea.forEach((w, i) => hangLantern(w, i, seaSlots[i]));
+  const has = !!lanternGroup.children.find((l) => l.userData.mine); ["goMyLantern", "goMyLantern2"].forEach((id) => { const b = document.getElementById(id); if (b) b.hidden = !has; });
 }
 function hangLantern(w, i, slot) {
   {
@@ -2937,6 +2942,7 @@ function tap(cx, cy) {
    행동 버튼
    ========================================================= */
 let autoPath = null; // [{x,z}] 자동 걷기 (탑돌이 등)
+let camFocus = null; // 잠깐 다른 곳(내 연등 등)을 비추기: 움직이면 풀려요
 let zone = "yard";
 const MENU = [
   ["비빔밥", "🍚", "#c98a3a", "나물 다섯 가지에 고추장 한 숟갈", ["#6f8f4a", "#d9534f", "#f2d05a", "#8a5a3a"]],
@@ -2993,6 +2999,25 @@ for (const [z, n] of Object.entries(placeNames)) {
 }
 { const mb = document.createElement("button"); mb.type = "button"; mb.className = "map-open"; mb.textContent = "🗺️ 지도 보고 이동하기"; mb.onclick = () => openMap(); $("places").appendChild(mb); }
 $("mapBtn").onclick = () => openMap();
+// 내 연등 보러 가기: 지도 · 소원 연등 창에서 누르면 내 연등 앞으로 가서 비춰요
+function myLanternMesh() { return lanternGroup.children.find((l) => l.userData.mine && l.userData.mine.beam) || lanternGroup.children.find((l) => l.userData.mine); }
+function goMyLantern() {
+  const L = myLanternMesh(); ["mapPanel", "wishPanel"].forEach((id) => ($(id).hidden = true));
+  if (!L || !player) { toast("🏮 아직 걸린 내 연등이 없어요", { label: "연등 달기", fn: () => openPanel("wishPanel") }); return; }
+  if (inRoom || inGrotto || inCave) goPlace("pagoda"); // 법당 · 굴 안이면 먼저 밖으로
+  const p = L.getWorldPosition(new THREE.Vector3()); let best = null;
+  const R0 = 3.2; // 높이 달린 연등이 화면에 다 들어오게 조금 떨어져 서요
+  for (const r of [R0, R0 + 1.2, R0 - 1]) for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2, x = p.x + Math.sin(a) * r, z = p.z + Math.cos(a) * r; if (blocked(x, z)) continue; const sc = Math.hypot(x, z - 12) + r; if (!best || sc < best.sc) best = { x, z, sc }; }
+  if (!best) best = { x: p.x, z: p.z + 2.6 };
+  standUp(); stopAutoBow(); pendingSeat = null; autoPath = null; player.pos.set(best.x, 0, best.z); player.target.copy(player.pos);
+  player.yaw = Math.atan2(p.x - best.x, p.z - best.z); player.root.rotation.y = player.yaw;
+  camYaw = Math.atan2(best.x - p.x, best.z - p.z); camPitch = .22; camDist = 7.5; camTarget.set(best.x, 1.6, best.z);
+  camFocus = { pt: new THREE.Vector3((p.x + best.x) / 2, Math.max(1.6, 1.6 + (p.y - 1.6) * .8), (p.z + best.z) / 2), until: performance.now() + 15000, from: player.target.clone() }; lastMoveTx = 0;
+  if (L.userData.wish) L.userData.wish.flashAt = performance.now();
+  sendPresence(); setTimeout(() => say(L.userData.mine.beam ? "🏮 내 연등 앞이에요. 소원이 이뤄지길 함께 빌어요." : "🏮 내 연등이에요. 대웅전에서 108배를 올리면 불이 켜져요."), 700);
+}
+$("goMyLantern").addEventListener("click", () => { ac(); goMyLantern(); });
+$("goMyLantern2").addEventListener("click", () => { ac(); goMyLantern(); });
 /* 달빛암 지도: 위가 북쪽(바다), 아래가 남쪽(산책길) */
 let mapTimer = null;
 function openMap() {
@@ -3019,9 +3044,12 @@ function openMap() {
   svg += c(SEA0.rockX, SEA0.rockZ, 2.4, "#a39d92");
   for (const [z, n] of Object.entries(placeNames)) { const g = GOTO[z]; if (!g) continue; const [a, b] = S(g[0], g[1]);
     svg += `<g class="mk${z === zone ? " here" : ""}" data-z="${z}"><circle cx="${a}" cy="${b}" r="1.6"/><text x="${a}" y="${b - 2.4}">${n}</text></g>`; }
+  { const L = myLanternMesh(); if (L) { const wp = L.getWorldPosition(new THREE.Vector3()), o = LAYOUT_ON ? layoutONear(wp.x, wp.z) : { x: wp.x, z: wp.z }; const [a, b] = S(o.x, o.z);
+    svg += `<g class="mk-mine" id="mapMine"><circle class="pulse" cx="${a}" cy="${b}" r="2"/><circle class="core" cx="${a}" cy="${b}" r="1.4"/><text x="${a}" y="${b - 2.8}">🏮 내 연등</text></g>`; } }
   svg += `<circle class="me-ring" id="mapMeRing" r="1.4"/><circle class="me" id="mapMe" r="1.3"/></svg>`;
   $("mapBox").innerHTML = svg;
   $("mapBox").querySelectorAll(".mk").forEach((g) => g.addEventListener("click", () => { ac(); $("mapPanel").hidden = true; goPlace(g.dataset.z); }));
+  $("mapMine")?.addEventListener("click", () => { ac(); goMyLantern(); }); $("goMyLantern").hidden = !myLanternMesh();
   const upd = () => { if ($("mapPanel").hidden) { clearInterval(mapTimer); return; } const P = inRoom ? ROOMS[inRoom] : inGrotto ? SG.door : inCave ? CAVE : player ? (LAYOUT_ON ? layoutONear(player.pos.x, player.pos.z) : { x: player.pos.x, z: player.pos.z }) : { x: 0, z: 8 }; const [a, b] = S(P.x, P.z);
     ["mapMe", "mapMeRing"].forEach((id) => { const e = $(id); if (e) { e.setAttribute("cx", a); e.setAttribute("cy", b); } }); };
   openPanel("mapPanel"); upd(); clearInterval(mapTimer); mapTimer = setInterval(upd, 400);
@@ -3909,7 +3937,8 @@ function tick() {
       camTarget.lerp(new THREE.Vector3(player.pos.x + fx * 7, 2.6 - (cp - .36) * 3.5, player.pos.z + fz * 7), Math.min(1, dt * 6));
       camera.position.lerp(cw, Math.min(1, dt * 6));
     } else {
-      camTarget.lerp(new THREE.Vector3(player.pos.x, 1.6 + (player.y || 0), player.pos.z), Math.min(1, dt * 5));
+      const fo = camFocus && performance.now() < camFocus.until && player.target.distanceTo(camFocus.from) < .2 ? camFocus : (camFocus = null);
+      camTarget.lerp(fo ? fo.pt : new THREE.Vector3(player.pos.x, 1.6 + (player.y || 0), player.pos.z), Math.min(1, dt * (fo ? 2.5 : 5)));
       const front = performance.now() < frontUntil, cy = front ? player.root.rotation.y : camYaw, cd = front ? 4.2 : camDist, cp = front ? .22 : camPitch;
       const cw = new THREE.Vector3(camTarget.x + Math.sin(cy) * Math.cos(cp) * cd, camTarget.y + Math.sin(cp) * cd, camTarget.z + Math.cos(cy) * Math.cos(cp) * cd);
       cw.y = Math.max(cw.y, mh(cw.x, cw.z) + 1);
