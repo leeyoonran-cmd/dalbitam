@@ -251,6 +251,19 @@ const mat = {
   lantern: new THREE.MeshStandardMaterial({ color: "#f2a65a", emissive: "#f28a3a", emissiveIntensity: 1.2 }),
   flame: new THREE.MeshBasicMaterial({ color: "#ffcf73" }), candle: M("#f2e6c8")
 };
+/* ---------- 바람: 나뭇잎 · 풀이 살랑여요 (높을수록 크게) ---------- */
+const WIND = { value: 0 };
+function windify(m, amp = .025, base = 1.6, local = false) {
+  m.onBeforeCompile = (sh) => { sh.uniforms.uWind = WIND;
+    sh.vertexShader = "uniform float uWind;\n" + sh.vertexShader.replace("#include <begin_vertex>", `#include <begin_vertex>
+      { vec4 wp = modelMatrix * vec4(transformed, 1.0); float hgt = max(0.0, ${local ? "transformed.y" : "wp.y"} - (${base.toFixed(3)})); float k = hgt * ${amp.toFixed(4)};
+        float wx = wp.x, wz = wp.z;
+        #ifdef USE_INSTANCING
+          wx += instanceMatrix[3].x; wz += instanceMatrix[3].z;
+        #endif
+        transformed.x += (sin(uWind * 1.3 + wx * .35 + wz * .21) + .4 * sin(uWind * 2.9 + wx * .9)) * k; transformed.z += cos(uWind * 1.1 + wz * .3 + wx * .17) * k * .7; }`); };
+  m.customProgramCacheKey = () => `wind${amp}_${base}_${local}`; return m;
+}
 /* ---------- 재질을 실제처럼: 직접 그린 질감 ---------- */
 function canvasTex(w, h, draw, rx = 1, ry = 1) {
   const c = document.createElement("canvas"); c.width = w; c.height = h; draw(c.getContext("2d"), w, h);
@@ -2727,6 +2740,7 @@ function applyLayout() {
     const free = (x, z, rTile, pad = 2.5) => !layoutO(x, z) && !blocked(x, z) && !nearCluster(x, z, pad) && !placed.some((p) => Math.hypot(p.x - x, p.z - z) < rTile) && Math.hypot(x, z + 4) > 21 && !(z < -38 && Math.abs(x - 18.6) < 4.5) && Math.abs(z - FZ) > 1.5;
     const landG = new THREE.Group(); scene.add(landG);
     const maple = M("#b5452c"), maple2 = M("#d9773a"), cherry = M("#f2b8c6"), bamboo = M("#6f9a4a"), bambooL = M("#4f7a36");
+    [maple, maple2, cherry, bambooL, mat.leaf, mat.leaf2].forEach((m) => windify(m, .028, 1.7));
     const kinds = ["pine", "pine", "pine", "round", "maple", "maple", "cherry", "bamboo"];
     let n = 0;
     for (let i = 0; i < 4000 && n < 110; i++) { const x = rand(-72, 72), z = rand(-68, 66); if (!free(x, z, 3)) continue;
@@ -2760,7 +2774,7 @@ function applyLayout() {
     // 바위 · 풀
     for (let i = 0, m = 0; i < 1500 && m < 50; i++) { const x = rand(-72, 72), z = rand(-68, 66); if (layoutO(x, z) || placed.some((p) => Math.hypot(p.x - x, p.z - z) < 2)) continue; m++;
       const r = new THREE.Mesh(new THREE.DodecahedronGeometry(rand(.25, .8), 0), mat.stone); r.position.set(x, .1, z); r.rotation.set(rand(0, 3), rand(0, 3), 0); r.scale.y = .6; scene.add(r); }
-    const tuftG = new THREE.ConeGeometry(.08, .45, 3); const tufts = new THREE.InstancedMesh(tuftG, M("#5f7d3a"), 1600); let tn = 0;
+    const tuftG = new THREE.ConeGeometry(.08, .45, 3); const tufts = new THREE.InstancedMesh(tuftG, windify(M("#5f7d3a"), .22, -.22, true), 1600); let tn = 0;
     for (let i = 0; i < 6000 && tn < 1600; i++) { const x = rand(-72, 72), z = rand(-68, 66); if (layoutO(x, z) || placed.some((p) => Math.hypot(p.x - x, p.z - z) < 1.2)) continue; for (let q = 0; q < 4 && tn < 1600; q++) { o3.position.set(x + rand(-.3, .3), .2, z + rand(-.3, .3)); o3.rotation.set(rand(-.3, .3), 0, rand(-.3, .3)); o3.scale.setScalar(rand(.7, 1.3)); o3.updateMatrix(); tufts.setMatrixAt(tn++, o3.matrix); } }
     tufts.count = tn; scene.add(tufts); }
   // 실제 위치가 필요한 것들
@@ -3871,9 +3885,9 @@ function tick() {
     if (fa && now - fa < 4000) { const p = (now - fa) / 4000; const s = 1 + Math.sin(p * Math.PI * 6) * .25 * (1 - p); l.scale.set(s, 1.2 * s, s); if (l.userData.halo) l.userData.halo.scale.setScalar(1.6 + (1 - p) * 2.4); }
     else if (l.userData.halo) l.userData.halo.material.opacity = (kindOf(w) === "gold" ? .7 : .45) + Math.sin(t * 2 + i) * .08;
   });
-  updateSea(dt, t); updateWolji(dt, t); updateCave(dt, t); cullFar(now); adaptRes(dt);
+  updateSea(dt, t); updateWolji(dt, t); updateCave(dt, t); cullFar(now); adaptRes(dt); updateFx(dt, t);
   stream.material.color.setHSL(.55, .4, .27 + Math.sin(t * 2) * .02);
-  renderer.render(scene, camera);
+  renderFrame();
   requestAnimationFrame(tick);
 }
 /* ---------- 휴대폰에서 부드럽게: 먼 건물은 잠시 그리지 않고, 느리면 화면 해상도를 조금 낮춰요 ---------- */
@@ -3887,9 +3901,9 @@ function cullFar(now) {
 }
 let resT = 0, resN = 0, resLowAt = 0;
 function adaptRes(dt) {
-  resT += dt; resN++; if (resT < 2.5) return; const fps = resN / resT; resT = 0; resN = 0;
-  if (fps < 38 && pixelRatio > 1) { pixelRatio = Math.max(1, pixelRatio - .25); renderer.setPixelRatio(pixelRatio); resLowAt = performance.now(); }
-  else if (fps > 57 && pixelRatio < Math.min(window.devicePixelRatio, 1.75) && performance.now() - resLowAt > 20000) { pixelRatio = Math.min(Math.min(window.devicePixelRatio, 1.75), pixelRatio + .25); renderer.setPixelRatio(pixelRatio); }
+  resT += dt; resN++; if (resT < 2.5) return; const fps = resN / resT; resT = 0; resN = 0; fxPerf(fps);
+  if (fps < 38 && pixelRatio > 1) { pixelRatio = Math.max(1, pixelRatio - .25); renderer.setPixelRatio(pixelRatio); resLowAt = performance.now(); fxResize(); }
+  else if (fps > 57 && pixelRatio < Math.min(window.devicePixelRatio, 1.75) && performance.now() - resLowAt > 20000) { pixelRatio = Math.min(Math.min(window.devicePixelRatio, 1.75), pixelRatio + .25); renderer.setPixelRatio(pixelRatio); fxResize(); }
 }
 /* ---------- 실제 시간에 맞춘 낮 · 노을 · 밤 ---------- */
 function applyTimeOfDay() {
@@ -3911,6 +3925,129 @@ applyTimeOfDay(); setInterval(applyTimeOfDay, 60000);
 
 buildNpcs(); initDipper(); try { addAttendants(); } catch (e) { console.warn(e); }
 applyLayout();
+/* =========================================================
+   빛과 분위기 + 살아 있는 자연
+   · 빛번짐(블룸): 촛불 · 연등 · 광배가 은은하게 번져요 (느린 기기는 자동으로 꺼요)
+   · 대웅전 문으로 드는 햇살 줄기와 떠다니는 먼지
+   · 하늘에 흐르는 구름, 계절 따라 꽃잎 · 반딧불 · 단풍잎 · 눈
+   ========================================================= */
+const FX = { on: true, slowN: 0, phase: "day", hallBox: null, season: "", sky: null, shafts: null, dust: null, parts: null };
+// 빛번짐: 촛불 · 등불 둘레에 부드러운 빛무리 (후처리 대신 가벼운 빛무리 그림이라 휴대폰에서도 부담이 적어요)
+function fxResize() {}
+function renderFrame() { renderer.render(scene, camera); }
+const GLOW_TEX = canvasTex(128, 128, (x, w) => { const r = x.createRadialGradient(64, 64, 0, 64, 64, 64); r.addColorStop(0, "rgba(255,255,255,1)"); r.addColorStop(.18, "rgba(255,255,255,.55)"); r.addColorStop(.5, "rgba(255,255,255,.14)"); r.addColorStop(1, "rgba(255,255,255,0)"); x.fillStyle = r; x.fillRect(0, 0, w, w); });
+GLOW_TEX.wrapS = GLOW_TEX.wrapT = THREE.ClampToEdgeWrapping;
+const glowMats = [];
+function addGlows() {
+  const list = [], ws = new THREE.Vector3(), skipRoots = new Set([lanternGroup]);
+  scene.traverse((o) => {
+    if (!o.isMesh || o.userData.glow) return; for (let p = o.parent; p; p = p.parent) if (skipRoots.has(p)) return;
+    const m = o.material; if (!m || Array.isArray(m)) return;
+    const flame = m === mat.flame, emi = m.emissive && m.emissiveIntensity >= .6 && (m.emissive.r + m.emissive.g + m.emissive.b) > .9;
+    if (!flame && !emi) return; if (!o.geometry.boundingSphere) o.geometry.computeBoundingSphere();
+    o.getWorldScale(ws); const r = o.geometry.boundingSphere.radius * Math.max(ws.x, ws.y, ws.z); if (r > 1.2 || r < .01) return;
+    list.push({ o, r, flame, c: flame ? new THREE.Color("#ffb860") : m.emissive.clone() });
+  });
+  list.slice(0, 220).forEach(({ o, r, flame, c }) => {
+    const gm = new THREE.SpriteMaterial({ map: GLOW_TEX, color: c, transparent: true, opacity: .5, blending: THREE.AdditiveBlending, depthWrite: false }); gm.userData.k = flame ? 1 : .8; glowMats.push(gm);
+    const sp = new THREE.Sprite(gm); o.getWorldScale(ws); const size = (flame ? 9 : 5.5) * r; sp.scale.set(size / ws.x, size / ws.y, 1); sp.userData.glow = true; sp.raycast = () => {}; o.add(sp);
+  });
+}
+// 해 · 노을 · 밤에 따라 세기를 바꿔요
+function fxPhase() {
+  const h = new Date().getHours() + new Date().getMinutes() / 60;
+  FX.phase = h >= 6.5 && h < 17 ? "day" : (h >= 17 && h < 19) || (h >= 5 && h < 6.5) ? "dusk" : "night";
+  glowMats.forEach((g) => (g.opacity = { day: .28, dusk: .55, night: .85 }[FX.phase] * g.userData.k));
+  const m = new Date().getMonth() + 1; FX.season = m >= 3 && m <= 5 ? "spring" : m >= 6 && m <= 8 ? "summer" : m >= 9 && m <= 11 ? "autumn" : "winter";
+}
+fxPhase(); setInterval(fxPhase, 60000);
+// --- 1) 대웅전 햇살 줄기 + 먼지 ---
+{
+  const g = new THREE.Group(); scene.add(g); FX.shafts = g;
+  const tex = canvasTex(128, 256, (x, w, h) => { x.clearRect(0, 0, w, h);
+    const v = x.createLinearGradient(0, 0, 0, h); v.addColorStop(0, "rgba(255,255,255,.95)"); v.addColorStop(.7, "rgba(255,255,255,.45)"); v.addColorStop(1, "rgba(255,255,255,0)");
+    x.fillStyle = v; x.fillRect(0, 0, w, h); x.globalCompositeOperation = "destination-in";
+    const s = x.createLinearGradient(0, 0, w, 0); s.addColorStop(0, "rgba(0,0,0,0)"); s.addColorStop(.3, "rgba(0,0,0,1)"); s.addColorStop(.7, "rgba(0,0,0,1)"); s.addColorStop(1, "rgba(0,0,0,0)"); x.fillStyle = s; x.fillRect(0, 0, w, h); });
+  tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+  const sm = new THREE.MeshBasicMaterial({ map: tex, color: "#ffe2a8", transparent: true, opacity: .15, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false });
+  const top = 9.6, fz = HALL.z + HALL.d / 2 - .4, run = 7.5, L = Math.hypot(top - .6, run), tilt = Math.atan2(run, top - .6);
+  [-9.5, -5, -1.2, 2.6, 6.8, 10.5].forEach((x, i) => { const w = 2.0 + (i % 3) * .7; const p = new THREE.Mesh(new THREE.PlaneGeometry(w, L), sm); p.position.set(x + .8, (top + .6) / 2, fz - run / 2); p.rotation.set(tilt, 0, -.06); g.add(p); });
+  // 바닥에 닿은 햇빛 자국
+  const pt = canvasTex(256, 128, (x, w, h) => { const r = x.createRadialGradient(w / 2, h / 2, 4, w / 2, h / 2, w / 2); r.addColorStop(0, "rgba(255,255,255,.8)"); r.addColorStop(1, "rgba(255,255,255,0)"); x.fillStyle = r; x.fillRect(0, 0, w, h); });
+  const pm = new THREE.MeshBasicMaterial({ map: pt, color: "#ffd9a0", transparent: true, opacity: .22, blending: THREE.AdditiveBlending, depthWrite: false, fog: false });
+  const patch = new THREE.Mesh(new THREE.PlaneGeometry(22, 5), pm); patch.rotation.x = -Math.PI / 2; patch.position.set(.6, .58, fz - run - .5); g.add(patch); g.userData.patch = pm;
+  // 햇살 속 먼지
+  const N = 180, pos = new Float32Array(N * 3); for (let i = 0; i < N; i++) { pos[i * 3] = rand(-11, 11); pos[i * 3 + 1] = rand(1, 9); pos[i * 3 + 2] = rand(fz - 9, fz - .5); }
+  const dg = new THREE.BufferGeometry(); dg.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+  const dot = canvasTex(32, 32, (x, w) => { const r = x.createRadialGradient(16, 16, 0, 16, 16, 16); r.addColorStop(0, "rgba(255,255,255,1)"); r.addColorStop(1, "rgba(255,255,255,0)"); x.fillStyle = r; x.fillRect(0, 0, w, w); });
+  const dust = new THREE.Points(dg, new THREE.PointsMaterial({ map: dot, color: "#fff0c8", size: .09, transparent: true, opacity: .7, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+  g.add(dust); FX.dust = dust; g.userData.sm = sm; g.userData.fz = fz;
+}
+// --- 2) 하늘에 흐르는 구름 ---
+{
+  const g = new THREE.Group(); scene.add(g); FX.sky = g;
+  const ct = canvasTex(256, 128, (x, w, h) => { x.clearRect(0, 0, w, h); for (let k = 0; k < 14; k++) { const cx = 40 + Math.random() * 176, cy = 60 + Math.random() * 30, r = 22 + Math.random() * 30; const rg = x.createRadialGradient(cx, cy, 0, cx, cy, r); rg.addColorStop(0, "rgba(255,255,255,.75)"); rg.addColorStop(1, "rgba(255,255,255,0)"); x.fillStyle = rg; x.beginPath(); x.arc(cx, cy, r, 0, 7); x.fill(); } });
+  ct.wrapS = ct.wrapT = THREE.ClampToEdgeWrapping;
+  for (let i = 0; i < 9; i++) { const m = new THREE.SpriteMaterial({ map: ct, color: "#ffffff", transparent: true, opacity: .8, depthWrite: false, fog: false }); const s = new THREE.Sprite(m);
+    const a = i / 9 * Math.PI * 2 + rand(-.2, .2), r = rand(120, 165); s.position.set(Math.cos(a) * r, rand(42, 68), Math.sin(a) * r); s.scale.set(rand(48, 80), rand(18, 28), 1); s.userData.a = a; s.userData.r = r; g.add(s); }
+}
+// --- 3) 계절 입자: 봄 꽃잎 · 여름 밤 반딧불 · 가을 단풍잎 · 겨울 눈 ---
+{
+  const N = 240, pos = new Float32Array(N * 3), col = new Float32Array(N * 3), vel = new Float32Array(N * 3), ph = new Float32Array(N);
+  const geo = new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.BufferAttribute(pos, 3)); geo.setAttribute("color", new THREE.BufferAttribute(col, 3));
+  const tex = { leaf: canvasTex(64, 64, (x) => { x.clearRect(0, 0, 64, 64); x.fillStyle = "#fff"; x.translate(32, 34); x.beginPath(); for (let k = 0; k <= 10; k++) { const a = -Math.PI / 2 + (k - 5) * .55, r = k % 2 ? 13 : 28; x.lineTo(Math.cos(a) * r, Math.sin(a) * r); } x.lineTo(0, 10); x.closePath(); x.fill(); x.fillRect(-1.5, 8, 3, 18); }),
+    petal: canvasTex(64, 64, (x) => { x.clearRect(0, 0, 64, 64); x.fillStyle = "#fff"; x.beginPath(); x.ellipse(32, 32, 12, 22, .6, 0, 7); x.fill(); }),
+    snow: canvasTex(64, 64, (x) => { const r = x.createRadialGradient(32, 32, 0, 32, 32, 30); r.addColorStop(0, "rgba(255,255,255,1)"); r.addColorStop(.6, "rgba(255,255,255,.6)"); r.addColorStop(1, "rgba(255,255,255,0)"); x.fillStyle = r; x.fillRect(0, 0, 64, 64); }) };
+  Object.values(tex).forEach((t) => (t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping));
+  const pm = new THREE.PointsMaterial({ size: .32, vertexColors: true, transparent: true, depthWrite: false, alphaTest: .05, map: tex.leaf });
+  const pts = new THREE.Points(geo, pm); pts.frustumCulled = false; scene.add(pts);
+  FX.parts = { pts, pos, col, vel, ph, N, mode: "", tex, pm };
+}
+function fxSetSeason() {
+  const P = FX.parts, night = FX.phase !== "day";
+  const mode = FX.season === "summer" ? (night ? "firefly" : "") : FX.season === "spring" ? "petal" : FX.season === "autumn" ? "leaf" : "snow";
+  if (mode === P.mode) return; P.mode = mode; P.pts.visible = !!mode; if (!mode) return;
+  P.pm.map = P.tex[mode === "leaf" ? "leaf" : mode === "petal" ? "petal" : "snow"]; P.pm.blending = mode === "firefly" ? THREE.AdditiveBlending : THREE.NormalBlending;
+  P.pm.size = { leaf: .5, petal: .3, snow: .2, firefly: .26 }[mode]; P.pm.needsUpdate = true;
+  const pal = { leaf: ["#c0392b", "#d9622b", "#e8a23a", "#a8321e", "#c9772a"], petal: ["#f7c6d4", "#f2b0c4", "#fde3ea"], snow: ["#ffffff", "#eef4ff"], firefly: ["#d6ff7a", "#a8f06a"] }[mode];
+  for (let i = 0; i < P.N; i++) { fxRespawn(i, true); const c = new THREE.Color(pal[i % pal.length]); P.col[i * 3] = c.r; P.col[i * 3 + 1] = c.g; P.col[i * 3 + 2] = c.b; }
+  P.pts.geometry.attributes.color.needsUpdate = true;
+}
+function fxRespawn(i, anyY) {
+  const P = FX.parts, c = camera.position, a = Math.random() * Math.PI * 2, r = 2 + Math.random() * 20;
+  P.pos[i * 3] = c.x + Math.cos(a) * r; P.pos[i * 3 + 2] = c.z + Math.sin(a) * r;
+  P.pos[i * 3 + 1] = P.mode === "firefly" ? rand(.4, 2.6) : anyY ? rand(.2, 14) : rand(10, 15);
+  const fall = { leaf: .55, petal: .45, snow: .7, firefly: 0 }[P.mode] || .5;
+  P.vel[i * 3] = rand(-.2, .2) + (P.mode === "firefly" ? 0 : .25); P.vel[i * 3 + 1] = -fall * rand(.7, 1.3); P.vel[i * 3 + 2] = rand(-.2, .2); P.ph[i] = Math.random() * 6.28;
+}
+let fxSeasonAt = 0;
+function updateFx(dt, t) {
+  WIND.value = t;
+  if (!FX.hallBox) { FX.hallBox = new THREE.Box3().setFromObject(hallG); FX.hallBox.expandByScalar(.5); addGlows(); fxPhase(); }
+  const night = FX.phase === "night", dusk = FX.phase === "dusk";
+  // 햇살 줄기: 낮에는 금빛, 노을엔 주황, 밤엔 달빛처럼 아주 옅게
+  const S = FX.shafts; if (S) { const sm = S.userData.sm; sm.opacity = night ? .09 : dusk ? .26 : .34 + Math.sin(t * .3) * .04; sm.color.set(night ? "#9fb6e8" : dusk ? "#ffb878" : "#ffe2a8"); S.userData.patch.opacity = night ? .08 : dusk ? .22 : .3;
+    FX.dust.material.opacity = night ? .25 : .7; const p = FX.dust.geometry.attributes.position, fz = S.userData.fz;
+    for (let i = 0; i < p.count; i++) { let y = p.getY(i) + dt * (.05 + Math.sin(t * .5 + i) * .04), x = p.getX(i) + Math.sin(t * .3 + i * 1.7) * dt * .08; if (y > 9.5) y = 1; p.setXY(i, x, y); } p.needsUpdate = true; }
+  // 구름: 천천히 하늘을 돌아요
+  if (FX.sky) FX.sky.children.forEach((s) => { s.userData.a += dt * .004; s.position.x = Math.cos(s.userData.a) * s.userData.r; s.position.z = Math.sin(s.userData.a) * s.userData.r; s.material.opacity = night ? .18 : dusk ? .7 : .82; s.material.color.set(night ? "#3a4660" : dusk ? "#ffc2a0" : "#ffffff"); });
+  FX.sky.visible = !(inRoom || inGrotto || inCave);
+  // 계절 입자
+  if (t > fxSeasonAt) { fxSeasonAt = t + 20; fxSetSeason(); }
+  const P = FX.parts; if (!P.mode) return; P.pts.visible = !(inRoom || inGrotto || inCave);
+  if (!P.pts.visible) return;
+  const c = camera.position, hb = FX.hallBox;
+  for (let i = 0; i < P.N; i++) { const j = i * 3; let x = P.pos[j], y = P.pos[j + 1], z = P.pos[j + 2];
+    if (P.mode === "firefly") { x += Math.sin(t * .7 + P.ph[i]) * dt * .4; z += Math.cos(t * .6 + P.ph[i] * 1.3) * dt * .4; y += Math.sin(t * 1.1 + P.ph[i]) * dt * .25; const b = .5 + .5 * Math.sin(t * 2.4 + P.ph[i] * 3); P.col[j] = .84 * b; P.col[j + 1] = b; P.col[j + 2] = .45 * b; }
+    else { const sway = P.mode === "snow" ? .25 : .9; x += (P.vel[j] + Math.sin(t * 1.3 + P.ph[i]) * sway) * dt; y += P.vel[j + 1] * dt; z += (P.vel[j + 2] + Math.cos(t * 1.1 + P.ph[i]) * sway * .6) * dt; }
+    if (y < .05 || Math.hypot(x - c.x, z - c.z) > 24) { fxRespawn(i, false); continue; }
+    P.pos[j] = x; P.pos[j + 1] = y; P.pos[j + 2] = z;
+    if (hb && x > hb.min.x && x < hb.max.x && z > hb.min.z && z < hb.max.z && y < hb.max.y) P.pos[j + 1] = -50; // 법당 안에는 들어오지 않아요
+  }
+  P.pts.geometry.attributes.position.needsUpdate = true; if (P.mode === "firefly") P.pts.geometry.attributes.color.needsUpdate = true;
+}
+// 느린 기기: 해상도를 다 낮춰도 느리면 빛번짐을 꺼요
+function fxPerf(fps) { if (!FX.on) return; if (fps < 26 && pixelRatio <= 1) { if (++FX.slowN >= 2) { FX.on = false; FX.dust.visible = false; FX.parts.pts.geometry.setDrawRange(0, 120); } } else FX.slowN = 0; }
 renderLanterns(me.localWishes);
 for (let i = 0; i < Math.min(me.rice || 0, RICE_SPOTS.length); i++) addRiceBag(false);
 renderGiwa(me.localGiwa);
