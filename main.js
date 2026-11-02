@@ -2337,7 +2337,7 @@ let lastLevel = levelOf(XP());
 /* ---------- 처음 온 사람을 위한 첫 수행 안내: 대웅전 → 목탁 → 절 → 소원 연등 ---------- */
 const COACH = [
   { t: "🙏 달빛암에 오신 걸 환영해요. 먼저 대웅전에 가 볼까요?", btn: "대웅전으로 가기", go: () => goPlace("hall"), done: () => zone === "hall" },
-  { t: "🪵 목탁을 세 번 쳐 보세요. 똑, 똑, 똑.", mark: "목탁", done: (c) => me.mok - c.mok0 >= 3 },
+  { t: "🥢 목탁을 세 번 쳐 보세요. 똑, 똑, 똑.", mark: "목탁", done: (c) => me.mok - c.mok0 >= 3 },
   { t: "🙇 부처님께 절을 한 번 올려 보세요.", mark: "계속 절하기", done: (c) => me.bow - c.bow0 >= 1 },
   { t: "🏮 마지막으로 마당 석탑에서 소원 연등을 하나 달아 보세요.", btn: "석탑으로 가기", go: () => { stopAutoBow(); goPlace("pagoda"); setTimeout(() => openWish("yard"), 700); }, mark: "소원 연등", done: (c) => c.wished },
 ];
@@ -2960,22 +2960,24 @@ const MENU = [
 ];
 if (!Array.isArray(me.ate)) me.ate = [];
 let pendingMeal = null, eating = null;
+// 목탁 아이콘: 이모지에 목탁이 없어 직접 그렸어요 (둥근 나무 몸통 · 가로 홈 · 손잡이 · 목탁채)
+const MOK_ICON = `<svg class="mok-ic" viewBox="0 0 32 32" aria-hidden="true"><defs><radialGradient id="mkG" cx="38%" cy="34%" r="70%"><stop offset="0" stop-color="#e3a25a"/><stop offset=".55" stop-color="#b56a2c"/><stop offset="1" stop-color="#6e3a16"/></radialGradient></defs><path d="M12.5 7.2c-1.6-2.6-.2-4.6 1.8-4.2 1.4.3 1.9 1.7 1.5 3.3" fill="none" stroke="#7a4a22" stroke-width="2" stroke-linecap="round"/><ellipse cx="15" cy="17.5" rx="11.5" ry="10" fill="url(#mkG)"/><path d="M5.6 19.2c3.2 1.6 12.4 1.8 18.8-.2" fill="none" stroke="#3a1e0a" stroke-width="2.1" stroke-linecap="round"/><circle cx="24.6" cy="18.8" r="1.3" fill="#3a1e0a"/><ellipse cx="11" cy="12.3" rx="3.6" ry="2" fill="#fff" opacity=".28" transform="rotate(-20 11 12.3)"/><path d="M21.5 8.8l7.3-5.6" stroke="#c99a5a" stroke-width="1.8" stroke-linecap="round"/><circle cx="20.9" cy="9.3" r="2" fill="#e6c48a" stroke="#8a5a2a" stroke-width=".8"/></svg>`;
 const A = (icon, label, fn, hot) => ({ icon, label, fn, hot });
 function actionsFor(z) {
   const greetA = A("🙏", "합장", () => greet(null)), beadA = A("📿", "염주", openBeads), wishA = A("🏮", "소원 연등", () => openWish("yard"));
-  if (z === "hall") return [A("🏯", "템플스테이", openTemplestay, true), A(player?.sitting ? "🧍" : "🧘", player?.sitting ? "일어나기" : "방석 앉기", doSit, !player?.sitting), A(autoBow ? "⏸️" : "🙇", autoBow ? "멈추기" : "계속 절하기", toggleAutoBow, true), A("🪵", "목탁", doMok), A("🕯️", "향", doIncense), A("🍚", "공양미", doRice), A(loopEls.yebul && !loopEls.yebul.paused ? "⏹️" : "🎐", loopEls.yebul && !loopEls.yebul.paused ? "예불 끄기" : "예불 듣기", toggleYebul), greetA, beadA];
+  if (z === "hall") return [A("🏯", "템플스테이", openTemplestay, true), A(player?.sitting ? "🧍" : "🧘", player?.sitting ? "일어나기" : "방석 앉기", doSit, !player?.sitting), A(autoBow ? "⏸️" : "🙇", autoBow ? "멈추기" : "계속 절하기", toggleAutoBow, true), A(MOK_ICON, "목탁", doMok), A("🕯️", "향", doIncense), A("🍚", "공양미", doRice), A(loopEls.yebul && !loopEls.yebul.paused ? "⏹️" : "🎐", loopEls.yebul && !loopEls.yebul.paused ? "예불 끄기" : "예불 듣기", toggleYebul), greetA, beadA];
   const giwaA = A("🏯", "기와 소원", openGiwa);
   if (z === "pagoda") return [A("🗼", "탑돌이", doTapdori, true), wishA, giwaA, greetA, beadA];
   if (z === "shrine") return [A("🚪", "산신각 들어가기", () => enterRoom("sanshin"), true), A("🕯️", "초 켜기", doCandle), greetA];
   if (ROOMS[z]) return [A("🚪", `${ROOMS[z].name} 들어가기`, () => enterRoom(z), true), greetA, beadA];
-  if (z === "room") return [A(pray && pray.timer ? "⏸️" : "🙏", pray && pray.timer ? "멈추기" : "기도하기", togglePray, true), A("🙇", "절", doBow), A("🪵", "목탁", doMok), A("🚪", "나가기", leaveRoom)];
+  if (z === "room") return [A(pray && pray.timer ? "⏸️" : "🙏", pray && pray.timer ? "멈추기" : "기도하기", togglePray, true), A("🙇", "절", doBow), A(MOK_ICON, "목탁", doMok), A("🚪", "나가기", leaveRoom)];
   if (z === "kitchen") return [A("🍚", "공양 고르기", () => { renderMenu(); openPanel("menuPanel"); }, true), A("🍵", "차 마시기", doTea, true), greetA, beadA];
   if (z === "shop") return [A("🛍️", "가게 둘러보기", openShop, true), greetA, beadA];
-  if (z === "grotto") return [A(breath.on ? "⏸️" : "🧘", breath.on ? "좌선 멈추기" : "좌선하기", startZazen, true), A("🙇", "절", doBow), A("🪵", "목탁", doMok), A("🚪", "나가기", leaveGrotto)];
+  if (z === "grotto") return [A(breath.on ? "⏸️" : "🧘", breath.on ? "좌선 멈추기" : "좌선하기", startZazen, true), A("🙇", "절", doBow), A(MOK_ICON, "목탁", doMok), A("🚪", "나가기", leaveGrotto)];
   if (z === "janggyeong") return [A("📜", "경판 읽기", readVerse, true), greetA, beadA];
   if (z === "wolji") return [A("🌙", "연못 바라보기", doPondView, true), A("🪷", "연꽃등 띄우기", floatLotus, true), greetA, beadA];
   if (z === "geumgang") return [A("🚪", "금강굴 들어가기", enterCave, true), greetA, beadA];
-  if (z === "cave") return [A(pray && pray.timer ? "⏸️" : "🐯", pray && pray.timer ? "기도 멈추기" : "산신기도", togglePray, true), A("🙇", "절", doBow), A("🪵", "목탁", doMok), A("🚪", "나가기", leaveCave)];
+  if (z === "cave") return [A(pray && pray.timer ? "⏸️" : "🐯", pray && pray.timer ? "기도 멈추기" : "산신기도", togglePray, true), A("🙇", "절", doBow), A(MOK_ICON, "목탁", doMok), A("🚪", "나가기", leaveCave)];
   if (z === "seokgul") return [A("🚪", "석굴암 들어가기", enterGrotto, true), greetA, beadA];
   if (z === "searock" || z === "sea") { const wv = loopEls.wave && !loopEls.wave.paused; return [...(z === "searock" ? [A(pray && pray.timer ? "⏸️" : "🐉", pray && pray.timer ? "기도 멈추기" : "용왕기도", togglePray, true), A("🙇", "절", doBow)] : []), A("🍙", "물고기 밥 주기", doFeed, true), A("🐟", "방생하기", doRelease), A(wv ? "⏹️" : "🌊", wv ? "파도 소리 끄기" : "파도 소리", doWave), A("🏮", "바다 연등", () => openWish("sea")), greetA]; }
   if (z === "field") return [A("🏯", "기와 소원", openGiwa), greetA, wishA, beadA];

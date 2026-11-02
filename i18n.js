@@ -133,7 +133,7 @@ const D = {
   "범종을 울렸어요": "rang the bell", "달빛봉 정상에 올랐어요": "reached Moon Peak", "야호를 외쳤어요": "shouted yaho", "공양미를 올렸어요": "offered rice", "기와에 소원을 적었어요": "wrote a tile wish",
   "누군가": "Someone", "건너뛰기": "Skip", "대웅전으로 가기": "Go to the Main Hall", "석탑으로 가기": "Go to the pagoda",
   "🙏 달빛암에 오신 걸 환영해요. 먼저 대웅전에 가 볼까요?": "🙏 Welcome to Dalbitam. Shall we visit the Main Hall first?",
-  "🪵 목탁을 세 번 쳐 보세요. 똑, 똑, 똑.": "🪵 Strike the moktak three times. Tok, tok, tok.",
+  "🥢 목탁을 세 번 쳐 보세요. 똑, 똑, 똑.": "🥢 Strike the moktak three times. Tok, tok, tok.",
   "🙇 부처님께 절을 한 번 올려 보세요.": "🙇 Offer one bow to the Buddha.",
   "🏮 마지막으로 마당 석탑에서 소원 연등을 하나 달아 보세요.": "🏮 Finally, hang a wish lantern by the pagoda.",
   "🎉 첫 수행을 마쳤어요! 복전 🪙30을 드려요. 이제 지도를 열고 달빛암 곳곳을 둘러보세요": "🎉 First practice done! Here are 🪙30 coins. Now open the map and explore.", "오솔길": "Footpath", "전각 사이 오솔길이에요. 지도를 열면 가고 싶은 곳으로 바로 갈 수 있어요.": "A footpath between the halls. Open the map to go anywhere instantly.", "휙~ 🍙": "Toss~ 🍙", "템플스테이": "Templestay", "🏯 달빛암 템플스테이": "🏯 Dalbitam Templestay", "오늘의 정진": "Today's practice", "마음 다지기": "Steady the mind", "정진": "Devotion", "🌙 밤 9시부터": "🌙 From 9 PM", "🌙 야간 정진": "🌙 Night practice",

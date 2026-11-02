@@ -301,3 +301,4 @@ html[lang=en] .en-only{display:block}
 .map-box .mk-mine .core{fill:#f5c542;stroke:#fff6d0;stroke-width:.4}
 .map-box .mk-mine .pulse{fill:none;stroke:#f5c542;stroke-width:.5;animation:mkpulse 1.6s ease-out infinite;transform-box:fill-box;transform-origin:center}
 @keyframes mkpulse{from{transform:scale(.6);opacity:1}to{transform:scale(2.2);opacity:0}}
+.act i .mok-ic{width:1.6rem;height:1.6rem;margin:-.15rem 0;display:inline-block;vertical-align:middle}
