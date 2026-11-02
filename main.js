@@ -746,15 +746,77 @@ fetch("buddha.glb", { method: "HEAD" }).then((r) => {
 // 촛대 + 향로
 const candles = [];
 const ALTAR_F = BUDDHA_Z + 2.4; // 불단 앞
-[-4.6, 4.6].forEach((x) => { box(.5, .9, .5, mat.wood, x, 1, ALTAR_F); cyl(.12, .12, .7, mat.candle, x, 1.8, ALTAR_F); const f = new THREE.Mesh(new THREE.SphereGeometry(.09, 8, 6), mat.flame); f.scale.y = 1.8; f.position.set(x, 2.25, ALTAR_F); scene.add(f); candles.push(f); block(x - .35, x + .35, ALTAR_F - .35, ALTAR_F + .35); });
 const hallLight = new THREE.PointLight("#ffb466", 60, 40, 1.4); hallLight.position.set(0, 8, -27); scene.add(hallLight);
 [-10, 10].forEach((x) => { const l = new THREE.PointLight("#ffc27a", 22, 22, 1.6); l.position.set(x, 7.5, -30); scene.add(l); });
 // 법당 위쪽에 매단 연등 줄
 for (let row = 0; row < 3; row++) for (let i = 0; i < 9; i++) { const c = ["#f2a65a", "#e86a5a", "#f2d05a", "#f29ac8"][(i + row) % 4]; const l = new THREE.Mesh(new THREE.SphereGeometry(.38, 12, 10), new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: .8 })); l.scale.y = 1.25; l.position.set(-12 + i * 3, 9.6 - Math.sin(i / 8 * Math.PI) * .6, -30 + row * 5); scene.add(l); }
-box(1.4, .8, .8, mat.wood, 0, .95, ALTAR_F + .6);
-cyl(.35, .25, .35, mat.gold, 0, 1.55, ALTAR_F + .6, 12);
-const incense = new THREE.Group(); incense.position.set(0, 1.75, ALTAR_F + .6); scene.add(incense);
-cyl(.02, .02, .6, M("#8a5a3a"), 0, .3, 0, 6, incense); incense.visible = false;
+// 불전 공양상: 붉은 옻칠 상 위에 향로 · 촛대 한 쌍 · 청수 · 과일 고임 · 떡 — 좌우 대칭으로 가지런히
+const TABLE_Z = ALTAR_F + .55, TABLE_TOP = 1.5;
+const altarTable = new THREE.Group(); altarTable.position.set(0, 0, TABLE_Z); scene.add(altarTable);
+{
+  const LAC = new THREE.MeshStandardMaterial({ color: "#6e1a12", roughness: .32, metalness: .05, envMap: goldEnv, envMapIntensity: .35 });
+  const LAC_D = new THREE.MeshStandardMaterial({ color: "#3e0e0a", roughness: .4 });
+  const BRASS = new THREE.MeshStandardMaterial({ color: "#d2a84e", metalness: .92, roughness: .26, envMap: goldEnv, envMapIntensity: 1.1 });
+  const TRIM = new THREE.MeshStandardMaterial({ color: "#c99a3e", metalness: .85, roughness: .32, envMap: goldEnv, envMapIntensity: 1 });
+  const lathe = (pts, m, seg = 32) => new THREE.Mesh(new THREE.LatheGeometry(pts.map(([r, y]) => new THREE.Vector2(r, y)), seg), m);
+  const W = 6.2, D = 1.0, H = TABLE_TOP - .55;
+  // 상판 · 테두리 · 다리 (구름 모양 발)
+  box(W, .1, D, LAC, 0, TABLE_TOP - .05, 0, altarTable);
+  box(W + .12, .035, D + .12, TRIM, 0, TABLE_TOP - .105, 0, altarTable);
+  box(W - .1, .16, D - .1, LAC, 0, TABLE_TOP - .2, 0, altarTable);
+  [-1, 1].forEach((sx) => [-1, 1].forEach((sz) => { box(.14, H - .2, .14, LAC, sx * (W / 2 - .18), .55 + (H - .2) / 2, sz * (D / 2 - .14), altarTable);
+    const foot = new THREE.Mesh(new THREE.SphereGeometry(.12, 14, 10), LAC_D); foot.scale.set(1.2, .5, 1.2); foot.position.set(sx * (W / 2 - .18), .6, sz * (D / 2 - .14)); altarTable.add(foot); }));
+  [-1, 1].forEach((sz) => box(W - .4, .06, .05, LAC, 0, .78, sz * (D / 2 - .14), altarTable));
+  // 앞에 드리운 탁의: 노란 비단에 금빛 연꽃과 卍
+  const clothTex = canvasTex(1024, 320, (x, w, h) => {
+    x.fillStyle = "#e3b23c"; x.fillRect(0, 0, w, h);
+    x.fillStyle = "#8a2318"; x.fillRect(0, 0, w, 26); x.fillRect(0, h - 34, w, 34); x.fillStyle = "#2f6b58"; x.fillRect(0, 26, w, 8); x.fillRect(0, h - 42, w, 8);
+    x.strokeStyle = "#9a5a16"; x.lineWidth = 3; x.strokeRect(40, 52, w - 80, h - 112);
+    const cx = w / 2, cy = h / 2 - 4; x.fillStyle = "#fff0b8"; x.strokeStyle = "#a8641c"; x.lineWidth = 3;
+    for (let k = 0; k < 9; k++) { x.save(); x.translate(cx, cy + 40); x.rotate((k - 4) * .3); x.beginPath(); x.ellipse(0, -62, 18, 52, 0, 0, 7); x.fill(); x.stroke(); x.restore(); }
+    x.fillStyle = "#b8322a"; x.font = "bold 64px serif"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText("卍", cx, cy + 18);
+    [[cx - 300, 1], [cx + 300, -1]].forEach(([px]) => { x.strokeStyle = "#a8641c"; x.lineWidth = 4; x.beginPath(); for (let t = 0; t <= 1; t += .02) { const a = t * Math.PI * 3, r = 10 + t * 50; x.lineTo(px + Math.cos(a) * r, cy + Math.sin(a) * r * .6); } x.stroke(); });
+    for (let k = 0; k < 24; k++) { x.fillStyle = "#f6dc8a"; x.beginPath(); x.arc(20 + k * 42.5, h - 17, 6, 0, 7); x.fill(); }
+  });
+  const cloth = new THREE.Mesh(new THREE.PlaneGeometry(3.2, .78), new THREE.MeshStandardMaterial({ map: clothTex, roughness: .7, emissive: "#ffffff", emissiveMap: clothTex, emissiveIntensity: .1 }));
+  cloth.position.set(0, TABLE_TOP - .45, D / 2 + .065); altarTable.add(cloth);
+  for (let k = 0; k < 16; k++) { const tas = new THREE.Mesh(new THREE.CylinderGeometry(.012, .02, .1, 6), TRIM); tas.position.set(-1.55 + k * (3.1 / 15), TABLE_TOP - .9, D / 2 + .07); altarTable.add(tas); }
+  const runner = box(1.8, .012, D + .02, new THREE.MeshStandardMaterial({ map: clothTex, roughness: .7 }), 0, TABLE_TOP + .006, 0, altarTable);
+  // 가운데 향로: 세 발 달린 놋 향로, 손잡이 두 개, 재 위에 향
+  const censer = new THREE.Group(); censer.position.set(0, TABLE_TOP, .02); altarTable.add(censer);
+  const bowl = lathe([[0, .08], [.2, .08], [.27, .14], [.3, .26], [.27, .34], [.29, .37], [.25, .37], [.23, .35], [0, .35]], BRASS, 40); censer.add(bowl);
+  [0, 1, 2].forEach((k) => { const a = k / 3 * Math.PI * 2 + Math.PI / 6, l = new THREE.Mesh(new THREE.CylinderGeometry(.03, .045, .12, 10), BRASS); l.position.set(Math.cos(a) * .18, .05, Math.sin(a) * .18); censer.add(l); });
+  [-1, 1].forEach((s) => { const h = new THREE.Mesh(new THREE.TorusGeometry(.06, .016, 8, 18, Math.PI), BRASS); h.position.set(s * .31, .3, 0); h.rotation.set(0, Math.PI / 2, s * -Math.PI / 2); censer.add(h); });
+  const ash = new THREE.Mesh(new THREE.CircleGeometry(.235, 32), new THREE.MeshStandardMaterial({ color: "#cfc6b4", roughness: 1 })); ash.rotation.x = -Math.PI / 2; ash.position.y = .345; censer.add(ash);
+  const band = new THREE.Mesh(new THREE.TorusGeometry(.3, .012, 6, 40), TRIM); band.rotation.x = Math.PI / 2; band.position.y = .26; censer.add(band);
+  // 촛대 한 쌍
+  [-1.45, 1.45].forEach((x) => { const cs = new THREE.Group(); cs.position.set(x, TABLE_TOP, 0); altarTable.add(cs);
+    cs.add(lathe([[0, 0], [.17, 0], [.18, .03], [.1, .06], [.05, .1], [.04, .5], [.06, .53], [.04, .56], [.13, .6], [.14, .63], [0, .63]], BRASS, 28));
+    const cnd = new THREE.Mesh(new THREE.CylinderGeometry(.055, .06, .5, 16), new THREE.MeshStandardMaterial({ color: "#f5ecd8", roughness: .55, emissive: "#ffcf88", emissiveIntensity: .12 })); cnd.position.y = .88; cs.add(cnd);
+    const wick = new THREE.Mesh(new THREE.CylinderGeometry(.006, .006, .04, 4), M("#2a1a10")); wick.position.y = 1.15; cs.add(wick);
+    const f = new THREE.Mesh(new THREE.SphereGeometry(.05, 10, 8), mat.flame); f.scale.y = 1.9; f.position.set(x, TABLE_TOP + 1.22, TABLE_Z); scene.add(f); candles.push(f); });
+  // 청수 그릇 (뚜껑 덮은 놋 다기)
+  const water = new THREE.Group(); water.position.set(0, TABLE_TOP, .36); altarTable.add(water);
+  water.add(lathe([[0, 0], [.07, 0], [.06, .02], [.08, .03], [.11, .1], [.1, .13], [0, .13]], BRASS, 24));
+  const lid = lathe([[0, .2], [.03, .2], [.03, .18], [.1, .15], [.105, .13], [0, .13]], BRASS, 24); water.add(lid);
+  // 과일 고임 (굽 높은 제기 위에 쌓아 올림): 사과 · 배 · 귤
+  const stand = (x, z) => { const g = new THREE.Group(); g.position.set(x, TABLE_TOP, z); altarTable.add(g);
+    g.add(lathe([[0, 0], [.16, 0], [.15, .02], [.07, .05], [.06, .16], [.2, .2], [.22, .23], [0, .23]], LAC, 28)); const r = new THREE.Mesh(new THREE.TorusGeometry(.215, .01, 6, 28), TRIM); r.rotation.x = Math.PI / 2; r.position.y = .225; g.add(r); return g; };
+  const pile = (g, color, r, layers) => { const m = new THREE.MeshStandardMaterial({ color, roughness: .45, metalness: 0 }); let y = .23 + r;
+    layers.forEach(([n, rad]) => { for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2 + y * 3, fr = new THREE.Mesh(new THREE.SphereGeometry(r, 16, 12), m); fr.scale.y = .9; fr.position.set(Math.cos(a) * rad, y, Math.sin(a) * rad); g.add(fr);
+      const st = new THREE.Mesh(new THREE.CylinderGeometry(.006, .006, .03, 4), M("#4a3020")); st.position.set(fr.position.x, y + r * .88, fr.position.z); g.add(st); } y += r * 1.45; }); };
+  pile(stand(-.75, -.12), "#c8322a", .07, [[7, .14], [4, .08], [1, 0]]);
+  pile(stand(.75, -.12), "#e2b63e", .075, [[6, .14], [3, .07], [1, 0]]);
+  pile(stand(-2.25, -.1), "#f08a24", .055, [[8, .15], [6, .1], [3, .05], [1, 0]]);
+  pile(stand(2.25, -.1), "#f08a24", .055, [[8, .15], [6, .1], [3, .05], [1, 0]]);
+  // 떡: 하얀 백설기 · 분홍 · 쑥떡을 층층이
+  [-.75, .75].forEach((x) => { const g = new THREE.Group(); g.position.set(x, TABLE_TOP, .3); altarTable.add(g);
+    g.add(lathe([[0, 0], [.13, 0], [.12, .02], [.16, .05], [0, .05]], BRASS, 24));
+    ["#f6f1e4", "#f2b8c4", "#7d9a52", "#f6f1e4"].forEach((c, i) => { const ck = new THREE.Mesh(new THREE.BoxGeometry(.2, .045, .2), new THREE.MeshStandardMaterial({ color: c, roughness: .8 })); ck.position.y = .075 + i * .046; ck.rotation.y = i * .04; g.add(ck); }); });
+}
+block(-3.2, 3.2, TABLE_Z - .6, TABLE_Z + .6);
+const incense = new THREE.Group(); incense.position.set(0, TABLE_TOP + .34, TABLE_Z + .02); scene.add(incense);
+[-.05, 0, .05].forEach((dx) => { const st = cyl(.008, .008, .42, M("#8a5a3a"), dx, .21, 0, 6, incense); const tip = new THREE.Mesh(new THREE.SphereGeometry(.012, 6, 4), new THREE.MeshBasicMaterial({ color: "#ff6a2a" })); tip.position.set(dx, .42, 0); incense.add(tip); }); incense.visible = false;
 const smoke = [];
 for (let i = 0; i < 10; i++) { const s = new THREE.Mesh(new THREE.SphereGeometry(.12, 8, 6), new THREE.MeshBasicMaterial({ color: "#dddddd", transparent: true, opacity: 0 })); s.userData.t = i / 10; incense.add(s); smoke.push(s); }
 let incenseUntil = 0;
@@ -845,8 +907,8 @@ function placeDongja(pose, x, y, z, s = .4, ry = 0, parent = scene) {
   // 불단 위 네 귀퉁이
   [[-2.2, .55, "lotus"], [2.2, .55, "lotus"], [-1.8, .78, "hap"], [1.8, .78, "hap"]].forEach(([x, z, p]) => placeDongja(p, x, 1.08, z, .3, 0, buddhaRoot));
   // 불단 앞에서 절하는 동자승
-  [-2.4, 2.4].forEach((x) => { placeDongja("bow", x, .55, ALTAR_F + 1.2, .42, Math.PI); });
-  block(-2.8, 2.8, ALTAR_F + .8, ALTAR_F + 1.6);
+  [-2.4, 2.4].forEach((x) => { placeDongja("bow", x, .55, ALTAR_F + 1.75, .42, Math.PI); });
+  block(-2.8, 2.8, ALTAR_F + 1.3, ALTAR_F + 2.1);
   // 양쪽 벽을 따라 참선하는 동자승
   [-33, -29.5, -26, -22.5, -19, -15.5].forEach((z, i) => [-1, 1].forEach((sd) => { placeDongja(["sit", "sleep", "moktak", "read", "hap", "bead"][(i + (sd > 0 ? 3 : 0)) % 6], sd * 14.1, .55, z, .42, -sd * Math.PI / 2); block(sd * 14.1 - .35, sd * 14.1 + .35, z - .35, z + .35); }));
 }
