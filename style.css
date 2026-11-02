@@ -292,3 +292,4 @@ html[lang=en] .en-only{display:block}
 .coach .primary{width:100%;padding:8px}
 #actions button.coach-hi{position:relative;outline:2px solid #f5c542;border-radius:14px;animation:coachPulse 1.2s ease-in-out infinite}
 @keyframes coachPulse{50%{box-shadow:0 0 0 6px rgba(245,197,66,.35)}}
+.room-today{grid-column:1/-1;margin:0;text-align:center;font-size:.86rem;opacity:.75}

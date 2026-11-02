@@ -2192,6 +2192,48 @@ function renderLanterns(list) {
   const yard = list.filter((w) => w.place !== "sea").slice(0, lanternSlots.length), sea = list.filter((w) => w.place === "sea").slice(0, seaSlots.length);
   yard.forEach((w, i) => hangLantern(w, i, lanternSlots[i]));
   sea.forEach((w, i) => hangLantern(w, i, seaSlots[i]));
+  // 줄에 다 못 건 지난 소원들은 절 위 하늘에 띄워요 (실제로 달린 소원만 띄워요)
+  const hung = new Set([...yard, ...sea]);
+  renderSkyLanterns(list.filter((w) => !hung.has(w)));
+}
+/* 하늘 연등: 지금까지 사람들이 단 소원이 마당 위 하늘에 둥실둥실 떠 있어요 */
+const SKY_MAX = 260;
+const skyGroup = new THREE.Group(); scene.add(skyGroup);
+const skyGeo = new THREE.SphereGeometry(.34, 10, 8); skyGeo.scale(1, 1.25, 1);
+const skyBody = new THREE.InstancedMesh(skyGeo, new THREE.MeshBasicMaterial({ color: "#ffffff" }), SKY_MAX);
+skyBody.count = 0; skyBody.frustumCulled = false; skyBody.setColorAt(0, new THREE.Color("#ffffff"));
+const skyGlowPos = new Float32Array(SKY_MAX * 3), skyGlowCol = new Float32Array(SKY_MAX * 3);
+const skyGlowGeo = new THREE.BufferGeometry();
+skyGlowGeo.setAttribute("position", new THREE.BufferAttribute(skyGlowPos, 3)); skyGlowGeo.setAttribute("color", new THREE.BufferAttribute(skyGlowCol, 3)); skyGlowGeo.setDrawRange(0, 0);
+const skyGlow = new THREE.Points(skyGlowGeo, new THREE.PointsMaterial({ map: glowTex, size: 2.4, vertexColors: true, transparent: true, opacity: .6, depthWrite: false, blending: THREE.AdditiveBlending }));
+skyGlow.frustumCulled = false; skyGlow.raycast = () => {};
+skyGroup.add(skyBody, skyGlow);
+let skyList = [];
+const hash01 = (s) => { let h = 2166136261; s = String(s); for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0) / 4294967296; };
+function renderSkyLanterns(list) {
+  const c = new THREE.Vector3(); lanternSlots.forEach((v) => c.add(v)); c.divideScalar(lanternSlots.length || 1);
+  const col = new THREE.Color();
+  skyList = list.slice(0, SKY_MAX).map((w, i) => {
+    const key = wishKey(w), a = hash01(key + "a") * Math.PI * 2, r = 4 + Math.sqrt(hash01(key + "r")) * 22;
+    const k = kindOf(w), lit = !k || !!w.lit;
+    col.set(k ? LANTERN_KINDS[k].color : lanternColors[i % lanternColors.length]);
+    skyBody.setColorAt(i, lit ? col : col.clone().multiplyScalar(.3));
+    const g = lit ? col : col.clone().multiplyScalar(.08); skyGlowCol.set([g.r, g.g, g.b], i * 3);
+    return { w, base: new THREE.Vector3(c.x + Math.cos(a) * r, c.y + 4 + hash01(key + "y") * 14, c.z + Math.sin(a) * r), ph: hash01(key + "p") * 6.28, sp: .35 + hash01(key + "s") * .4 };
+  });
+  skyBody.count = skyList.length; if (skyBody.instanceColor) skyBody.instanceColor.needsUpdate = true;
+  skyGlowGeo.setDrawRange(0, skyList.length); skyGlowGeo.attributes.color.needsUpdate = true;
+  updateSkyLanterns(0);
+}
+const skyTmp = new THREE.Object3D();
+function updateSkyLanterns(t) {
+  if (!skyList.length) return;
+  skyList.forEach((s, i) => {
+    const x = s.base.x + Math.sin(t * s.sp + s.ph) * .5, y = s.base.y + Math.sin(t * s.sp * .7 + s.ph * 2) * .7, z = s.base.z + Math.cos(t * s.sp * .8 + s.ph) * .5;
+    skyTmp.position.set(x, y, z); skyTmp.rotation.set(0, 0, Math.sin(t * .8 + s.ph) * .08); skyTmp.updateMatrix(); skyBody.setMatrixAt(i, skyTmp.matrix);
+    skyGlowPos[i * 3] = x; skyGlowPos[i * 3 + 1] = y; skyGlowPos[i * 3 + 2] = z;
+  });
+  skyBody.instanceMatrix.needsUpdate = true; skyGlowGeo.attributes.position.needsUpdate = true;
 }
 function hangLantern(w, i, slot) {
   {
@@ -2670,7 +2712,7 @@ function blocked(x, z) {
 function floorY(x, z) { if (!LAYOUT_ON) return floorY0(x, z); const o = layoutO(x, z); return o ? floorY0(o.x, o.z) : 0; }
 function zoneOf(x, z) { if (!LAYOUT_ON) return zoneOf0(x, z); const o = layoutO(x, z); if (!o) return "field"; const zn = zoneOf0(o.x, o.z); if ((zn === "yard" && o.k.id !== "yard") || (zn === "hall" && o.k.id !== "hall")) return "field"; return zn; }
 function applyLayout() {
-  const skip = new Set([ground, roomG, grottoG, caveG, lanternGroup, starField, moonBall].filter(Boolean));
+  const skip = new Set([ground, roomG, grottoG, caveG, lanternGroup, skyGroup, starField, moonBall].filter(Boolean));
   const explicit = new Map([[seaG, CL.sea], [woljiG, CL.wolji], [dipper.g, CL.m1]]);
   const moveObj = (o, k) => { if (!k || (k.s === 1 && k.n[0] === k.c[0] && k.n[1] === k.c[1])) return;
     o.position.x = k.n[0] + (o.position.x - k.c[0]) * k.s; o.position.z = k.n[1] + (o.position.z - k.c[1]) * k.s; if (k.s !== 1) { o.position.y *= k.s; o.scale.multiplyScalar(k.s); } };
@@ -2855,6 +2897,12 @@ function tap(cx, cy) {
     const w = hitL.object.userData.wish, k = kindOf(w), kd = k ? LANTERN_KINDS[k] : null;
     const state = !kd ? "" : w.lit ? " · 불 밝힘" : isMyWish(w) ? " · 108배를 올리면 불이 켜져요" : " · 아직 불이 꺼져 있어요";
     toast(`${kd ? kd.emoji + " " + kd.name + " · " : "🏮 "}${w.text}${w.nick ? " · " + w.nick : ""}${state}`);
+    return;
+  }
+  const hitS = skyBody.count ? raycaster.intersectObject(skyBody, false)[0] : null;
+  if (hitS && skyList[hitS.instanceId]) {
+    const w = skyList[hitS.instanceId].w, k = kindOf(w), kd = k ? LANTERN_KINDS[k] : null;
+    toast(`${kd ? kd.emoji + " " + kd.name + " · " : "🏮 "}${w.text}${w.nick ? " · " + w.nick : ""} · 하늘에 띄운 소원`);
     return;
   }
   const hitM = raycaster.intersectObjects([...others.values()].map((o) => o.monk.root), true)[0];
@@ -3470,8 +3518,8 @@ $("wishBtn").addEventListener("click", async () => {
       lanternSchemaOld = true; res = await sb.from("wishes").insert({ text: w.text, nick: w.nick });
       if (res.error) { me.myWishes.shift(); save(); $("wishNote").textContent = "연등을 걸지 못했어요. 잠시 뒤 다시 시도해 주세요."; return; }
       // 예전 테이블: 색 구분을 내 화면에서라도 보이게
-      wishes.unshift(cleanWish({ text: w.text, nick: w.nick, kind })); wishes = wishes.slice(0, 90); renderWishList();
-    } else { mineRec.id = res.data?.id || null; save(); const found = wishes.find((x) => !x.id ? false : x.id === mineRec.id); if (!found) { wishes.unshift(cleanWish({ ...w, id: mineRec.id })); wishes = wishes.slice(0, 90); } renderWishList(); }
+      wishes.unshift(cleanWish({ text: w.text, nick: w.nick, kind })); wishes = wishes.slice(0, 330); renderWishList();
+    } else { mineRec.id = res.data?.id || null; save(); const found = wishes.find((x) => !x.id ? false : x.id === mineRec.id); if (!found) { wishes.unshift(cleanWish({ ...w, id: mineRec.id })); wishes = wishes.slice(0, 330); } renderWishList(); }
     after();
   } else { me.localWishes.unshift(cleanWish(w)); me.localWishes = me.localWishes.slice(0, 40); wishes = me.localWishes; save(); renderWishList(); after(); }
 });
@@ -3665,9 +3713,9 @@ async function connect() {
   const start = () => { if (started) return; started = true; joinRoom(pickRoom()); };
   lobby.on("presence", { event: "sync" }, () => { countRooms(); if (!$("roomPanel").hidden) renderRooms(); start(); });
   lobby.subscribe((s) => { if (s === "SUBSCRIBED") setTimeout(start, 1200); if (s === "CHANNEL_ERROR" || s === "TIMED_OUT") { if (!started) solo("연결이 불안정해 혼자 수행 모드로 열었어요."); } });
-  loadGiwa(); visitStart();
+  loadGiwa(); visitStart(); loadTempleToday(true);
   // 소원 연등
-  let res = await sb.from("wishes").select("*").order("created_at", { ascending: false }).limit(90);
+  let res = await sb.from("wishes").select("*").order("created_at", { ascending: false }).limit(330);
   if (res.error) { lanternSchemaOld = true; res = await sb.from("wishes").select("text,nick,created_at").order("created_at", { ascending: false }).limit(42); }
   wishes = (res.data || []).map(cleanWish); renderWishList();
   sb.channel("sansa-wishes").on("postgres_changes", { event: "INSERT", schema: "public", table: "wishes" }, ({ new: w }) => {
@@ -3675,13 +3723,30 @@ async function connect() {
     if (nw.id && wishes.some((x) => x.id === nw.id)) return; // 내가 방금 단 연등은 이미 들어가 있어요
     const pending = wishes.findIndex((x) => !x.id && x.text === nw.text && x.nick === nw.nick);
     if (pending >= 0) { const old = wishes[pending]; nw.kind = nw.kind || old.kind; nw.lit = nw.lit || old.lit; wishes[pending] = nw; } else wishes.unshift(nw);
-    wishes = wishes.slice(0, 90); renderWishList();
+    wishes = wishes.slice(0, 330); renderWishList();
     if (w.nick !== me.nick) { const kd = LANTERN_KINDS[nw.kind]; toast(`${kd ? kd.emoji + " 새 " + kd.name : "🏮 새 연등"}: ${nw.text.slice(0, 20)}`); }
   }).on("postgres_changes", { event: "UPDATE", schema: "public", table: "wishes" }, ({ new: w }) => {
     const x = wishes.find((v) => v.id && v.id === w.id); if (!x || x.lit || !w.lit) return;
     x.lit = true; x.flashAt = performance.now(); renderWishList();
     if (!isMyWish(x) && kindOf(x)) toast(`✨ ${x.nick || "누군가"}님이 108배를 마치고 ${LANTERN_KINDS[x.kind].name}을 밝혔어요`);
   }).subscribe();
+}
+// 오늘 다녀간 사람 · 지금까지 달린 연등 (실제 기록 숫자예요)
+let templeToday = null;
+async function loadTempleToday(greet) {
+  if (!sb) return;
+  try {
+    const { data, error } = await sb.rpc("temple_today"); if (error || !data) return;
+    templeToday = { today: +data.today || 0, wishes: +data.wishes || 0 };
+    if (!$("roomPanel").hidden) renderRooms();
+    if (greet && (templeToday.today > 1 || templeToday.wishes > 0)) setTimeout(() => {
+      const EN = window.LANG === "en";
+      const bits = [];
+      if (templeToday.wishes > 0) bits.push(EN ? `${templeToday.wishes} wish lanterns are glowing` : `소원 연등 ${templeToday.wishes}개가 떠 있어요`);
+      if (templeToday.today > 1) bits.push(EN ? `${templeToday.today} visitors today` : `오늘 ${templeToday.today}명이 다녀갔어요`);
+      toast("🏮 " + bits.join(" · "));
+    }, 5000);
+  } catch {}
 }
 function solo(msg) {
   sb = null; giwaOnline = false; giwas = me.localGiwa.slice(); renderGiwaList(); $("roomLabel").textContent = "혼자 수행 중";
@@ -3694,6 +3759,7 @@ function renderRooms() {
     const names = [me.nick || "나", ...[...others.values()].map((o) => o.nick || "스님")];
     $("roomTitle").textContent = CONFIG.roomName; $("roomNote").textContent = "지금 달빛암에 함께 있는 사람이에요. 숫자는 실제 접속자 수예요.";
     const head = document.createElement("div"); head.className = "room-now"; head.innerHTML = `<b>${names.length}</b><span>명이 함께 수행하고 있어요</span>`; list.appendChild(head);
+    if (templeToday) { const sub = document.createElement("p"); sub.className = "room-today"; sub.textContent = `오늘 ${templeToday.today}명이 다녀갔어요 · 소원 연등 ${templeToday.wishes}개`; list.appendChild(sub); }
     const ul = document.createElement("ul"); ul.className = "room-names";
     names.slice(0, 60).forEach((n, i) => { const li = document.createElement("li"); li.textContent = i === 0 ? `${n} (나)` : n; ul.appendChild(li); });
     if (names.length > 60) { const li = document.createElement("li"); li.textContent = `외 ${names.length - 60}명`; ul.appendChild(li); }
@@ -3706,7 +3772,7 @@ function renderRooms() {
     b.onclick = () => { $("roomPanel").hidden = true; if (i !== roomNo) joinRoom(i); }; list.appendChild(b);
   }
 }
-$("roomBtn").onclick = () => { if (!online()) { toast("설정 파일에 Supabase 주소를 넣으면 다른 사람과 함께할 수 있어요."); return; } renderRooms(); openPanel("roomPanel"); };
+$("roomBtn").onclick = () => { if (!online()) { toast("설정 파일에 Supabase 주소를 넣으면 다른 사람과 함께할 수 있어요."); return; } renderRooms(); openPanel("roomPanel"); loadTempleToday(false); };
 
 /* =========================================================
    알림
@@ -3885,6 +3951,7 @@ function tick() {
     if (fa && now - fa < 4000) { const p = (now - fa) / 4000; const s = 1 + Math.sin(p * Math.PI * 6) * .25 * (1 - p); l.scale.set(s, 1.2 * s, s); if (l.userData.halo) l.userData.halo.scale.setScalar(1.6 + (1 - p) * 2.4); }
     else if (l.userData.halo) l.userData.halo.material.opacity = (kindOf(w) === "gold" ? .7 : .45) + Math.sin(t * 2 + i) * .08;
   });
+  updateSkyLanterns(t);
   updateSea(dt, t); updateWolji(dt, t); updateCave(dt, t); cullFar(now); adaptRes(dt); updateFx(dt, t);
   stream.material.color.setHSL(.55, .4, .27 + Math.sin(t * 2) * .02);
   renderFrame();
@@ -3939,7 +4006,7 @@ const GLOW_TEX = canvasTex(128, 128, (x, w) => { const r = x.createRadialGradien
 GLOW_TEX.wrapS = GLOW_TEX.wrapT = THREE.ClampToEdgeWrapping;
 const glowMats = [];
 function addGlows() {
-  const list = [], ws = new THREE.Vector3(), skipRoots = new Set([lanternGroup]);
+  const list = [], ws = new THREE.Vector3(), skipRoots = new Set([lanternGroup, skyGroup]);
   scene.traverse((o) => {
     if (!o.isMesh || o.userData.glow) return; for (let p = o.parent; p; p = p.parent) if (skipRoots.has(p)) return;
     const m = o.material; if (!m || Array.isArray(m)) return;
