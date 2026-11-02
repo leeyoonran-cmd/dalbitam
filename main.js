@@ -285,6 +285,7 @@ mat.roofTile.map = TEX.roof; mat.roofTile.color.set("#ffffff");
 mat.green.map = TEX.dancheong; mat.green.color.set("#ffffff");
 mat.pillar.map = TEX.pillar; mat.pillar.color.set("#ffffff");
 mat.cushion.color.set("#5a2a2a"); mat.cushion.roughness = .95;
+mat.wall.map = canvasTex(256, 256, (x, w, h) => { noise(x, w, h, "#eee6d4", .08, 6000, 2); for (let i = 0; i < 30; i++) { x.fillStyle = `rgba(150,130,100,${Math.random() * .06})`; x.beginPath(); x.ellipse(Math.random() * w, Math.random() * h, 10 + Math.random() * 30, 6 + Math.random() * 20, 0, 0, 7); x.fill(); } }, 2, 2); mat.wall.color.set("#ffffff");
 
 /* 금빛이 실제 금속처럼 주변을 비추게 하는 반사 환경 */
 const pmrem = new THREE.PMREMGenerator(renderer);
@@ -349,13 +350,18 @@ const block = (x1, x2, z1, z2) => blockers.push({ x1, x2, z1, z2 });
 /* 전각 만들기 */
 const camSolidGroups = []; // 카메라가 뚫고 들어가면 안 되는 건물들
 /* ---------- 한옥 지붕: 오목하게 휘고 처마 끝이 살짝 들린 우진각 지붕 ---------- */
-const ROOF_TEX = canvasTex(256, 256, (x, w, h) => {
+const ROOF_TEX = canvasTex(512, 512, (x, w, h) => { // 기와: 넓은 암키와 골 사이로 둥근 수키와가 줄지어 내려와요
   x.fillStyle = "#2a2f37"; x.fillRect(0, 0, w, h);
-  for (let i = 0; i < 8; i++) { const cx = i * 32; const g = x.createLinearGradient(cx, 0, cx + 32, 0); g.addColorStop(0, "#1c2027"); g.addColorStop(.35, "#4a515c"); g.addColorStop(.6, "#3a414b"); g.addColorStop(1, "#1c2027"); x.fillStyle = g; x.fillRect(cx, 0, 32, h); }
-  x.fillStyle = "rgba(0,0,0,.35)"; for (let j = 0; j < 8; j++) x.fillRect(0, j * 32 + 28, w, 3);
-  for (let i = 0; i < 900; i++) { x.fillStyle = `rgba(255,255,255,${Math.random() * .05})`; x.fillRect(Math.random() * w, Math.random() * h, 2, 2); }
+  const cw = 32; // 한 골 너비
+  for (let i = 0; i < w / cw; i++) { const cx = i * cw;
+    const ga = x.createLinearGradient(cx, 0, cx + cw, 0); ga.addColorStop(0, "#3a414b"); ga.addColorStop(.5, "#22272e"); ga.addColorStop(1, "#3a414b"); x.fillStyle = ga; x.fillRect(cx, 0, cw, h); // 암키와 (오목)
+    const sx = cx + cw - 7, gs = x.createLinearGradient(sx - 7, 0, sx + 7, 0); gs.addColorStop(0, "#1a1e24"); gs.addColorStop(.35, "#5d6672"); gs.addColorStop(.55, "#7a8390"); gs.addColorStop(1, "#1a1e24"); x.fillStyle = gs; x.fillRect(sx - 7, 0, 14, h); // 수키와 (볼록)
+    for (let j = 0; j < h / 40; j++) { const yy = j * 40 + (i % 2) * 20; x.fillStyle = "rgba(0,0,0,.45)"; x.fillRect(sx - 7, yy, 14, 3); x.fillStyle = "rgba(255,255,255,.12)"; x.fillRect(sx - 6, yy + 3, 12, 2); x.fillStyle = "rgba(0,0,0,.22)"; x.fillRect(cx, yy + 10, cw - 14, 2); } }
+  for (let i = 0; i < 2500; i++) { x.fillStyle = `rgba(${Math.random() < .5 ? "255,255,255" : "0,0,0"},${Math.random() * .06})`; x.fillRect(Math.random() * w, Math.random() * h, 2, 2); } // 세월의 얼룩
+  for (let i = 0; i < 40; i++) { x.fillStyle = `rgba(90,110,70,${Math.random() * .12})`; x.beginPath(); x.ellipse(Math.random() * w, Math.random() * h, 8 + Math.random() * 20, 4 + Math.random() * 8, 0, 0, 7); x.fill(); } // 이끼
 });
-const ROOF_TOP = new THREE.MeshStandardMaterial({ map: ROOF_TEX, color: "#b9c0cc", roughness: .7, metalness: .05, side: THREE.DoubleSide });
+ROOF_TEX.repeat.set(.25, .5);
+const ROOF_TOP = new THREE.MeshStandardMaterial({ map: ROOF_TEX, bumpMap: ROOF_TEX, bumpScale: 1.4, color: "#c3cad6", roughness: .72, metalness: .04, side: THREE.DoubleSide });
 const EAVE_TEX = canvasTex(256, 64, (x, w, h) => { // 처마 밑: 서까래와 단청
   x.fillStyle = "#3d5e4c"; x.fillRect(0, 0, w, h);
   for (let i = 0; i < 16; i++) { const cx = i * 16 + 8; x.fillStyle = "#6a2a1e"; x.fillRect(cx - 4, 0, 8, h); x.fillStyle = "#e9c46a"; x.fillRect(cx - 4, h - 10, 8, 4); x.fillStyle = "#2f7d6b"; x.fillRect(cx - 4, h - 6, 8, 6); }
@@ -365,6 +371,12 @@ const ROOF_UNDER = new THREE.MeshStandardMaterial({ map: EAVE_TEX, emissiveMap: 
 const RIDGE_M = new THREE.MeshStandardMaterial({ color: "#23272e", roughness: .7 });
 const PUNG_CAP_M = new THREE.MeshStandardMaterial({ color: "#3d434c", roughness: .6 });
 const PLASTER_M = new THREE.MeshStandardMaterial({ color: "#e8e2d4", roughness: .9 });
+const RAFTER_GEO = new THREE.CylinderGeometry(.05, .055, 1, 7); // 길이 1을 늘려 써요
+const RAFTER_M = new THREE.MeshStandardMaterial({ color: "#2f6b58", roughness: .8 });
+const RAFTER_CAP_GEO = new THREE.CylinderGeometry(.056, .056, .02, 10);
+const RAFTER_CAP_M = new THREE.MeshStandardMaterial({ map: canvasTex(64, 64, (x, w, h) => { x.fillStyle = "#2f6b58"; x.fillRect(0, 0, w, h); x.fillStyle = "#e9c46a"; x.beginPath(); x.arc(32, 32, 26, 0, 7); x.fill(); x.fillStyle = "#c23a2c"; x.beginPath(); x.arc(32, 32, 17, 0, 7); x.fill(); x.fillStyle = "#f4efe2"; x.beginPath(); x.arc(32, 32, 7, 0, 7); x.fill(); }), roughness: .8 });
+const MAKSAE_GEO = new THREE.CylinderGeometry(.1, .1, .06, 12); // 수막새 (둥근 기와 끝)
+const MAKSAE_M = new THREE.MeshStandardMaterial({ map: canvasTex(64, 64, (x, w, h) => { x.fillStyle = "#3b414a"; x.fillRect(0, 0, w, h); x.strokeStyle = "#7a838f"; x.lineWidth = 3; x.beginPath(); x.arc(32, 32, 24, 0, 7); x.stroke(); for (let k = 0; k < 8; k++) { x.save(); x.translate(32, 32); x.rotate(k * Math.PI / 4); x.fillStyle = "#6c7480"; x.beginPath(); x.ellipse(0, -12, 4, 8, 0, 0, 7); x.fill(); x.restore(); } x.fillStyle = "#8a929e"; x.beginPath(); x.arc(32, 32, 5, 0, 7); x.fill(); }), roughness: .6 });
 const pungs = []; // 처마 끝 풍경들
 function koreanRoof(A, B, H, parent, y0, { lift = .9 } = {}) {
   const R = Math.max(0, A - B), per = 4 * (A + B), N = 160, M = 12;
@@ -389,6 +401,16 @@ function koreanRoof(A, B, H, parent, y0, { lift = .9 } = {}) {
     const pts = []; for (let j = 0; j <= 10; j++) { const d = j / 10, ax = clamp(cx, -R, R), fl = 1 + .05 * d ** 4; pts.push(new THREE.Vector3((ax + (cx - ax) * d) * fl, H * (1 - d) ** 1.45 + lift * d ** 4 + .12, cz * d * fl)); }
     g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 20, clamp(Math.min(A, B) * .014, .06, .13), 8), RIDGE_M));
   });
+  // 처마 밑 서까래(귀에서는 부챗살처럼 퍼지는 선자연)와 처마 끝 막새 · 서까래 마구리 단청
+  { const step = clamp(Math.min(A, B) * .09, .26, .42), n = Math.floor(per / step), o = new THREE.Object3D();
+    const raf = new THREE.InstancedMesh(RAFTER_GEO, RAFTER_M, n), cap = new THREE.InstancedMesh(RAFTER_CAP_GEO, RAFTER_CAP_M, n), tile = new THREE.InstancedMesh(MAKSAE_GEO, MAKSAE_M, n);
+    const sc = clamp(Math.min(A, B) * .12, .55, 1.6), up = new THREE.Vector3(0, 1, 0), dir = new THREE.Vector3();
+    for (let k = 0; k < n; k++) { const pp = (k + .5) / n, a = P(pp, .8), b = P(pp, 1);
+      a.y -= .2; b.y -= .2; dir.subVectors(b, a); const L = dir.length(); dir.normalize();
+      o.position.copy(a).addScaledVector(dir, L / 2); o.quaternion.setFromUnitVectors(up, dir); o.scale.set(sc, L, sc); o.updateMatrix(); raf.setMatrixAt(k, o.matrix);
+      o.position.copy(b).addScaledVector(dir, .01); o.scale.set(sc, 1, sc); o.updateMatrix(); cap.setMatrixAt(k, o.matrix);
+      const t2 = P(pp, 1); o.position.set(t2.x, t2.y + .06, t2.z).addScaledVector(dir, .04); o.scale.set(sc * 1.1, 1, sc * 1.1); o.updateMatrix(); tile.setMatrixAt(k, o.matrix); }
+    [raf, cap, tile].forEach((m) => { m.raycast = () => {}; g.add(m); }); }
   // 네 귀 끝에 매단 풍경
   return corners.map(([cx, cz]) => { const fl = 1.05; return new THREE.Vector3(cx * fl, y0 + lift - .05, cz * fl); });
 }
@@ -432,7 +454,7 @@ function hall({ w, d, h, x, z, open = false, sign = "" }) {
   box(w, .05, d, mat.floor, 0, .52, 0, g);
   const cols = Math.max(3, Math.round(w / 3.2));
   const pr = .22 * Math.max(1, h / 5.5); // 높은 전각은 기둥도 굵게
-  for (let i = 0; i <= cols; i++) { const px = -w / 2 + (w / cols) * i; [d / 2 - .2, -d / 2 + .2].forEach((pz) => { cyl(pr, pr * 1.18, h, mat.pillar, px, .5 + h / 2, pz, 14, g); box(pr * 2.8, .18, pr * 2.8, mat.stone, px, .59, pz, g); }); }
+  for (let i = 0; i <= cols; i++) { const px = -w / 2 + (w / cols) * i; [d / 2 - .2, -d / 2 + .2].forEach((pz) => { cyl(pr, pr * 1.18, h, mat.pillar, px, .5 + h / 2, pz, 14, g); cyl(pr * 1.55, pr * 1.8, .24, mat.stone, px, .62, pz, 12, g); /* 둥근 주춧돌 */ }); }
   box(w, h, .2, mat.mural, 0, .5 + h / 2, -d / 2 + .1, g); // 뒷벽
   box(.2, h, d, mat.wall, -w / 2 + .1, .5 + h / 2, 0, g); box(.2, h, d, mat.wall, w / 2 - .1, .5 + h / 2, 0, g);
   // 벽의 나무 틀 (인방)
