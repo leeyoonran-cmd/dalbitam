@@ -782,6 +782,15 @@ fetch("buddha.glb", { method: "HEAD" }).then((r) => {
     statue.add(m);
   });
 }).catch(() => {});
+const PANBUL_H = 6.8, PANBUL_LEG = 2.75 / 19.72; // 판불 높이 · 아래 꽂는 촉(불단 속으로 숨겨요)
+// 국가유산청 3D 에셋: 경주 동궁과 월지 출토 금동보살좌상 판불 (공공누리) — 불러오면 본존 자리에 모셔요
+new GLTFLoader().load("assets/panbul.glb", (gltf) => {
+  const m = gltf.scene, bb = new THREE.Box3().setFromObject(m), size = bb.getSize(new THREE.Vector3());
+  const k = PANBUL_H / size.y; m.scale.setScalar(k);
+  m.position.set(-(bb.min.x + bb.max.x) / 2 * k, 1.1 - bb.min.y * k - PANBUL_H * PANBUL_LEG, -.25 - (bb.min.z + bb.max.z) / 2 * k);
+  m.traverse((o) => { if (o.isMesh) { o.material.envMap = goldEnv; o.material.envMapIntensity = 1.6; o.material.metalness = 1; o.material.needsUpdate = true; } });
+  statue.visible = false; buddhaRoot.add(m); window.__panbul = m;
+}, undefined, () => {});
 // 촛대 + 향로
 const candles = [];
 const ALTAR_F = BUDDHA_Z + 2.4; // 불단 앞
