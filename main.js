@@ -3081,7 +3081,7 @@ function doBow() {
   if (!$("wishPanel").hidden) renderMyLantern();
 }
 /* ---------- 방석에 앉기 · 계속 절하기 ---------- */
-let pendingSeat = null, autoBow = null;
+let pendingSeat = null, autoBow = null, bowAfterSit = false; // 대웅전에서 '계속 절하기'를 누르면 방석에 먼저 앉고 절을 시작해요
 function sitDown() { if (!player || player.sitting) return; player.sitting = true; player.yaw = Math.PI; act("sit"); renderActions(); say("방석에 앉았어요. 숨을 고르고 절을 올려 보세요."); }
 function standUp() { if (!player) return; stopAutoBow(); if (player.sitting) { player.sitting = false; act("stand"); renderActions(); } }
 function nearestFreeSeat() {
@@ -3100,6 +3100,8 @@ function doSit() {
 function stopAutoBow() { if (autoBow) { clearInterval(autoBow); autoBow = null; renderActions(); if (!$("tsHud").hidden) renderTsHud(); } }
 function toggleAutoBow() {
   if (autoBow) { stopAutoBow(); return; }
+  if (bowAfterSit && bowAfterSit === pendingSeat) { bowAfterSit = false; pendingSeat = null; player.target.copy(player.pos); renderActions(); return; }
+  if (zone === "hall" && player && !player.sitting) { const st = nearestFreeSeat(); if (st) { player.target.set(st.x, 0, st.z); pendingSeat = st; autoPath = null; bowAfterSit = st; say("방석으로 가서 앉은 뒤 절을 올려요."); renderActions(); return; } }
   doBow(); autoBow = setInterval(() => { if (!player) return stopAutoBow(); doBow(); if (me.bow % 108 === 0 && !(me.ts.cur && !$("tsHud").hidden)) stopAutoBow(); }, 1900);
   renderActions(); say("천천히 절을 올리는 중이에요. 멈추려면 한 번 더 눌러요."); if (!$("tsHud").hidden) renderTsHud();
 }
@@ -3915,7 +3917,7 @@ function tick() {
     if (autoPath) { if (moved) autoPath.stuck = 0; else if ((autoPath.stuck = (autoPath.stuck || 0) + dt) > .6) { autoPath.stuck = 0; autoPath.i++; if (autoPath.i >= autoPath.pts.length) { const ap = autoPath; autoPath = null; ap.done(); } } } // 무언가에 막히면 다음 지점으로
     if (pendingMeal !== null && !moved && player.pos.distanceTo(Wv(-21.6, -1.65)) < .45) { const i = pendingMeal; pendingMeal = null; startEat(i); }
     if (eating) { const k = Math.min(1, (performance.now() - eating.t0) / 6000); bowl.userData.food.scale.setScalar(Math.max(.05, 1 - k * .9)); if (bowl.userData.top) bowl.userData.top.scale.setScalar(1 - k * .9); }
-    if (pendingSeat && !moved && Math.hypot(player.pos.x - pendingSeat.x, player.pos.z - pendingSeat.z) < .3) { pendingSeat = null; sitDown(); }
+    if (pendingSeat && !moved && Math.hypot(player.pos.x - pendingSeat.x, player.pos.z - pendingSeat.z) < .3) { const wantBow = bowAfterSit && bowAfterSit === pendingSeat; pendingSeat = null; sitDown(); bowAfterSit = false; if (wantBow) { setTimeout(() => { if (player.sitting && !autoBow) toggleAutoBow(); }, 450); } }
     if (moved && now - lastMoveSent > 250) { lastMoveSent = now; sendPresence(); }
     animateMonk(player, dt, now);
     const z = inRoom ? "room" : inGrotto ? "grotto" : inCave ? "cave" : zoneOf(player.pos.x, player.pos.z);
