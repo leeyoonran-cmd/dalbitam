@@ -447,12 +447,12 @@ const DOOR_TEX = canvasTex(256, 256, (x, w, h) => { // 꽃살문
     x.restore(); x.fillStyle = "#6a3a1e"; x.fillRect(px + 8, py + 18 + ph * .62, pw - 16, ph * .3);
   });
 });
-function hall({ w, d, h, x, z, open = false, sign = "" }) {
+function hall({ w, d, h, x, z, open = false, sign = "", cols: colsIn }) {
   const g = new THREE.Group(); g.position.set(x, 0, z); scene.add(g); camSolidGroups.push(g);
   box(w + 1, .5, d + 1, mat.stone, 0, .25, 0, g); // 기단
   box(Math.min(5, w * .4), .25, .7, mat.stone, 0, .125, d / 2 + .85, g); // 앞 계단
   box(w, .05, d, mat.floor, 0, .52, 0, g);
-  const cols = Math.max(3, Math.round(w / 3.2));
+  const cols = colsIn || Math.max(3, Math.round(w / 3.2));
   const pr = .22 * Math.max(1, h / 5.5); // 높은 전각은 기둥도 굵게
   for (let i = 0; i <= cols; i++) { const px = -w / 2 + (w / cols) * i; [d / 2 - .2, -d / 2 + .2].forEach((pz) => { cyl(pr, pr * 1.18, h, mat.pillar, px, .5 + h / 2, pz, 14, g); cyl(pr * 1.55, pr * 1.8, .24, mat.stone, px, .62, pz, 12, g); /* 둥근 주춧돌 */ }); }
   box(w, h, .2, mat.mural, 0, .5 + h / 2, -d / 2 + .1, g); // 뒷벽
@@ -472,7 +472,7 @@ function hall({ w, d, h, x, z, open = false, sign = "" }) {
   const ceil = new THREE.Mesh(new THREE.PlaneGeometry(w - .2, d - .2), cm); ceil.rotation.x = Math.PI / 2; ceil.position.y = .5 + h + .02; g.add(ceil);
   if (open && w > 10) { for (let i = 1; i < cols; i++) { const px = -w / 2 + (w / cols) * i; box(.6, .7, d - .3, mat.green, px, .5 + h - .3, 0, g); }
     // 높은 법당: 위쪽 창방 · 공포 줄과 앞쪽 처마 밑 단청
-    [d / 2 - .2, -d / 2 + .2].forEach((pz) => { box(w, .5, .4, mat.green, 0, .5 + h - .9, pz, g); for (let i = 0; i < cols * 3; i++) box(.34, .34, .5, mat.wood, -w / 2 + (i + .5) * (w / (cols * 3)), .5 + h - .45, pz, g); }); }
+    [d / 2 - .2, -d / 2 + .2].forEach((pz) => { box(w, .5, .4, mat.green, 0, .5 + h - .9, pz, g); for (let i = 0, nb = Math.round(w / 1.1); i < nb; i++) box(.34, .34, .5, mat.wood, -w / 2 + (i + .5) * (w / nb), .5 + h - .45, pz, g); }); }
   // 지붕
   const A = w / 2 + (h > 8 ? 3.2 : 1.7), B = d / 2 + (h > 8 ? 3.2 : 1.7), H = h > 8 ? h * .62 : Math.min(h * .78, 5);
   const ends = koreanRoof(A, B, H, g, .5 + h + .28, { lift: Math.min(h > 8 ? 2.2 : 1.1, .35 + w * .05) });
@@ -485,7 +485,7 @@ function hall({ w, d, h, x, z, open = false, sign = "" }) {
 // 넓은 법당: 큰 절에 들어간 것처럼 앞뒤 · 좌우를 넉넉하게
 const HALL = { x: 0, z: -26, w: 30, d: 24, h: 12.4 }; // 웅장하게: 예전보다 두 배 높이
 const HB = { x1: -15, x2: 15, z1: -38, z2: -14 }; // 법당 안쪽 범위
-const hallG = hall({ ...HALL, open: true, sign: "大雄殿" });
+const hallG = hall({ ...HALL, open: true, sign: "大雄殿", cols: 3 }); // 기둥을 줄여 부처님이 시원하게 보이게 (앞뒤 네 개씩)
 block(-15.6, 15.6, -38.6, -37.6); block(-15.6, -14.6, -38.6, -14); block(14.6, 15.6, -38.6, -14);
 // 불상: 연꽃 대좌 위에 가부좌로 앉아 선정인을 한 금동 좌상
 const BUDDHA_Z = -34.4, BS = 1.9; // 부처님 위치와 크기 (높아진 법당에 맞춰 크게)
