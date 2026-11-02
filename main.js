@@ -1907,7 +1907,12 @@ function updateSea(dt, t) {
 function splash(x, z) { const m = new THREE.Mesh(new THREE.RingGeometry(.15, .24, 20), new THREE.MeshBasicMaterial({ color: "#ffffff", transparent: true, opacity: .8, depthWrite: false })); m.rotation.x = -Math.PI / 2; m.position.set(x, .12, z); seaG.add(m); splashes.push({ m, k: 0 }); }
 function doFeed() {
   if (!player) return;
-  const tx = SEA.fishX + rand(-2.5, 2.5), tz = Math.min(shoreZ(SEA.fishX) - 3, SEA.fishZ + rand(1, 3));
+  // 던질 때마다 내 앞 바다의 좌우 · 앞뒤 다른 곳으로 (같은 곳이 연달아 나오지 않게)
+  const PL0 = seaLocal(player.pos); let tx, tz, n = 0;
+  // 연화바위 뒤로 떨어지면 안 보이니, 바위 양옆 · 바위 앞 물가로 골라요
+  const hidden = (x, z) => Math.abs(x - SEA.rockX) < 6 && z < SEA.rockZ + 3.5;
+  do { tx = clamp(PL0.x + rand(-9, 9), SEA.rockX - 13, SEA.rockX + 13); tz = shoreZ(tx) - rand(1.6, 5.5); n++; } while (n < 20 && (hidden(tx, tz) || (feed.last && Math.hypot(tx - feed.last.x, tz - feed.last.z) < 4)));
+  feed.last = { x: tx, z: tz };
   feed.x = tx; feed.z = tz; feed.until = Date.now() + 9000;
   const PL = seaLocal(player.pos); for (let i = 0; i < 14; i++) { const m = new THREE.Mesh(new THREE.SphereGeometry(.05, 5, 4), pelletM); seaG.add(m); feed.pellets.push({ m, k: -i * .04, x0: PL.x, y0: 1.2, z0: PL.z, x1: tx + rand(-1.2, 1.2), y1: .1, z1: tz + rand(-.8, .8) }); }
   player.yaw = Math.atan2(tx - seaLocal(player.pos).x, tz - seaLocal(player.pos).z); player.target.copy(player.pos); bubble(player, "휙~ 🍙"); sfx.soft(); act("feed"); me.fed = (me.fed || 0) + 1; save();
