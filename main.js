@@ -2144,9 +2144,10 @@ function updateCave(dt, t) {
   const t = new THREE.Group(); t.position.set(x, 0, z); scene.add(t); camHide.push(t); cyl(.22, .3, 2.4, mat.trunk, 0, 1.2, 0, 6, t);
   const c = new THREE.Mesh(new THREE.SphereGeometry(1.8, 10, 8), mat.leaf); c.position.y = 3.4; t.add(c); block(x - .4, x + .4, z - .4, z + .4); });
 [[-4.6, 7.6], [4.6, 7.6]].forEach(([x, z]) => { box(.5, 1, .5, mat.stone, x, .5, z); box(.7, .5, .7, mat.stone, x, 1.25, z); const l = new THREE.Mesh(new THREE.SphereGeometry(.15, 8, 6), mat.flame); l.position.set(x, 1.25, z + .36); scene.add(l); block(x - .4, x + .4, z - .4, z + .4); });
-// 범종각 (서남쪽)
+// 범종각 (서남쪽) — 석탑과 떨어진 마당 왼쪽 앞, 길가 가까이
+const BELL_POS = [-14.2, 6.4];
 const bellPivot = new THREE.Group(); bellPivot.userData.t0 = 0;
-{ const g = new THREE.Group(); g.position.set(-9, 0, 7); scene.add(g); camSolidGroups.push(g);
+{ const g = new THREE.Group(); g.position.set(BELL_POS[0], 0, BELL_POS[1]); scene.add(g); camSolidGroups.push(g);
   // 범종각: 높은 돌 기단 + 굵은 기둥 여덟 개 + 단청 들보 + 겹처마 팔작지붕 + 난간
   const PH = 4.6, R = 2.15;
   box(5.6, .5, 5.6, mat.stone, 0, .25, 0, g); box(5.0, .12, 5.0, M("#a8a296"), 0, .56, 0, g);
@@ -2186,7 +2187,7 @@ const bellPivot = new THREE.Group(); bellPivot.userData.t0 = 0;
     m.traverse((o) => { if (o.isMesh && o.material) { o.material.metalness = .55; o.material.roughness = .55; o.material.needsUpdate = true; } });
     bellPivot.remove(bell); bellPivot.add(m);
   }, undefined, () => {}));
-  block(-11.9, -6.1, 4.1, 9.9); }
+  block(BELL_POS[0] - 2.9, BELL_POS[0] + 2.9, BELL_POS[1] - 2.9, BELL_POS[1] + 2.9); }
 
 /* 기념품 가게 (마당 동쪽) */
 {
@@ -3159,7 +3160,7 @@ function doRice() {
   toast(`🍚 공양미 한 되를 올렸어요 (복전 -${RICE_COST})`);
 }
 function doIncense() { incenseUntil = Date.now() + 90000; act("incense"); say("향 연기가 천천히 피어올라요."); }
-function doBell() { bellPivot.userData.t0 = performance.now(); const bw = layoutW(-9, 7, CL.yard), bx = bw.x, bz = bw.z; if (player.pos.distanceTo(new THREE.Vector3(bx, 0, bz)) > 6) { player.target.set(bx + 4, 0, bz); } { const d = bellPivot.parent?.userData.dang; if (d) { d.userData.hitAt = performance.now(); } } sfx.bell(); act("bell"); say(); bubble(player, "데엥…"); }
+function doBell() { bellPivot.userData.t0 = performance.now(); const bw = layoutW(BELL_POS[0], BELL_POS[1], CL.yard), bx = bw.x, bz = bw.z; if (player.pos.distanceTo(new THREE.Vector3(bx, 0, bz)) > 6) { player.target.set(bx + 4, 0, bz); } { const d = bellPivot.parent?.userData.dang; if (d) { d.userData.hitAt = performance.now(); } } sfx.bell(); act("bell"); say(); bubble(player, "데엥…"); }
 function doTapdori() {
   if (autoPath) return; const pts = []; const r = 5.1, PG = layoutW(PAGODA.x, PAGODA.z, CL.yard); const start = Math.atan2(player.pos.x - PG.x, player.pos.z - PG.z);
   for (let i = 0; i <= 36; i++) { const a = start - (i / 36) * Math.PI * 2; pts.push({ x: PG.x + Math.sin(a) * r, z: PG.z + Math.cos(a) * r }); }
