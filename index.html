@@ -86,6 +86,11 @@
   <p class="muted">대화는 저장되지 않고, 지금 같은 법당에 있는 사람에게만 보여요.</p>
 </div>
 <div id="toasts" class="toasts" aria-live="polite"></div>
+<div id="coach" class="coach" hidden>
+  <div class="coach-top"><small id="coachStep">1 / 4</small><button id="coachSkip" type="button" onclick="document.dispatchEvent(new Event('coachskip'))">건너뛰기</button></div>
+  <p id="coachText"></p>
+  <button id="coachGo" type="button" class="primary" hidden></button>
+</div>
 
 <!-- 하단 행동 버튼 -->
 <div class="bottom">

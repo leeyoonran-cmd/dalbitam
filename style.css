@@ -282,3 +282,13 @@ html[lang=en] .en-only{display:block}
 @keyframes lampPulse{50%{box-shadow:0 0 120px 50px rgba(255,200,90,.7);transform:scale(1.04)}}
 .ts-lamp-title{margin:28px 0 8px;font-family:"Gowun Batang",serif;font-size:1.5rem;color:#fff3dc}
 .ts-lamp-vow{margin:0 0 22px;color:#f4ead6;line-height:1.7;max-width:320px}
+/* 첫 수행 안내 */
+.coach{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 178px);z-index:40;width:min(300px,calc(100% - 96px));background:rgba(12,16,26,.88);border:1px solid rgba(245,197,66,.55);border-radius:16px;padding:10px 14px 12px;box-shadow:0 8px 24px rgba(0,0,0,.45);backdrop-filter:blur(6px)}
+.coach[hidden]{display:none}
+.coach-top{display:flex;justify-content:space-between;align-items:center}
+.coach-top small{color:var(--lantern);font-weight:700}
+.coach-top button{background:none;border:0;color:var(--mute);font:inherit;font-size:.78rem;text-decoration:underline}
+.coach p{margin:6px 0 8px;color:var(--ink);font-size:.92rem;line-height:1.5}
+.coach .primary{width:100%;padding:8px}
+#actions button.coach-hi{position:relative;outline:2px solid #f5c542;border-radius:14px;animation:coachPulse 1.2s ease-in-out infinite}
+@keyframes coachPulse{50%{box-shadow:0 0 0 6px rgba(245,197,66,.35)}}

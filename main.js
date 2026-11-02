@@ -226,13 +226,17 @@ $("chantBtn").addEventListener("click", () => {
    ========================================================= */
 const canvas = $("world");
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+let pixelRatio = Math.min(window.devicePixelRatio, 1.75); renderer.setPixelRatio(pixelRatio);
+// 무거운 파일(3D 스캔 · 그림)은 입장하고 조금 뒤, 여유 있을 때 불러와요 → 첫 화면이 빨리 떠요
+const lazyQ = []; let lazyGo = false;
+function lazy(fn) { if (lazyGo) fn(); else lazyQ.push(fn); }
+function startLazy() { if (lazyGo) return; lazyGo = true; const run = () => { const f = lazyQ.shift(); if (!f) return; try { f(); } catch (e) { console.warn(e); } (window.requestIdleCallback || ((c) => setTimeout(c, 400)))(run); }; setTimeout(run, 2500); }
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
 const scene = new THREE.Scene();
 scene.background = new THREE.Color("#18202c");
-scene.fog = new THREE.Fog("#18202c", 40, 140);
+scene.fog = new THREE.Fog("#18202c", 35, 100);
 const camera = new THREE.PerspectiveCamera(55, 1, .1, 200);
 
 const hemi = new THREE.HemisphereLight("#8fa6c8", "#2a2018", .9); scene.add(hemi);
@@ -810,14 +814,14 @@ const statueCache = {};
 let jijangPhoto = null; const JIJANG_RY = 0;
 let jijang3D = null;
 const refreshJijang = () => { delete statueCache.jijang; if (inRoom === "jijang") { roomStatue.clear(); roomStatue.add(statueFor("jijang")); } };
-new THREE.TextureLoader().load("assets/jijang.webp", (t) => { t.colorSpace = THREE.SRGBColorSpace; jijangPhoto = t; if (!jijang3D) refreshJijang(); });
+lazy(() => new THREE.TextureLoader().load("assets/jijang.webp", (t) => { t.colorSpace = THREE.SRGBColorSpace; jijangPhoto = t; if (!jijang3D) refreshJijang(); }));
 // 국립중앙박물관 3D 스캔 (보물 「정덕십년」명 석조지장보살좌상) — 불러오면 사진 대신 이 모델로
-new GLTFLoader().load("assets/jijang.glb", (gltf) => {
+lazy(() => new GLTFLoader().load("assets/jijang.glb", (gltf) => {
   const m = gltf.scene, bb = new THREE.Box3().setFromObject(m), size = bb.getSize(new THREE.Vector3()); m.scale.setScalar(1.55 / Math.max(size.y, .001));
   const b2 = new THREE.Box3().setFromObject(m), c = b2.getCenter(new THREE.Vector3()); m.position.set(-c.x, -b2.min.y, -c.z);
   m.traverse((o) => { if (o.isMesh) { o.material.metalness = .25; o.material.roughness = .55; o.material.envMapIntensity = .9; o.material.emissive = new THREE.Color('#ffffff'); o.material.emissiveMap = o.material.map; o.material.emissiveIntensity = .28; } });
   jijang3D = new THREE.Group(); jijang3D.add(m); refreshJijang();
-}, undefined, () => {});
+}, undefined, () => {}));
 const PORCELAIN = new THREE.MeshStandardMaterial({ color: "#f6f2ea", roughness: .28, metalness: 0, envMapIntensity: .6 });
 function crownOn(g, top, m) { const c = new THREE.Group(); c.position.y = top - .55;
   const band = new THREE.Mesh(new THREE.CylinderGeometry(.42, .46, .22, 20, 1, true), m); c.add(band);
@@ -857,7 +861,7 @@ function addAttendants() {
 const worldHidden = [];
 function hideWorld(on) {
   if (on) { scene.children.forEach((o) => { if (o !== roomG && o !== grottoG && o !== caveG && o !== player?.root && o.visible && !o.isLight) { o.visible = false; worldHidden.push(o); } }); scene.fog.near = 6; scene.fog.far = 18; }
-  else { worldHidden.forEach((o) => (o.visible = true)); worldHidden.length = 0; scene.fog.near = 40; scene.fog.far = 140; applyTimeOfDay(); }
+  else { worldHidden.forEach((o) => (o.visible = true)); worldHidden.length = 0; scene.fog.near = 35; scene.fog.far = 100; applyTimeOfDay(); }
 }
 const fade = (fn) => { const f = $("fadeOut"); f.classList.add("on"); setTimeout(() => { fn(); setTimeout(() => f.classList.remove("on"), 60); }, 380); };
 function enterRoom(k) {
@@ -1661,7 +1665,7 @@ const cave = { candles: [], smoke: [], tiger: null, lit: 0 };
   });
   cave.tiger = new THREE.Mesh(new THREE.PlaneGeometry(3.6, 1.94), new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
   // 민화풍 백호 그림 (하늘색 줄무늬 · 구름 · 소나무). 그림을 못 불러오면 위의 실루엣을 써요
-  new THREE.TextureLoader().load("assets/tiger.webp", (t) => { t.colorSpace = THREE.SRGBColorSpace; const mt = cave.tiger.material; mt.map = t; mt.blending = THREE.NormalBlending; mt.needsUpdate = true; cave.tigerArt = true; });
+  lazy(() => new THREE.TextureLoader().load("assets/tiger.webp", (t) => { t.colorSpace = THREE.SRGBColorSpace; const mt = cave.tiger.material; mt.map = t; mt.blending = THREE.NormalBlending; mt.needsUpdate = true; cave.tigerArt = true; }));
   cave.tiger.position.set(0, 2.05, -2.5); cave.tiger.renderOrder = 5; caveG.add(cave.tiger);
   const s = textSprite("山神", { size: 40, color: "#e8d9b0", bg: "rgba(0,0,0,0)", pad: 4 }); s.material.depthTest = true; s.scale.multiplyScalar(.4); s.position.set(0, 3.2, -2.6); caveG.add(s);
   const gl = new THREE.PointLight("#ffbf7a", 0, 8, 1.6); gl.position.set(0, 1.6, -1.2); caveG.add(gl); cave.light = gl;
@@ -1729,14 +1733,14 @@ const bellPivot = new THREE.Group(); bellPivot.userData.t0 = 0;
   const bell = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.6, 3, 16), M("#5a5a4a", { metalness: .7, roughness: .4 })); bell.position.y = -1.7; bellPivot.add(bell);
   { const bl = new THREE.PointLight("#ffd9a0", 10, 7, 1.5); bl.position.set(1.4, 2.4, 1.4); g.add(bl); } // 처마 밑 어두운 종을 은은하게
   // 실제 범종 3D 스캔(assets/bell.glb)이 있으면 그 모델로 바꿔요
-  new GLTFLoader().load("assets/bell.glb", (gltf) => {
+  lazy(() => new GLTFLoader().load("assets/bell.glb", (gltf) => {
     const m = gltf.scene; const bb = new THREE.Box3().setFromObject(m), size = bb.getSize(new THREE.Vector3());
     m.scale.setScalar(3.5 / Math.max(size.y, .001)); // 두 배로 크게
     const bb2 = new THREE.Box3().setFromObject(m), c = bb2.getCenter(new THREE.Vector3());
     m.position.set(-c.x, -bb2.max.y + .02, -c.z); m.rotation.y = Math.PI / 2;
     m.traverse((o) => { if (o.isMesh && o.material) { o.material.metalness = .55; o.material.roughness = .55; o.material.needsUpdate = true; } });
     bellPivot.remove(bell); bellPivot.add(m);
-  }, undefined, () => {});
+  }, undefined, () => {}));
   block(-11.9, -6.1, 4.1, 9.9); }
 
 /* 기념품 가게 (마당 동쪽) */
@@ -1863,7 +1867,29 @@ function todayMissions() {
 if (!me.daily || me.daily.day !== today) me.daily = { day: today, c: {}, done: [] };
 const MISSIONS = todayMissions();
 let lastLevel = levelOf(XP());
+/* ---------- 처음 온 사람을 위한 첫 수행 안내: 대웅전 → 목탁 → 절 → 소원 연등 ---------- */
+const COACH = [
+  { t: "🙏 달빛암에 오신 걸 환영해요. 먼저 대웅전에 가 볼까요?", btn: "대웅전으로 가기", go: () => goPlace("hall"), done: () => zone === "hall" },
+  { t: "🪵 목탁을 세 번 쳐 보세요. 똑, 똑, 똑.", mark: "목탁", done: (c) => me.mok - c.mok0 >= 3 },
+  { t: "🙇 부처님께 절을 한 번 올려 보세요.", mark: "계속 절하기", done: (c) => me.bow - c.bow0 >= 1 },
+  { t: "🏮 마지막으로 마당 석탑에서 소원 연등을 하나 달아 보세요.", btn: "석탑으로 가기", go: () => { stopAutoBow(); goPlace("pagoda"); setTimeout(() => openWish("yard"), 700); }, mark: "소원 연등", done: (c) => c.wished },
+];
+const coach = { step: -1, mok0: 0, bow0: 0, wished: false };
+function coachStart() { if (me.onboard || (me.pts || 0) > 40) return; coach.step = 0; coachShow(); clearInterval(coach.timer); coach.timer = setInterval(coachCheck, 500); }
+function coachShow() {
+  const c = COACH[coach.step], box = $("coach"); if (!c) { box.hidden = true; return; }
+  coach.mok0 = me.mok; coach.bow0 = me.bow; coach.wished = false;
+  $("coachStep").textContent = `${coach.step + 1} / ${COACH.length}`; $("coachText").textContent = c.t;
+  const b = $("coachGo"); b.hidden = !c.btn; if (c.btn) { b.textContent = c.btn; b.onclick = () => { ac(); c.go(); }; }
+  box.hidden = false; coachMark();
+}
+function coachMark() { document.querySelectorAll("#actions button.coach-hi").forEach((b) => b.classList.remove("coach-hi")); const c = COACH[coach.step]; if (!c || !c.mark) return; const b = [...document.querySelectorAll("#actions button")].find((x) => x.textContent.includes(c.mark) || (window.T && x.textContent.includes(window.T(c.mark)))); if (b) b.classList.add("coach-hi"); }
+function coachCheck() { const c = COACH[coach.step]; if (!c) return; if (c.done(coach)) { sfx.soft(); coach.step++; if (coach.step >= COACH.length) coachFinish(); else coachShow(); } }
+function coachFinish() { clearInterval(coach.timer); $("coach").hidden = true; me.onboard = 1; me.coin += 30; save(); updateHud(); coachMark(); sfx.bell(); toast("🎉 첫 수행을 마쳤어요! 복전 🪙30을 드려요. 이제 지도를 열고 달빛암 곳곳을 둘러보세요"); }
+document.addEventListener("coachskip", () => coachSkip());
+function coachSkip() { clearInterval(coach.timer); coach.step = -1; $("coach").hidden = true; me.onboard = 1; save(); coachMark(); }
 function gain(kind, n = 1) {
+  if (kind === "wish") coach.wished = true;
   if (typeof visitAct === "function") visitAct(kind);
   const key = kind; me.daily.c[key] = (me.daily.c[key] || 0) + n;
   const pv = (PTS[kind.split(":")[0]] ?? 0) * n; me.pts += pv; me.coin += pv;
@@ -2027,7 +2053,7 @@ function applyLook(m, l) {
 }
 
 function makeMonk(nick, isMe) {
-  const root = new THREE.Group(); const body = new THREE.Group(); root.add(body);
+  const root = new THREE.Group(); root.userData.monk = true; const body = new THREE.Group(); root.add(body);
   const robeM = mat.robe.clone(), sashM = mat.sash.clone(), skinM = mat.skin.clone(); const legs = [];
   // 몸통: 동글동글한 승복
   const torso = new THREE.Mesh(new THREE.SphereGeometry(.42, 24, 18), robeM); torso.scale.set(1, 1.08, .92); torso.position.y = .62; body.add(torso);
@@ -2496,6 +2522,7 @@ function renderActions() {
   for (const a of list) { const b = document.createElement("button"); b.type = "button"; b.className = "act" + (a.hot ? " hot" : ""); b.innerHTML = `<i>${a.icon}</i>`; b.append(a.label); b.onclick = () => { ac(); a.fn(); }; box.appendChild(b); }
   $("placeTag").textContent = ZONES[zone].name;
   document.querySelectorAll("#places button").forEach((b) => b.classList.toggle("here", b.dataset.z === zone));
+  coachMark();
 }
 const placeNames = { hall: "대웅전", pagoda: "석탑", shrine: "산신각", chilseong: "칠성각", gwaneum: "관음전", jijang: "지장전", kitchen: "공양간", walk: "산책길", geumgang: "금강굴", seokgul: "석굴암", janggyeong: "장경판전", wolji: "월지", sea: "바닷가", mountain: "달빛봉", shop: "기념품" };
 for (const [z, n] of Object.entries(placeNames)) {
@@ -3343,7 +3370,7 @@ $("nickInput").addEventListener("keydown", (e) => { if (e.key === "Enter") enter
 function enter() {
   const nick = $("nickInput").value.trim().slice(0, 8) || $("nickInput").placeholder.replace(/^예: /, "").slice(0, 8);
   me.nick = nick; save();
-  $("gate").hidden = true; unlockAudio(); ac(); preloadRecs(); noiseLoop("wind"); noiseLoop("water");
+  $("gate").hidden = true; startLazy(); setTimeout(coachStart, 1800); unlockAudio(); ac(); preloadRecs(); noiseLoop("wind"); noiseLoop("water");
   // 입장 버튼을 누른 순간에 소리 파일을 깨워 둬야 아이폰에서도 나중에 재생돼요
   if (soundUrl.chant && !loopEls.chant) { const el = new Audio(soundUrl.chant); el.loop = true; el.setAttribute("playsinline", ""); el.muted = true; loopEls.chant = el; el.play().then(() => { el.pause(); el.muted = false; }).catch(() => { el.muted = false; }); }
   { const lp = lookParts(me.look); if (levelOf(XP()) < ACC_LEVEL[lp.a]) { lp.a = 0; me.look = lookStr(lp); save(); } }
@@ -3465,10 +3492,25 @@ function tick() {
     if (fa && now - fa < 4000) { const p = (now - fa) / 4000; const s = 1 + Math.sin(p * Math.PI * 6) * .25 * (1 - p); l.scale.set(s, 1.2 * s, s); if (l.userData.halo) l.userData.halo.scale.setScalar(1.6 + (1 - p) * 2.4); }
     else if (l.userData.halo) l.userData.halo.material.opacity = (kindOf(w) === "gold" ? .7 : .45) + Math.sin(t * 2 + i) * .08;
   });
-  updateSea(dt, t); updateWolji(dt, t); updateCave(dt, t);
+  updateSea(dt, t); updateWolji(dt, t); updateCave(dt, t); cullFar(now); adaptRes(dt);
   stream.material.color.setHSL(.55, .4, .27 + Math.sin(t * 2) * .02);
   renderer.render(scene, camera);
   requestAnimationFrame(tick);
+}
+/* ---------- 휴대폰에서 부드럽게: 먼 건물은 잠시 그리지 않고, 느리면 화면 해상도를 조금 낮춰요 ---------- */
+let cullList = null, cullAt = 0;
+function cullFar(now) {
+  if (!player || now < cullAt) return; cullAt = now + 400;
+  if (inRoom || inGrotto || inCave) return;
+  if (!cullList) cullList = scene.children.filter((o) => o !== ground && !o.userData.monk && !o.isLight && !o.userData.farHill && o !== seaG && o !== starField && o !== moonBall && o !== lanternGroup && o !== dipper.g && (Math.abs(o.position.x) + Math.abs(o.position.z) > .001)).map((o) => ({ o, p: o.position.clone() }));
+  const px = camera.position.x, pz = camera.position.z, R2 = 92 * 92;
+  for (const c of cullList) { const dx = c.p.x - px, dz = c.p.z - pz; const want = dx * dx + dz * dz < R2; if (c.o.userData.culled !== !want) { c.o.userData.culled = !want; if (!want) c.o.visible = false; else if (!worldHidden.includes(c.o)) c.o.visible = true; } }
+}
+let resT = 0, resN = 0, resLowAt = 0;
+function adaptRes(dt) {
+  resT += dt; resN++; if (resT < 2.5) return; const fps = resN / resT; resT = 0; resN = 0;
+  if (fps < 38 && pixelRatio > 1) { pixelRatio = Math.max(1, pixelRatio - .25); renderer.setPixelRatio(pixelRatio); resLowAt = performance.now(); }
+  else if (fps > 57 && pixelRatio < Math.min(window.devicePixelRatio, 1.75) && performance.now() - resLowAt > 20000) { pixelRatio = Math.min(Math.min(window.devicePixelRatio, 1.75), pixelRatio + .25); renderer.setPixelRatio(pixelRatio); }
 }
 /* ---------- 실제 시간에 맞춘 낮 · 노을 · 밤 ---------- */
 function applyTimeOfDay() {
