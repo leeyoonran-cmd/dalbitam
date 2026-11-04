@@ -3070,14 +3070,18 @@ function enterHallView() { camYaw = 0; camPitch = .34; camDist = 8.5; if (!hallT
 function act(name, extra = {}) { sendPresence({ act: name, ...extra }); if (PTS[name] !== undefined) gain(name); }
 function doMok() { sfx.mok(); playAnim(player, "mok"); me.mok++; save(); if (me.mok % 10 === 0) say(); bubble(player, `똑 · ${me.mok}`); act("mok"); }
 function doBow() {
-  if (player.anim === "bow") return;
+  if (!player) return;
+  const nowB = performance.now(); if (player.bowAt && nowB - player.bowAt < 1500) return; player.bowAt = nowB;
   sfx.soft(); playAnim(player, "bow"); me.bow++; save(); act("bow"); npcsBowAlong(); tsOnBow();
   bubble(player, `${me.bow}배`);
   if (me.bow === 108) {
     say("오늘 108배를 모두 마쳤어요. 정말 수고했어요."); sfx.bell(); me.coin += 108; save(); updateHud(); toast("🪙 108배 완료! 복전 108닢을 받았어요. 기념품 가게에 들러 보세요");
     setTimeout(() => lightMyLanterns(true), 1600);
     setTimeout(() => toast("🙇 108배 인증 카드를 만들어 자랑해 보세요", { label: "📸 공유", fn: () => shareCard("bow") }), 6000);
-  } else if (me.bow % 12 === 0) say();
+  } else {
+    if (me.bow > 108 && wishes.some((w) => isMyWish(w) && kindOf(w) && !w.lit)) lightMyLanterns(false);
+    if (me.bow % 12 === 0) say();
+  }
   if (!$("wishPanel").hidden) renderMyLantern();
 }
 /* ---------- 방석에 앉기 · 계속 절하기 ---------- */
@@ -3097,10 +3101,18 @@ function doSit() {
   const st = nearestFreeSeat(); if (!st) { toast("빈 방석이 없어요"); return; }
   player.target.set(st.x, 0, st.z); pendingSeat = st; autoPath = null;
 }
+// 방석까지 못 가고 막히면 바로 방석에 앉혀 절을 시작해요
+function snapToSeatAndBow() {
+  const st = pendingSeat; if (!st || !player) return;
+  const wantBow = bowAfterSit === st; pendingSeat = null; bowAfterSit = false; seatStuck = 0;
+  player.pos.set(st.x, player.pos.y, st.z); player.target.copy(player.pos); sitDown();
+  if (wantBow) setTimeout(() => { if (player.sitting && !autoBow) toggleAutoBow(); }, 450);
+}
+let seatStuck = 0;
 function stopAutoBow() { if (autoBow) { clearInterval(autoBow); autoBow = null; renderActions(); if (!$("tsHud").hidden) renderTsHud(); } }
 function toggleAutoBow() {
   if (autoBow) { stopAutoBow(); return; }
-  if (bowAfterSit && bowAfterSit === pendingSeat) { bowAfterSit = false; pendingSeat = null; player.target.copy(player.pos); renderActions(); return; }
+  if (bowAfterSit && bowAfterSit === pendingSeat) { snapToSeatAndBow(); return; }
   if (zone === "hall" && player && !player.sitting) { const st = nearestFreeSeat(); if (st) { player.target.set(st.x, 0, st.z); pendingSeat = st; autoPath = null; bowAfterSit = st; say("방석으로 가서 앉은 뒤 절을 올려요."); renderActions(); return; } }
   doBow(); autoBow = setInterval(() => { if (!player) return stopAutoBow(); doBow(); if (me.bow % 108 === 0 && !(me.ts.cur && !$("tsHud").hidden)) stopAutoBow(); }, 1900);
   renderActions(); say("천천히 절을 올리는 중이에요. 멈추려면 한 번 더 눌러요."); if (!$("tsHud").hidden) renderTsHud();
@@ -3917,6 +3929,7 @@ function tick() {
     if (autoPath) { if (moved) autoPath.stuck = 0; else if ((autoPath.stuck = (autoPath.stuck || 0) + dt) > .6) { autoPath.stuck = 0; autoPath.i++; if (autoPath.i >= autoPath.pts.length) { const ap = autoPath; autoPath = null; ap.done(); } } } // 무언가에 막히면 다음 지점으로
     if (pendingMeal !== null && !moved && player.pos.distanceTo(Wv(-21.6, -1.65)) < .45) { const i = pendingMeal; pendingMeal = null; startEat(i); }
     if (eating) { const k = Math.min(1, (performance.now() - eating.t0) / 6000); bowl.userData.food.scale.setScalar(Math.max(.05, 1 - k * .9)); if (bowl.userData.top) bowl.userData.top.scale.setScalar(1 - k * .9); }
+    if (pendingSeat && !moved && Math.hypot(player.pos.x - pendingSeat.x, player.pos.z - pendingSeat.z) >= .3) { if ((seatStuck += dt) > .8) snapToSeatAndBow(); } else if (moved) seatStuck = 0;
     if (pendingSeat && !moved && Math.hypot(player.pos.x - pendingSeat.x, player.pos.z - pendingSeat.z) < .3) { const wantBow = bowAfterSit && bowAfterSit === pendingSeat; pendingSeat = null; sitDown(); bowAfterSit = false; if (wantBow) { setTimeout(() => { if (player.sitting && !autoBow) toggleAutoBow(); }, 450); } }
     if (moved && now - lastMoveSent > 250) { lastMoveSent = now; sendPresence(); }
     animateMonk(player, dt, now);
