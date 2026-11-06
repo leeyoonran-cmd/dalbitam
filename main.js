@@ -4522,14 +4522,14 @@ async function shareFortune() {
   x.textAlign = "center"; x.fillStyle = "#d9b44a"; x.font = `34px "Gowun Dodum",sans-serif`; x.fillText($("ftDate").textContent, W / 2, cy + 110);
   x.save(); x.shadowColor = "rgba(245,197,66,.6)"; x.shadowBlur = 40; x.fillStyle = "#f5c542"; x.font = `700 200px "Gowun Batang",serif`; x.fillText(f.grade[0], W / 2, cy + 340); x.restore();
   x.fillStyle = "#ffe3a0"; x.font = `44px "Gowun Dodum",sans-serif`; x.fillText(EN ? f.grade[2] : f.grade[1], W / 2, cy + 420);
-  x.fillStyle = "#f4ead6"; x.font = `52px "Gowun Batang",serif`; const ml = wrapLines(x, f.msg[EN ? 1 : 0], cw - 160); ml.slice(0, 3).forEach((l, i) => x.fillText(l, W / 2, cy + 530 + i * 74));
+  x.fillStyle = "#f4ead6"; x.font = `48px "Gowun Batang",serif`; const ml = wrapLines(x, f.msg[EN ? 1 : 0], cw - 160); ml.slice(0, 3).forEach((l, i) => x.fillText(l, W / 2, cy + 530 + i * 74));
   let y = cy + 530 + Math.min(ml.length, 3) * 74 + 30;
   f.rows.forEach((w) => {
-    x.fillStyle = "rgba(0,0,0,.28)"; rr(cx + 60, y, cw - 120, 150, 22); x.fill();
-    x.textAlign = "left"; x.fillStyle = "#ece6d8"; x.font = `700 40px "Gowun Dodum",sans-serif`; x.fillText(`${w.emo} ${EN ? w.en : w.ko}`, cx + 95, y + 60);
-    x.textAlign = "right"; x.fillStyle = "#f5c542"; x.font = `40px sans-serif`; x.fillText(ftStars(w.stars), cx + cw - 95, y + 60);
-    x.textAlign = "left"; x.fillStyle = "#b9c0cc"; x.font = `34px "Gowun Dodum",sans-serif`; x.fillText(wrapLines(x, w.line[EN ? 1 : 0], cw - 190)[0], cx + 95, y + 115);
-    y += 170;
+    x.fillStyle = "rgba(0,0,0,.28)"; rr(cx + 60, y, cw - 120, 132, 22); x.fill();
+    x.textAlign = "left"; x.fillStyle = "#ece6d8"; x.font = `700 40px "Gowun Dodum",sans-serif`; x.fillText(`${w.emo} ${EN ? w.en : w.ko}`, cx + 95, y + 54);
+    x.textAlign = "right"; x.fillStyle = "#f5c542"; x.font = `40px sans-serif`; x.fillText(ftStars(w.stars), cx + cw - 95, y + 54);
+    x.textAlign = "left"; x.fillStyle = "#b9c0cc"; x.font = `34px "Gowun Dodum",sans-serif`; x.fillText(wrapLines(x, w.line[EN ? 1 : 0], cw - 190)[0], cx + 95, y + 104);
+    y += 148;
   });
   x.textAlign = "center"; x.font = `36px "Gowun Dodum",sans-serif`;
   const lk = `${EN ? f.color[1] : f.color[0]}   ·   ${EN ? "Lucky number" : "행운의 숫자"} ${f.num}`, lw = x.measureText(lk).width;
