@@ -55,6 +55,8 @@
     <h1 id="siteTitle">달빛암</h1>
     <p class="en-only romaji">Dalbitam · Moonlit Hermitage</p>
     <p class="lead">목탁 한 번, 숨 한 번.<br>잠시 마음을 내려놓고 쉬어 가세요.</p>
+    <p id="gateCount" class="gate-count" hidden></p>
+    <button id="gateSun" type="button" class="gate-sun" hidden></button>
     <label for="nickInput">법명</label>
     <div class="row"><input id="nickInput" maxlength="8" placeholder="예: 고요" autocomplete="off"><button id="nickDice" type="button" class="ghost-btn dice" aria-label="법명 새로 짓기">🎲</button></div>
     <button id="enterBtn" type="button" class="primary">입장하기</button>
@@ -68,6 +70,7 @@
   <button id="roomBtn" class="chip" type="button"><span id="roomLabel">월하당 1</span> ▾</button>
   <div class="chip-group">
     <button id="chantBtn" class="chip" type="button">염불</button>
+    <button id="verseBtn" class="chip" type="button" aria-label="오늘의 법문">📜</button>
     <button id="mapBtn" class="chip" type="button" aria-label="지도">🗺️</button>
     <button id="lookBtn" class="chip" type="button" aria-label="법복 꾸미기">👘</button>
     <button id="soundBtn" class="chip" type="button" aria-label="자연 소리 설정">🎐</button>
@@ -75,6 +78,7 @@
 </div>
 
 <div id="placeTag" class="place-tag">마당</div>
+<button id="sunBtn" class="sun-chip" type="button" hidden></button>
 <div id="groupBanner" class="group-banner" hidden></div>
 <button id="recExit" class="rec-exit" type="button" aria-label="촬영 모드 끝내기"></button>
 <button id="hud" class="hud" type="button" aria-label="수행 등급과 오늘의 수행">
@@ -291,8 +295,39 @@
     <p class="muted" id="wishNote">새로 단 연등은 불이 꺼진 채로 걸려요. 대웅전에서 108배를 올리면 내 연등에 불이 켜져요.</p>
     <div id="myLantern" class="my-lantern" hidden></div>
     <button id="goMyLantern2" class="primary my-go" type="button" hidden>🏮 내 연등 보러 가기</button>
+    <p id="wishTotal" class="wish-total" hidden></p>
     <div id="kindStats" class="kind-stats"></div>
     <ul id="wishList" class="wish-list"></ul>
+  </div>
+</div>
+
+<!-- 수능 합격 기원 법당 -->
+<div id="sunPanel" class="panel" hidden>
+  <div class="panel-card sun-card">
+    <div class="panel-head"><h2>🎓 수능 합격 기원 법당</h2><button class="close" data-close type="button" aria-label="닫기">✕</button></div>
+    <div class="sun-dday"><b id="sunDday">D-13</b><small id="sunDate">2026년 11월 19일 (목) 수능</small></div>
+    <p class="muted" id="sunLead">수험생 이름과 응원 한마디를 적으면 지혜등(합격등)이 마당에 걸려요. 대웅전에서 108배를 올리면 합격등에 불이 켜져요.</p>
+    <label class="ts-label" for="sunName">수험생 이름 (8자)</label>
+    <input id="sunName" maxlength="8" placeholder="예: 성민" autocomplete="off">
+    <label class="ts-label" for="sunMsg">응원 한마디 (24자)</label>
+    <input id="sunMsg" maxlength="24" placeholder="예: 수능 대박, 원하는 대학 합격!" autocomplete="off">
+    <div class="look-opts" id="sunQuick"></div>
+    <button id="sunGo" type="button" class="primary">🏮 합격등 달기</button>
+    <p class="muted" id="sunNote"></p>
+    <p class="wish-total" id="sunTotal" hidden></p>
+    <ul id="sunList" class="wish-list"></ul>
+  </div>
+</div>
+<div id="sunLamp" class="ts-lamp sun-lamp" hidden>
+  <p class="sun-lamp-dday" id="sunLampDday">수능 D-13</p>
+  <div class="ts-lamp-glow sun-glow"><span>合格</span></div>
+  <p class="ts-lamp-title" id="sunLampTitle">합격등이 걸렸어요</p>
+  <p class="ts-lamp-vow" id="sunLampMsg"></p>
+  <div class="sun-lamp-btns">
+    <button id="sunBell" type="button" class="primary">🔔 합격 기원 타종</button>
+    <button id="sunBow" type="button" class="ghost-btn">🙇 108배로 불 밝히기</button>
+    <button id="sunShare" type="button" class="ghost-btn">📸 합격 카드 만들기</button>
+    <button id="sunLampClose" type="button" class="ghost-btn">닫기</button>
   </div>
 </div>
 
@@ -320,11 +355,12 @@
 <script defer src="/_vercel/insights/script.js"></script>
 <div id="verseCard" class="verse-card" hidden>
   <div class="verse-board">
+    <p class="verse-day" id="verseDay"></p>
     <p class="verse-han no-tr" id="verseHan"></p>
     <p class="verse-text" id="verseText"></p>
     <p class="verse-src" id="verseSrc"></p>
   </div>
-  <div class="row"><button id="verseNext" type="button" class="ghost-btn">📜 한 장 더</button><button id="verseClose" type="button" class="ghost-btn">닫기</button></div>
+  <div class="row"><button id="verseNext" type="button" class="ghost-btn">📜 한 장 더</button><button id="verseSave" type="button" class="ghost-btn">📸 카드 저장</button><button id="verseClose" type="button" class="ghost-btn">닫기</button></div>
 </div>
 <div id="breathBox" class="breath-box" hidden>
   <div class="breath-ring" id="breathRing"></div>

@@ -1983,10 +1983,15 @@ const VERSES = [
   ["但觀現在", "지나간 일을 좇지 말고, 오지 않은 일을 미리 걱정하지 마세요. 지금 이 순간을 살아요.", "일야현자경"],
   ["呼吸如是", "숨이 들어오면 들어오는 줄 알고, 숨이 나가면 나가는 줄 알아요. 그것으로 충분해요.", "안반수의경"],
   ["諸行無常", "모든 것은 변해요. 힘든 마음도 지나가요. 흘러가게 두어도 괜찮아요.", "대반열반경"],
+  ["心爲前導", "마음이 모든 일의 앞에 서요. 흐린 마음으로 말하고 행하면, 괴로움이 수레바퀴처럼 뒤따라와요.", "법구경 1"],
+  ["自觀己行", "남이 한 일과 하지 않은 일을 살피지 말고, 내가 한 일과 하지 않은 일을 살펴요.", "법구경 50"],
+  ["以善勝惡", "성냄은 성내지 않음으로, 악은 선으로, 인색함은 베풂으로, 거짓은 진실로 이겨요.", "법구경 223"],
+  ["諸惡莫作", "나쁜 일은 짓지 말고, 좋은 일은 받들어 행하고, 스스로 마음을 맑히는 것. 이것이 부처님의 가르침이에요.", "법구경 183"],
+  ["犀角獨行", "소리에 놀라지 않는 사자처럼, 그물에 걸리지 않는 바람처럼, 진흙에 물들지 않는 연꽃처럼, 무소의 뿔처럼 혼자서 가요.", "숫타니파타"],
 ];
 function readVerse() {
   const v = VERSES[(me.verse = ((me.verse ?? Math.floor(Math.random() * VERSES.length)) + 1) % VERSES.length)]; save();
-  $("verseHan").textContent = v[0]; $("verseText").textContent = v[1]; $("verseSrc").textContent = "— " + v[2];
+  $("verseDay").textContent = ""; $("verseHan").textContent = v[0]; $("verseText").textContent = v[1]; $("verseSrc").textContent = "— " + v[2];
   $("verseCard").hidden = false; sfx.soft(); playAnim(player, "bow"); act("verse");
 }
 $("verseClose").onclick = () => { $("verseCard").hidden = true; };
@@ -3544,7 +3549,7 @@ function renderWishList() {
     if (k) { const s = document.createElement("span"); s.className = "lit-tag"; s.textContent = w.lit ? "💡" : "· 불 꺼짐"; li.appendChild(s); }
     ul.appendChild(li);
   });
-  renderLanterns(wishes); renderKindStats(); renderMyLantern();
+  renderLanterns(wishes); renderKindStats(); renderMyLantern(); onWishesChanged();
 }
 let wishPlace = "yard";
 function openWish(place = "yard") { wishPlace = place; const h = document.querySelector("#wishPanel h2"); h.textContent = place === "sea" ? "🌊 바다 연등" : "소원 연등"; openPanel("wishPanel"); }
@@ -3855,10 +3860,10 @@ async function shareCard(kind = "visit") {
   x.textAlign = "center"; x.fillStyle = "#f5c542"; x.font = `700 120px "Gowun Batang",serif`; x.fillText("달빛암", W / 2, 190);
   x.fillStyle = "rgba(244,239,226,.75)"; x.font = `40px "Gowun Dodum",sans-serif`; x.fillText(EN ? "Dalbitam · a Korean mountain temple online" : "온라인 산사 · 잠시 쉬어 가는 절", W / 2, 262);
   const lv = levelOf(XP()), title = window.T ? window.T(TITLES[lv][0]) : TITLES[lv][0], nick = me.nick || (EN ? "Monk" : "스님");
-  const head = kind === "bow" ? (EN ? "I did 108 bows today 🙇" : "오늘 108배를 마쳤어요 🙇") : kind === "pray" ? (EN ? "I chanted a sutra at the temple 🙏" : "법당에서 기도 1독을 올렸어요 🙏") : kind === "zazen" ? (EN ? "I meditated in Seokguram Grotto 🧘" : "석굴암에서 좌선했어요 🧘") : (EN ? "I'm resting at a Korean temple 🌙" : "달빛암에서 쉬어 가는 중 🌙");
+  const head = kind === "suneung" ? sunShareHead(EN) : kind === "bow" ? (EN ? "I did 108 bows today 🙇" : "오늘 108배를 마쳤어요 🙇") : kind === "pray" ? (EN ? "I chanted a sutra at the temple 🙏" : "법당에서 기도 1독을 올렸어요 🙏") : kind === "zazen" ? (EN ? "I meditated in Seokguram Grotto 🧘" : "석굴암에서 좌선했어요 🧘") : (EN ? "I'm resting at a Korean temple 🌙" : "달빛암에서 쉬어 가는 중 🌙");
   x.fillStyle = "#f4efe2"; x.font = `700 60px "Gowun Batang",serif`; x.fillText(head, W / 2, 1620);
   x.fillStyle = "rgba(244,239,226,.8)"; x.font = `40px "Gowun Dodum",sans-serif`;
-  x.fillText(EN ? `${title} ${nick} · ${me.bow} bows today` : `${title} ${nick} · 오늘 ${me.bow}배`, W / 2, 1700);
+  x.fillText(kind === "suneung" ? sunShareSub(EN) : EN ? `${title} ${nick} · ${me.bow} bows today` : `${title} ${nick} · 오늘 ${me.bow}배`, W / 2, 1700);
   x.fillStyle = "#f5c542"; x.font = `700 46px "Gowun Dodum",sans-serif`; x.fillText("dalbitam.vercel.app", W / 2, 1810);
   const url = location.origin + (EN ? "/?lang=en" : "/");
   const blob = await new Promise((r) => c.toBlob(r, "image/png")); if (!blob) return;
@@ -3888,7 +3893,7 @@ function enter() {
   { const lp = lookParts(me.look); if (levelOf(XP()) < ACC_LEVEL[lp.a]) { lp.a = 0; me.look = lookStr(lp); save(); } }
   player = makeMonk(nick, true); applyLook(player, me.look); setLabel(player, labelText(nick, levelOf(XP())), true); applyAura(player, levelOf(XP())); updateHud(); player.pos.set(SPAWN.x + rand(-3, 3), 0, SPAWN.z + rand(-1, 1.5)); player.target.copy(player.pos); player.yaw = Math.PI;
   zone = zoneOf(player.pos.x, player.pos.z); renderActions(); say(ZONES[zone].intro);
-  connect();
+  connect(); afterEnter();
 }
 
 /* =========================================================
@@ -4224,3 +4229,202 @@ for (let i = 0; i < Math.min(me.rice || 0, RICE_SPOTS.length); i++) addRiceBag(f
 renderGiwa(me.localGiwa);
 requestAnimationFrame(tick);
 say("법명을 정하고 산사에 들어가 보세요.");
+
+/* =========================================================
+   연등 카운터 · 수능 합격 기원 법당 · 오늘의 법문 카드
+   ========================================================= */
+const isEN = () => window.LANG === "en";
+const fmtN = (n) => Number(n || 0).toLocaleString(isEN() ? "en-US" : "ko-KR");
+const kstDay = () => new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
+const SUN_DATE = "2026-11-19";                 // 2027학년도 수능
+const SUN_ON = kstDay() <= "2026-12-31";       // 연말까지만 합격 기원 법당을 열어 둬요
+const SUN_MARK = "🎓";
+const sunDays = () => Math.round((Date.parse(SUN_DATE) - Date.parse(kstDay())) / 864e5);
+const sunDday = () => { const d = sunDays(); return d > 0 ? `D-${d}` : d === 0 ? "D-DAY" : ""; };
+const isSunWish = (w) => w && String(w.text || "").startsWith(SUN_MARK);
+const wantSun = new URLSearchParams(location.search).has("suneung");
+
+/* ---------- 연등 카운터 ---------- */
+const counts = { total: null, lit: null, sun: null, at: 0 };
+async function restCount(filter = "") {
+  if (!CONFIG.supabaseUrl || !CONFIG.supabaseAnonKey) return null;
+  try {
+    const r = await fetch(`${CONFIG.supabaseUrl}/rest/v1/wishes?select=id${filter}`, { method: "HEAD", headers: { apikey: CONFIG.supabaseAnonKey, Prefer: "count=exact", Range: "0-0" } });
+    const m = /\/(\d+)\s*$/.exec(r.headers.get("content-range") || ""); return m ? +m[1] : null;
+  } catch { return null; }
+}
+async function sbCount(fn) {
+  try { const { count, error } = await fn(sb.from("wishes").select("id", { count: "exact", head: true })); return error ? null : count; } catch { return null; }
+}
+async function refreshCounts() {
+  counts.at = Date.now();
+  let t, l, s;
+  if (sb) {
+    [t, l, s] = await Promise.all([sbCount((q) => q), lanternSchemaOld ? Promise.resolve(null) : sbCount((q) => q.eq("lit", true)), sbCount((q) => q.like("text", SUN_MARK + "%"))]);
+  } else if (CONFIG.supabaseUrl && $("gate") && !$("gate").hidden) {
+    [t, l, s] = await Promise.all([restCount(), restCount("&lit=eq.true"), restCount("&text=like." + encodeURIComponent(SUN_MARK + "*"))]);
+  } else { // 혼자 수행 모드: 이 기기의 연등만 세요
+    t = wishes.length; l = wishes.filter((w) => !kindOf(w) || w.lit).length; s = wishes.filter(isSunWish).length;
+  }
+  if (t != null) counts.total = Math.max(t, counts.total || 0);
+  if (l != null) counts.lit = l;
+  if (s != null) counts.sun = s;
+  renderCounts();
+}
+function countLine(rich) {
+  if (counts.total == null) return "";
+  const b = (n) => rich ? `<b>${fmtN(n)}</b>` : fmtN(n);
+  const lit = counts.lit != null ? (isEN() ? `<br>💡 ${b(counts.lit)} lit by 108 bows` : `<br>💡 그중 ${b(counts.lit)}개가 108배로 밝혀졌어요`) : "";
+  return isEN() ? `🏮 ${b(counts.total)} wishes hung at Dalbitam so far${lit}` : `🏮 지금까지 ${b(counts.total)}개의 소원이 달빛암에 걸렸어요${lit}`;
+}
+function renderCounts() {
+  const html = countLine(true);
+  for (const id of ["gateCount", "wishTotal"]) { const el = $(id); if (!el) continue; el.hidden = !html || !counts.total; if (html) el.innerHTML = html; }
+  const st = $("sunTotal");
+  if (st) { st.hidden = !counts.sun; if (counts.sun) st.innerHTML = isEN() ? `🎓 <b>${fmtN(counts.sun)}</b> exam lanterns are wishing together` : `🎓 지금까지 <b>${fmtN(counts.sun)}</b>개의 합격등이 함께 빌고 있어요`; }
+}
+let countTimer = 0;
+function onWishesChanged() {
+  if (!$("sunPanel").hidden) renderSunList();
+  if (!$("sunLamp").hidden) renderSunLampLit();
+  clearTimeout(countTimer); countTimer = setTimeout(() => { if (Date.now() - counts.at > 8000 || !sb) refreshCounts(); else { counts.total = Math.max(counts.total || 0, wishes.length); renderCounts(); } }, 900);
+}
+refreshCounts(); // 입장 화면에서도 바로 보여 줘요
+
+/* ---------- 수능 합격 기원 법당 ---------- */
+const SUN_QUICK = [["수능 대박!", "Ace the Suneung!"], ["원하는 대학 합격!", "Into my dream school!"], ["실수 없이 실력 발휘!", "No silly mistakes!"], ["컨디션 최고로!", "Best condition on the day!"]];
+let openSunAfter = false;
+function sunChipText() { const d = sunDday(); return isEN() ? (d ? `🎓 Suneung ${d}` : "🎓 Exam luck") : (d ? `🎓 수능 ${d}` : "🎓 합격 기원"); }
+function setupSun() {
+  if (!SUN_ON) return;
+  const d = sunDday(), g = $("gateSun");
+  g.innerHTML = isEN()
+    ? `🎓 <b>Suneung ${d || ""}</b> · The exam-luck hall is open<br><small>Hang a lantern for a student taking Korea's college exam</small>`
+    : `🎓 <b>수능 ${d || "합격 기원"}</b> · 합격 기원 법당이 열렸어요<br><small>수험생 이름으로 합격등을 달아 주세요</small>`;
+  g.hidden = false;
+  g.onclick = () => { openSunAfter = true; $("enterBtn").click(); };
+  $("sunBtn").textContent = sunChipText();
+  $("sunBtn").onclick = () => openSun();
+  const box = $("sunQuick"); box.innerHTML = "";
+  SUN_QUICK.forEach(([ko, en]) => { const b = document.createElement("button"); b.type = "button"; b.className = "look-opt"; b.textContent = isEN() ? en : ko; b.onclick = () => { $("sunMsg").value = isEN() ? en : ko; sfx.soft(); }; box.appendChild(b); });
+}
+function openSun() {
+  const d = sunDays();
+  $("sunDday").textContent = sunDday() || (isEN() ? "Good luck" : "합격 기원");
+  $("sunDate").textContent = isEN() ? (d >= 0 ? "Suneung · Thu, Nov 19, 2026" : "Wishing for good results") : (d >= 0 ? "2026년 11월 19일 (목) 수능" : "수능을 마친 모든 수험생, 정말 수고했어요");
+  if (me.sunLast && !$("sunName").value) $("sunName").value = me.sunLast.name || "";
+  renderSunList(); renderCounts(); openPanel("sunPanel");
+  if (counts.sun == null || Date.now() - counts.at > 8000) refreshCounts();
+}
+function renderSunList() {
+  const ul = $("sunList"); ul.innerHTML = "";
+  const list = wishes.filter(isSunWish).slice(0, 30);
+  if (!list.length) { const li = document.createElement("li"); li.textContent = isEN() ? "No exam lanterns yet. Hang the first one!" : "아직 걸린 합격등이 없어요. 첫 합격등을 달아 주세요."; ul.appendChild(li); return; }
+  list.forEach((w) => {
+    const li = document.createElement("li"); if (kindOf(w) && !w.lit) li.classList.add("off"); if (isMyWish(w)) li.classList.add("mine");
+    li.append(w.text);
+    const s = document.createElement("span"); s.className = "lit-tag"; s.textContent = !kindOf(w) || w.lit ? " 💡" : (isEN() ? " · unlit" : " · 불 꺼짐"); li.appendChild(s);
+    ul.appendChild(li);
+  });
+}
+function mySunWish() { const t = me.sunLast && me.sunLast.text; return t ? wishes.find((w) => w.text === t && isMyWish(w)) : null; }
+function renderSunLampLit() {
+  const w = mySunWish(), lit = !!(w && w.lit), glow = document.querySelector("#sunLamp .sun-glow");
+  glow.classList.toggle("lit", lit);
+  $("sunLampTitle").textContent = isEN() ? (lit ? `${me.sunLast.name}'s exam lantern is lit ✨` : `${me.sunLast.name}'s exam lantern is hung`) : (lit ? `${me.sunLast.name} 수험생의 합격등에 불이 켜졌어요 ✨` : `${me.sunLast.name} 수험생의 합격등이 걸렸어요`);
+  $("sunBow").hidden = lit;
+}
+function showSunLamp() {
+  const d = sunDday();
+  $("sunLampDday").textContent = isEN() ? (d ? `SUNEUNG ${d}` : "GOOD LUCK") : (d ? `수능 ${d}` : "합격 기원");
+  $("sunLampMsg").textContent = me.sunLast.msg;
+  renderSunLampLit(); $("sunLamp").hidden = false; sfx.bell();
+  if (navigator.vibrate) navigator.vibrate([30, 60, 30]);
+}
+$("sunGo").onclick = () => {
+  const name = $("sunName").value.trim().slice(0, 8) || (isEN() ? "Student" : "우리 수험생");
+  const msg = $("sunMsg").value.trim().slice(0, 24) || (isEN() ? "Ace the Suneung!" : "수능 대박!");
+  const text = `${SUN_MARK} ${name} ${msg}`.slice(0, 40);
+  if (BANNED.some((b) => text.includes(b))) { $("sunNote").textContent = isEN() ? "Please use kind words." : "고운 말로 적어 주세요."; return; }
+  me.sunLast = { name, msg, text }; save();
+  wishPlace = "yard"; pickedKind = "wisdom"; kindTouched = true; renderKindPick();
+  $("wishInput").value = text; $("wishBtn").click();
+  $("sunMsg").value = ""; $("sunNote").textContent = "";
+  $("sunPanel").hidden = true; setTimeout(showSunLamp, 350);
+  if (counts.sun != null) { counts.sun++; counts.total = (counts.total || 0) + 1; renderCounts(); }
+};
+$("sunMsg").addEventListener("keydown", (e) => { if (e.key === "Enter") $("sunGo").click(); });
+let sunRinging = false;
+$("sunBell").onclick = () => {
+  if (sunRinging) return; sunRinging = true;
+  [0, 2600, 5200].forEach((ms, i) => setTimeout(() => {
+    sfx.bell(); if (player) playAnim(player, "bow"); act("bell");
+    toast(isEN() ? `🔔 Exam-luck bell ${i + 1}/3` : `🔔 합격 기원 타종 ${i + 1}/3`);
+    if (i === 2) { sunRinging = false; setTimeout(() => toast(isEN() ? `🙏 May ${me.sunLast?.name || "every student"} do their very best` : `🙏 ${me.sunLast?.name || "모든 수험생"}, 실력 그대로 다 보여 주길`), 1500); }
+  }, ms));
+};
+$("sunBow").onclick = () => { $("sunLamp").hidden = true; goPlace("hall"); setTimeout(() => toast(isEN() ? "Sit on a cushion and tap 'Keep bowing' for 108 bows" : "방석에 앉아 '계속 절하기'를 누르면 108배를 올려요"), 400); };
+$("sunShare").onclick = () => { $("sunLamp").hidden = true; setTimeout(() => shareCard("suneung"), 250); };
+$("sunLampClose").onclick = () => { $("sunLamp").hidden = true; };
+function sunShareHead(EN) { const n = me.sunLast?.name || (EN ? "every student" : "우리 수험생"); return EN ? `🎓 Good luck on the Suneung, ${n}!` : `🎓 ${n} 수능 대박 기원`; }
+function sunShareSub(EN) {
+  const d = sunDday(), c = counts.sun;
+  return EN ? `${d ? "Suneung " + d + " · " : ""}${c ? fmtN(c) + " exam lanterns with you" : "an exam lantern at Dalbitam"}` : `${d ? "수능 " + d + " · " : ""}${c ? "합격등 " + fmtN(c) + "개가 함께 빌고 있어요" : "달빛암에 합격등을 달았어요"}`;
+}
+setupSun();
+
+/* ---------- 오늘의 법문 (하루 한 장, 같은 날엔 모두 같은 구절) ---------- */
+function todayVerseIdx() { let h = 7; for (const ch of kstDay()) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return h % VERSES.length; }
+function showTodayVerse() {
+  const i = todayVerseIdx(), v = VERSES[i]; me.verse = i; me.verseDay = kstDay(); save();
+  const [, m, d] = kstDay().split("-").map(Number), MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  $("verseDay").textContent = isEN() ? `TODAY'S TEACHING · ${MON[m - 1]} ${d}` : `오늘의 법문 · ${m}월 ${d}일`;
+  $("verseHan").textContent = v[0]; $("verseText").textContent = v[1]; $("verseSrc").textContent = "— " + v[2];
+  $("verseCard").hidden = false; sfx.soft(); if (player) { playAnim(player, "bow"); act("verse"); }
+}
+$("verseBtn").onclick = () => showTodayVerse();
+// 법문 카드를 인스타 스토리 크기 이미지로 저장
+function wrapLines(x, text, maxW) {
+  const out = []; let line = "";
+  for (const word of text.split(" ")) { const tryL = line ? line + " " + word : word; if (x.measureText(tryL).width > maxW && line) { out.push(line); line = word; } else line = tryL; }
+  if (line) out.push(line);
+  return out.flatMap((l) => { if (x.measureText(l).width <= maxW) return [l]; const r = []; let cur = ""; for (const ch of l) { if (x.measureText(cur + ch).width > maxW) { r.push(cur); cur = ch; } else cur += ch; } if (cur) r.push(cur); return r; });
+}
+async function shareVerse() {
+  const EN = isEN(), W = 1080, H = 1920, c = document.createElement("canvas"); c.width = W; c.height = H; const x = c.getContext("2d");
+  try { await document.fonts.load(`700 60px "Gowun Batang"`); } catch {}
+  const g = x.createLinearGradient(0, 0, 0, H); g.addColorStop(0, "#0d1422"); g.addColorStop(1, "#1d1a24"); x.fillStyle = g; x.fillRect(0, 0, W, H);
+  // 달
+  const mg = x.createRadialGradient(W / 2, 330, 10, W / 2, 330, 260); mg.addColorStop(0, "rgba(255,240,200,.9)"); mg.addColorStop(.35, "rgba(255,226,160,.35)"); mg.addColorStop(1, "rgba(255,226,160,0)");
+  x.fillStyle = mg; x.fillRect(0, 60, W, 560); x.fillStyle = "#fff3d0"; x.beginPath(); x.arc(W / 2, 330, 92, 0, Math.PI * 2); x.fill();
+  // 경판
+  const bx = 90, by = 560, bw = W - 180, bh = 980;
+  const bg = x.createLinearGradient(0, by, 0, by + bh); bg.addColorStop(0, "#3a2a1c"); bg.addColorStop(1, "#241911"); x.fillStyle = bg;
+  x.beginPath(); x.roundRect ? x.roundRect(bx, by, bw, bh, 18) : x.rect(bx, by, bw, bh); x.fill();
+  x.strokeStyle = "#5a4430"; x.lineWidth = 6; x.stroke();
+  const v = [$("verseHan").textContent, $("verseText").textContent, $("verseSrc").textContent], day = $("verseDay").textContent;
+  x.textAlign = "center"; x.fillStyle = "#d9b44a"; x.font = `36px "Gowun Dodum",sans-serif`; x.fillText(day || (EN ? "A WORD FROM THE SUTRAS" : "경판 한 장"), W / 2, by + 100);
+  x.fillStyle = "#e9d9b4"; x.font = `700 110px "Gowun Batang",serif`; x.fillText(v[0].split("").join(" "), W / 2, by + 270);
+  x.fillStyle = "#f4ead6"; x.font = `${EN ? 50 : 54}px "Gowun Batang",serif`;
+  const lines = wrapLines(x, v[1], bw - 140), lh = EN ? 78 : 86, top = by + 420 + Math.max(0, (5 - lines.length) * lh / 2);
+  lines.slice(0, 8).forEach((l, i) => x.fillText(l, W / 2, top + i * lh));
+  x.fillStyle = "rgba(244,234,214,.6)"; x.font = `38px "Gowun Dodum",sans-serif`; x.fillText(v[2], W / 2, by + bh - 70);
+  x.fillStyle = "#f5c542"; x.font = `700 96px "Gowun Batang",serif`; x.fillText(EN ? "Dalbitam" : "달빛암", W / 2, 1700);
+  x.fillStyle = "rgba(244,239,226,.8)"; x.font = `700 46px "Gowun Dodum",sans-serif`; x.fillText("dalbitam.vercel.app", W / 2, 1790);
+  const blob = await new Promise((r) => c.toBlob(r, "image/png")); if (!blob) return;
+  const file = new File([blob], "dalbitam-verse.png", { type: "image/png" }), url = location.origin + (EN ? "/?lang=en" : "/");
+  const text = EN ? "Today's teaching from Dalbitam, a Korean temple online 🌙" : "오늘의 법문 한 장, 온라인 절 달빛암에서 🌙";
+  try { if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], text, url }); return; } } catch (e) { if (e && e.name === "AbortError") return; }
+  const im = URL.createObjectURL(blob); $("shareImg").src = im; $("shareDl").href = im; $("shareDl").download = "dalbitam-verse.png"; $("shareView").hidden = false;
+}
+$("verseSave").onclick = () => { $("verseCard").hidden = true; shareVerse(); };
+
+/* ---------- 입장 직후 ---------- */
+function afterEnter() {
+  if (SUN_ON) { $("sunBtn").hidden = false; $("sunBtn").textContent = sunChipText(); }
+  if (SUN_ON && (openSunAfter || wantSun)) { setTimeout(openSun, 1400); return; }
+  // 하루 한 번, 첫 안내를 마친 사람에게 오늘의 법문을 보여 줘요
+  if (me.onboard && me.verseDay !== kstDay()) setTimeout(() => { if ($("verseCard").hidden && document.querySelectorAll(".panel:not([hidden])").length === 0) showTodayVerse(); }, 6500);
+  // 수능 전날 · 당일 알림
+  if (SUN_ON) { const d = sunDays(); if (d === 1 || d === 0) setTimeout(() => toast(d ? "🎓 내일이 수능이에요. 합격등을 달고 타종해 주세요" : "🎓 오늘 수능이에요. 모든 수험생을 응원해요", { label: d ? "합격등 달기" : "응원하기", fn: openSun }), 3500); }
+}
