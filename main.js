@@ -4510,9 +4510,10 @@ function showBirthAsk(on) {
 }
 function openFortune() {
   ftCur = todayFortune(); renderFortune(ftCur);
-  const first = me.ftDay !== kstDay();
+  const ask = !getBirth() && !me.birthAsked; // 생년월일을 아직 안 물어봤으면, 오늘 이미 뽑았어도 한 번은 물어봐요
+  const first = me.ftDay !== kstDay() || ask;
   $("ftCard").classList.toggle("flip", !first); $("ftBtns").classList.toggle("wait", first);
-  showBirthAsk(first && !getBirth() && !me.birthAsked);
+  showBirthAsk(ask);
   document.querySelectorAll(".panel").forEach((p) => (p.hidden = true));
   $("fortuneView").hidden = false; sfx.soft(); visitAct("fortune");
 }
