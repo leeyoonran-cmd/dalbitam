@@ -1482,11 +1482,11 @@ const SG_STONE = new THREE.MeshStandardMaterial({ color: "#efe6d4", roughness: .
   [-1, 1].forEach((s) => { const pl = new THREE.Mesh(new THREE.CylinderGeometry(.19, .2, 3.1, 8), SG_STONE); pl.position.set(s * 1.0, 1.55, R - .1); grottoG.add(pl); });
   box(2.5, .32, .45, SG_STONE, 0, 3.1, R - .1, grottoG);
   /* ---------- 조명: 입구로 들어온 새벽빛이 부처님 얼굴을 비춰요 ---------- */
-  const gl = new THREE.PointLight("#ffe2b8", 26, 11, 1.4); gl.position.set(0, 3.0, 2.6); grottoG.add(gl);
+  const gl = new THREE.PointLight("#ffe2b8", 12, 11, 1.4); gl.position.set(0, 3.0, 2.6); grottoG.add(gl);
   const gl2 = new THREE.PointLight("#ffd29a", 5, 7, 1.6); gl2.position.set(0, .6, 1.4); grottoG.add(gl2);
-  const face = new THREE.SpotLight("#fff0d6", 70, 12, .42, .6, 1.2); face.position.set(0, 3.4, 3.4); face.target.position.set(0, 3.7, -1.05); grottoG.add(face, face.target);
-  const side = new THREE.PointLight("#ffd9a8", 8, 9, 1.6); side.position.set(-2.6, 3.6, -.6); grottoG.add(side);
-  const amb = new THREE.HemisphereLight("#fff4e0", "#5a4a38", .42); grottoG.add(amb); grottoG.userData.lights = [gl, gl2, face, side, amb];
+  const face = new THREE.SpotLight("#fff0d6", 22, 12, .36, .7, 1.2); face.position.set(0, 3.4, 3.4); face.target.position.set(0, 3.7, -1.05); grottoG.add(face, face.target);
+  const side = new THREE.PointLight("#ffd9a8", 6, 9, 1.6); side.position.set(-2.6, 3.6, -.6); grottoG.add(side);
+  const amb = new THREE.HemisphereLight("#fff4e0", "#5a4a38", .3); grottoG.add(amb); grottoG.userData.lights = [gl, gl2, face, side, amb];
   grottoG.visible = false;
 }
 // 석굴암 본존불: 국립박물관 석불좌상 3D 스캔을 하얀 화강암으로 (대웅전 불상과 따로 불러와요)
@@ -1494,9 +1494,9 @@ let grottoBuddhaLoading = false;
 function makeGrottoBuddha() {
   if (grottoBuddha || grottoBuddhaLoading) return; grottoBuddhaLoading = true;
   new GLTFLoader().load("buddha.glb", (gltf) => {
-    const m = gltf.scene, stoneM = new THREE.MeshStandardMaterial({ color: "#f3ecdf", vertexColors: true, roughness: .72, metalness: 0 });
+    const m = gltf.scene, stoneM = new THREE.MeshStandardMaterial({ color: "#d8cfbf", vertexColors: true, roughness: .86, metalness: 0 });
     m.traverse((o) => { if (o.isMesh) { o.geometry.computeVertexNormals(); o.material = o.geometry.attributes.color ? stoneM : SG_STONE; } });
-    const bb = new THREE.Box3().setFromObject(m), size = bb.getSize(new THREE.Vector3()), k = 3.05 / size.y;
+    const bb = new THREE.Box3().setFromObject(m), size = bb.getSize(new THREE.Vector3()), k = 2.75 / size.y;
     m.scale.setScalar(k); m.position.set(-(bb.min.x + bb.max.x) / 2 * k, grottoG.userData.ped.userData.top - .04 - bb.min.y * k, -(bb.min.z + bb.max.z) / 2 * k);
     const g = new THREE.Group(); g.add(m); g.position.set(0, 0, -1.05); grottoG.add(g); grottoBuddha = g;
   }, undefined, () => { grottoBuddhaLoading = false; });
@@ -3023,6 +3023,7 @@ const GOTO = { shop: [9.5, 6.2], hall: [0, -16.8], pagoda: [0, 6.2], shrine: [21
    카메라 조작
    ========================================================= */
 let camYaw = 0, camPitch = .42, camDist = 7.5;
+if (/[?&]debugcam/.test(location.search)) window.__cam = (y, p, d) => { if (y != null) camYaw = y; if (p != null) camPitch = p; if (d != null) camDist = d; };
 const pointers = new Map(); let downAt = null, pinchStart = 0, distStart = camDist;
 const raycaster = new THREE.Raycaster(), ndc = new THREE.Vector2();
 canvas.addEventListener("pointerdown", (e) => { canvas.setPointerCapture(e.pointerId); pointers.set(e.pointerId, { x: e.clientX, y: e.clientY }); if (pointers.size === 1) downAt = { x: e.clientX, y: e.clientY, t: performance.now(), moved: 0 }; if (pointers.size === 2) { const [a, b] = [...pointers.values()]; pinchStart = Math.hypot(a.x - b.x, a.y - b.y); distStart = camDist; downAt = null; } });
