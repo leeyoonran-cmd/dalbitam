@@ -1475,7 +1475,8 @@ const SG_STONE = new THREE.MeshStandardMaterial({ color: "#efe6d4", roughness: .
   lathe([[1.42, 0], [1.38, .1], [1.2, .2], [1.0, .24]], petalMat(false), .3);
   const core = new THREE.Mesh(new THREE.CylinderGeometry(.86, .86, .42, 32), SG_STONE); core.position.y = .75; PED.add(core);
   for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2; const p = new THREE.Mesh(new THREE.CylinderGeometry(.075, .075, .42, 10), SG_STONE); p.position.set(Math.cos(a) * .9, .75, Math.sin(a) * .9); PED.add(p); }
-  lathe([[.9, 0], [1.05, .06], [1.28, .26], [1.34, .4], [1.3, .44], [0, .44]], petalMat(true), .96);
+  lathe([[.9, 0], [1.05, .06], [1.28, .26], [1.36, .42], [1.33, .46]], petalMat(true), .96);
+  const topD = new THREE.Mesh(new THREE.CylinderGeometry(1.33, 1.3, .06, 48), SG_STONE); topD.position.y = 1.39; PED.add(topD);
   PED.userData.top = 1.4;
   /* ---------- 입구 쪽: 팔각 돌기둥 한 쌍 · 바깥 새벽빛 ---------- */
   const door = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 2.7), new THREE.MeshBasicMaterial({ color: "#f3e8cf" })); door.position.set(0, 1.35, R + .6); door.rotation.y = Math.PI; grottoG.add(door);
@@ -1499,6 +1500,17 @@ function makeGrottoBuddha() {
     const stoneV = new THREE.MeshStandardMaterial({ color: "#d8cfbf", vertexColors: true, roughness: .86, metalness: 0 });
     // 대웅전과 똑같이 짜 맞춰요: 스캔 몸(머리 없는 석불) + 따로 깎은 머리
     const H = new THREE.Group(), body = gltf.scene; body.scale.setScalar(1.3); body.position.set(0, 1.74, .15); H.add(body);
+    // 스캔 잡티 지우기: 아주 가늘고 긴 삼각형(가시처럼 보이는 것)을 걸러내요
+    body.traverse((o) => { if (!o.isMesh || !o.geometry) return; const g0 = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry, P = g0.attributes.position, n = P.count / 3;
+      g0.computeBoundingBox(); const big = g0.boundingBox.getSize(new THREE.Vector3()).length() * .035, keep = [];
+      const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), ab = new THREE.Vector3(), ac = new THREE.Vector3();
+      for (let t = 0; t < n; t++) { a.fromBufferAttribute(P, t * 3); b.fromBufferAttribute(P, t * 3 + 1); c.fromBufferAttribute(P, t * 3 + 2);
+        const e = Math.max(a.distanceTo(b), b.distanceTo(c), c.distanceTo(a)), area = ab.subVectors(b, a).cross(ac.subVectors(c, a)).length() / 2;
+        if (!(e > big && area / (e * e) < .02)) keep.push(t); }
+      if (keep.length === n) return;
+      const g1 = new THREE.BufferGeometry(); for (const name in g0.attributes) { const at = g0.attributes[name], sz = at.itemSize, arr = new at.array.constructor(keep.length * 3 * sz);
+        keep.forEach((t, i) => { for (let v = 0; v < 3; v++) for (let q = 0; q < sz; q++) arr[(i * 3 + v) * sz + q] = at.array[(t * 3 + v) * sz + q]; }); g1.setAttribute(name, new THREE.BufferAttribute(arr, sz, at.normalized)); }
+      g1.computeVertexNormals(); o.geometry = g1; });
     const hg0 = statue.userData.headG;
     if (hg0) {
       const hg = hg0.clone(true); hg.position.set(.1, .86, -.1); hg.visible = true;
