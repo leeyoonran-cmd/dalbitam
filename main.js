@@ -1467,7 +1467,7 @@ const SG_STONE = new THREE.MeshStandardMaterial({ color: "#efe6d4", roughness: .
     blob(x, w / 2, h / 2, 60, 60, .7); }, { strength: 6, blur: 2 });
   const halo = new THREE.Mesh(new THREE.CircleGeometry(1.2, 64), haloMat); halo.position.set(0, 4.55, -R + .06); grottoG.add(halo);
   /* ---------- 연꽃 대좌: 아래 복련 · 가운데 기둥 · 위 앙련 ---------- */
-  const PED = new THREE.Group(); PED.position.set(0, 0, -1.05); grottoG.add(PED); grottoG.userData.ped = PED;
+  const PED = new THREE.Group(); PED.position.set(0, 0, -1.5); grottoG.add(PED); grottoG.userData.ped = PED;
   const petalMat = (up) => reliefMaterial(512, 128, (x, w, h) => { x.fillStyle = "rgb(90,90,90)"; x.fillRect(0, 0, w, h);
     for (let k = 0; k < 16; k++) { const cx = (k + .5) * w / 16; shape(x, up ? [[cx - 15, h - 4], [cx - 18, h * .35, cx, 6], [cx + 18, h * .35, cx + 15, h - 4]] : [[cx - 15, 4], [cx - 18, h * .65, cx, h - 6], [cx + 18, h * .65, cx + 15, 4]], 230); blob(x, cx, up ? h * .55 : h * .45, 10, 26, 1); } }, { strength: 5, blur: 2 });
   const lathe = (pts, m, y) => { const g = new THREE.LatheGeometry(pts.map(([r, yy]) => new THREE.Vector2(r, yy)), 48); const o = new THREE.Mesh(g, m); o.position.y = y || 0; PED.add(o); return o; };
@@ -1484,21 +1484,33 @@ const SG_STONE = new THREE.MeshStandardMaterial({ color: "#efe6d4", roughness: .
   /* ---------- 조명: 입구로 들어온 새벽빛이 부처님 얼굴을 비춰요 ---------- */
   const gl = new THREE.PointLight("#ffe2b8", 12, 11, 1.4); gl.position.set(0, 3.0, 2.6); grottoG.add(gl);
   const gl2 = new THREE.PointLight("#ffd29a", 5, 7, 1.6); gl2.position.set(0, .6, 1.4); grottoG.add(gl2);
-  const face = new THREE.SpotLight("#fff0d6", 22, 12, .36, .7, 1.2); face.position.set(0, 3.4, 3.4); face.target.position.set(0, 3.7, -1.05); grottoG.add(face, face.target);
+  const face = new THREE.SpotLight("#fff0d6", 22, 12, .36, .7, 1.2); face.position.set(0, 3.4, 3.4); face.target.position.set(0, 3.9, -1.5); grottoG.add(face, face.target);
   const side = new THREE.PointLight("#ffd9a8", 6, 9, 1.6); side.position.set(-2.6, 3.6, -.6); grottoG.add(side);
   const amb = new THREE.HemisphereLight("#fff4e0", "#5a4a38", .3); grottoG.add(amb); grottoG.userData.lights = [gl, gl2, face, side, amb];
   grottoG.visible = false;
 }
 // 석굴암 본존불: 국립박물관 석불좌상 3D 스캔을 하얀 화강암으로 (대웅전 불상과 따로 불러와요)
 let grottoBuddhaLoading = false;
+const GROTTO_BZ = -1.5; // 본존불은 석굴 한가운데보다 살짝 뒤에 앉아 계세요
 function makeGrottoBuddha() {
   if (grottoBuddha || grottoBuddhaLoading) return; grottoBuddhaLoading = true;
   new GLTFLoader().load("buddha.glb", (gltf) => {
-    const m = gltf.scene, stoneM = new THREE.MeshStandardMaterial({ color: "#d8cfbf", vertexColors: true, roughness: .86, metalness: 0 });
-    m.traverse((o) => { if (o.isMesh) { o.geometry.computeVertexNormals(); o.material = o.geometry.attributes.color ? stoneM : SG_STONE; } });
-    const bb = new THREE.Box3().setFromObject(m), size = bb.getSize(new THREE.Vector3()), k = 2.75 / size.y;
-    m.scale.setScalar(k); m.position.set(-(bb.min.x + bb.max.x) / 2 * k, grottoG.userData.ped.userData.top - .04 - bb.min.y * k, -(bb.min.z + bb.max.z) / 2 * k);
-    const g = new THREE.Group(); g.add(m); g.position.set(0, 0, -1.05); grottoG.add(g); grottoBuddha = g;
+    const stoneM = new THREE.MeshStandardMaterial({ color: "#d8cfbf", roughness: .86, metalness: 0 });
+    const stoneV = new THREE.MeshStandardMaterial({ color: "#d8cfbf", vertexColors: true, roughness: .86, metalness: 0 });
+    // 대웅전과 똑같이 짜 맞춰요: 스캔 몸(머리 없는 석불) + 따로 깎은 머리
+    const H = new THREE.Group(), body = gltf.scene; body.scale.setScalar(1.3); body.position.set(0, 1.74, .15); H.add(body);
+    const hg0 = statue.userData.headG;
+    if (hg0) {
+      const hg = hg0.clone(true); hg.position.set(.1, .86, -.1); hg.visible = true;
+      const headC = hg.children.find((o) => o.isGroup && Math.abs(o.position.y - 4.05) < .02);
+      if (headC) { headC.scale.setScalar(1.01); [...headC.children].forEach((o) => { if (o.isGroup || (o.geometry && o.geometry.type === "LatheGeometry" && o.position.y > .7)) headC.remove(o); }); } // 금 귀걸이 · 육계 장식은 빼요
+      H.add(hg);
+    }
+    H.traverse((o) => { if (o.isMesh) { if (o.geometry && !o.geometry.attributes.normal) o.geometry.computeVertexNormals(); o.material = o.geometry && o.geometry.attributes.color ? stoneV : stoneM; } });
+    H.updateMatrixWorld(true);
+    const bb = new THREE.Box3().setFromObject(H), size = bb.getSize(new THREE.Vector3()), k = 3.1 / size.y;
+    H.scale.setScalar(k); H.position.set(-(bb.min.x + bb.max.x) / 2 * k, grottoG.userData.ped.userData.top - .16 - bb.min.y * k, -(bb.min.z + bb.max.z) / 2 * k);
+    const g = new THREE.Group(); g.add(H); g.position.set(0, 0, GROTTO_BZ); grottoG.add(g); grottoBuddha = g;
   }, undefined, () => { grottoBuddhaLoading = false; });
 }
 // 바깥: 흙으로 덮인 둥근 언덕과 앞쪽 목조 전각
@@ -4076,7 +4088,7 @@ function tick() {
       const zd = 1 + (clamp(camDist, 3, 12) - 7) * .06; // 두 손가락으로 가까이 · 멀리
       const cw = new THREE.Vector3(GR.x + Math.sin(yaw) * 1.5 * zd, 2.6 + cp * 1.5, GR.z + 2.4 + Math.cos(yaw) * 1.4 * zd);
       cw.z = Math.min(cw.z, GR.z + 3.6);
-      camTarget.lerp(new THREE.Vector3(GR.x, 2.75 + cp * .9, GR.z - 1), Math.min(1, dt * 4)); camera.position.lerp(cw, Math.min(1, dt * 4));
+      camTarget.lerp(new THREE.Vector3(GR.x, 2.85 + cp * .9, GR.z - 1.5), Math.min(1, dt * 4)); camera.position.lerp(cw, Math.min(1, dt * 4));
     } else if (zone === "peak" && dipper.active) {
       const top = mh(player.pos.x, player.pos.z), cw = new THREE.Vector3(player.pos.x + 1.2, top + 2.4, player.pos.z + 4.2);
       camTarget.lerp(dipper.g.position.clone().add(new THREE.Vector3(0, 4.5, 0)), Math.min(1, dt * 1.5)); camera.position.lerp(cw, Math.min(1, dt * 2));
