@@ -382,3 +382,11 @@ body.rec .right-chips{display:none!important}
   .ft-rows small{font-size:.72rem}
   .ft-lucky{margin-top:6px}.ft-todo{margin-top:5px}
 }
+.ft-birth{width:min(330px,88vw);display:flex;flex-direction:column;gap:8px;background:rgba(20,18,40,.85);border:1px solid rgba(214,170,255,.4);border-radius:16px;padding:12px 14px;text-align:center}
+.ft-birth p{margin:0;font-size:.88rem;color:#f4ead6;word-break:keep-all}.ft-birth b{color:#ffd98a}
+.ft-birth input{width:100%;text-align:center;font-size:1rem;color-scheme:dark}
+.ft-birth .row{display:flex;gap:8px}.ft-birth .row>*{flex:1;padding:10px 6px}
+.ft-birth small{font-size:.72rem;color:var(--mute)}
+.ft-link{background:none;border:0;color:#d9c2ff;font-size:.8rem;text-decoration:underline;padding:2px}
+@media (max-height:700px){.ft-card{height:min(560px,calc(var(--vh,100vh) - var(--st) - var(--sb) - 200px))}}
+.fortune-view:has(#ftBirth:not([hidden])) .ft-card{height:min(420px,calc(var(--vh,100vh) - var(--st) - var(--sb) - 260px))}

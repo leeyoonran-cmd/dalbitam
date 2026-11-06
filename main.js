@@ -4468,20 +4468,30 @@ const FT = {
   todos: [["목탁 30번 치기", "Strike the moktak 30 times"], ["탑돌이 한 바퀴", "Walk once around the pagoda"], ["범종 세 번 치기", "Ring the temple bell 3 times"], ["향 하나 피우기", "Light a stick of incense"], ["공양간에서 차 한 잔", "Have a cup of tea at the kitchen hall"], ["염주 한 바퀴 돌리기", "Count the prayer beads once around"], ["108배 올리기", "Do 108 bows"], ["소원 연등 하나 달기", "Hang a wish lantern"]]
 };
 function ftRng(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+// 생년월일은 이 기기에만 저장해요 (서버로 보내지 않아요)
+const FT_ZODIAC = [["쥐", "Rat", "🐭"], ["소", "Ox", "🐮"], ["호랑이", "Tiger", "🐯"], ["토끼", "Rabbit", "🐰"], ["용", "Dragon", "🐲"], ["뱀", "Snake", "🐍"], ["말", "Horse", "🐴"], ["양", "Goat", "🐑"], ["원숭이", "Monkey", "🐵"], ["닭", "Rooster", "🐔"], ["개", "Dog", "🐶"], ["돼지", "Pig", "🐷"]];
+const getBirth = () => { try { const v = localStorage.getItem("dalbitam-birth"); return /^\d{4}-\d{2}-\d{2}$/.test(v || "") ? v : null; } catch { return null; } };
+const setBirth = (v) => { try { v ? localStorage.setItem("dalbitam-birth", v) : localStorage.removeItem("dalbitam-birth"); } catch {} };
+function zodiacOf(b) { let [y, m, d] = b.split("-").map(Number); if (m < 2 || (m === 2 && d < 4)) y -= 1; return ((y - 4) % 12 + 12) % 12; } // 띠는 입춘(2월 4일 무렵)부터 바뀌어요
+const ftHash = (str) => { let h = 2166136261; for (const ch of str) h = Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0; return h; };
 function todayFortune() {
-  let h = 2166136261; for (const ch of (me.nick || "스님") + "|" + kstDay()) h = Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0;
-  const r = ftRng(h), pick = (arr) => arr[Math.floor(r() * arr.length)];
-  const tot = FT.grades.reduce((s, g) => s + g[3], 0); let x = r() * tot, grade = FT.grades[0]; for (const g of FT.grades) { if ((x -= g[3]) < 0) { grade = g; break; } }
+  const b = getBirth(), z = b ? zodiacOf(b) : null;
+  const r = ftRng(ftHash((me.nick || "스님") + "|" + (b || "") + "|" + kstDay())), pick = (arr) => arr[Math.floor(r() * arr.length)];
+  const rg = z === null ? r : ftRng(ftHash("zodiac|" + z + "|" + kstDay())); // 같은 날 같은 띠는 총운이 같아요
+  const tot = FT.grades.reduce((s, g) => s + g[3], 0); let x = rg() * tot, grade = FT.grades[0]; for (const g of FT.grades) { if ((x -= g[3]) < 0) { grade = g; break; } }
   const base = grade[0] === "大吉" ? 4 : grade[0] === "平" ? 2 : 3;
   const rows = FT.cats.map(([kind, ko, en, emo, lines]) => ({ kind, ko, en, emo, stars: clamp(base + Math.floor(r() * 3) - 1, 2, 5), line: pick(lines) }));
-  return { grade, msg: pick(FT.msgs), rows, color: pick(FT.colors), num: 1 + Math.floor(r() * 9), todo: pick(FT.todos), best: rows.reduce((b, w) => (w.stars > b.stars ? w : b), rows[0]) };
+  return { z, grade, msg: pick(FT.msgs), rows, color: pick(FT.colors), num: 1 + Math.floor(r() * 9), todo: pick(FT.todos), best: rows.reduce((b, w) => (w.stars > b.stars ? w : b), rows[0]) };
 }
 const ftStars = (n) => "★".repeat(n) + "☆".repeat(5 - n);
 let ftCur = null;
 function renderFortune(f) {
   const EN = isEN(), [, m, d] = kstDay().split("-").map(Number), MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   $("ftDate").textContent = EN ? `TODAY'S FORTUNE · ${MON[m - 1]} ${d}` : `${me.nick || "스님"}님의 오늘의 운세 · ${m}월 ${d}일`;
-  $("ftGrade").textContent = f.grade[0]; $("ftGradeKo").textContent = EN ? f.grade[2] : f.grade[1];
+  $("ftGrade").textContent = f.grade[0];
+  const zd = f.z === null ? "" : (EN ? ` · ${FT_ZODIAC[f.z][2]} Year of the ${FT_ZODIAC[f.z][1]}` : ` · ${FT_ZODIAC[f.z][2]} ${FT_ZODIAC[f.z][0]}띠`);
+  $("ftGradeKo").textContent = (EN ? f.grade[2] : f.grade[1]) + zd;
+  $("ftBirthEdit").textContent = EN ? (f.z === null ? "🐾 Add your birthday for a zodiac fortune" : "🐾 Change birthday") : (f.z === null ? "🐾 생년월일 넣고 띠별 운세 보기" : "🐾 생년월일 바꾸기");
   $("ftMsg").textContent = f.msg[EN ? 1 : 0];
   const ul = $("ftRows"); ul.innerHTML = "";
   f.rows.forEach((w) => { const li = document.createElement("li"); li.innerHTML = `<b>${w.emo} ${EN ? w.en : w.ko}</b><span class="st">${ftStars(w.stars)}</span><small></small>`; li.querySelector("small").textContent = w.line[EN ? 1 : 0]; ul.appendChild(li); });
@@ -4490,15 +4500,25 @@ function renderFortune(f) {
   const kd = LANTERN_KINDS[f.best.kind];
   $("ftLantern").textContent = EN ? `${kd.emoji} A good day for a ${({ gold: "Gold", wisdom: "Wisdom", health: "Health", love: "Love" })[f.best.kind]} Lantern` : `${kd.emoji} 오늘은 ${kd.name} 달기 좋은 날`;
 }
+function showBirthAsk(on) {
+  const EN = isEN(), box = $("ftBirth");
+  $("ftBirthQ").innerHTML = EN ? "🐾 Add your birthday for a <b>zodiac fortune</b> (optional)" : "🐾 생년월일을 넣으면 <b>띠별 운세</b>로 봐 드려요 (선택)";
+  $("ftBirthGo").textContent = EN ? "See my zodiac fortune" : "띠 운세 보기"; $("ftBirthSkip").textContent = EN ? "Just draw" : "그냥 뽑기";
+  $("ftBirthNote").textContent = EN ? "Saved only on this device. Never sent anywhere." : "이 기기에만 저장되고, 어디에도 보내지 않아요.";
+  $("ftBirthIn").max = kstDay(); if (getBirth()) $("ftBirthIn").value = getBirth();
+  box.hidden = !on;
+}
 function openFortune() {
   ftCur = todayFortune(); renderFortune(ftCur);
   const first = me.ftDay !== kstDay();
   $("ftCard").classList.toggle("flip", !first); $("ftBtns").classList.toggle("wait", first);
+  showBirthAsk(first && !getBirth() && !me.birthAsked);
   document.querySelectorAll(".panel").forEach((p) => (p.hidden = true));
   $("fortuneView").hidden = false; sfx.soft(); visitAct("fortune");
 }
 function flipFortune() {
   if ($("ftCard").classList.contains("flip")) return;
+  if (!$("ftBirth").hidden) { $("ftBirth").hidden = true; me.birthAsked = 1; save(); }
   $("ftCard").classList.add("flip"); me.ftDay = kstDay(); save();
   setTimeout(() => { sfx.bell(); if (navigator.vibrate) navigator.vibrate([20, 40, 20]); }, 450);
   setTimeout(() => $("ftBtns").classList.remove("wait"), 900);
@@ -4521,7 +4541,7 @@ async function shareFortune() {
   x.strokeStyle = "rgba(245,197,66,.7)"; x.lineWidth = 5; x.stroke(); x.strokeStyle = "rgba(245,197,66,.3)"; x.lineWidth = 2; rr(cx + 22, cy + 22, cw - 44, chh - 44, 26); x.stroke();
   x.textAlign = "center"; x.fillStyle = "#d9b44a"; x.font = `34px "Gowun Dodum",sans-serif`; x.fillText($("ftDate").textContent, W / 2, cy + 110);
   x.save(); x.shadowColor = "rgba(245,197,66,.6)"; x.shadowBlur = 40; x.fillStyle = "#f5c542"; x.font = `700 200px "Gowun Batang",serif`; x.fillText(f.grade[0], W / 2, cy + 340); x.restore();
-  x.fillStyle = "#ffe3a0"; x.font = `44px "Gowun Dodum",sans-serif`; x.fillText(EN ? f.grade[2] : f.grade[1], W / 2, cy + 420);
+  x.fillStyle = "#ffe3a0"; x.font = `44px "Gowun Dodum",sans-serif`; x.fillText($("ftGradeKo").textContent, W / 2, cy + 420);
   x.fillStyle = "#f4ead6"; x.font = `48px "Gowun Batang",serif`; const ml = wrapLines(x, f.msg[EN ? 1 : 0], cw - 160); ml.slice(0, 3).forEach((l, i) => x.fillText(l, W / 2, cy + 530 + i * 74));
   let y = cy + 530 + Math.min(ml.length, 3) * 74 + 30;
   f.rows.forEach((w) => {
@@ -4547,3 +4567,11 @@ $("ftSave").onclick = () => { $("fortuneView").hidden = true; shareFortune(); };
 // 입장하면 운세 버튼을 보여 주고, 오늘 아직 안 뽑았으면 살짝 알려 줘요
 { const show = () => { $("fortuneBtn").hidden = false; if (me.ftDay !== kstDay()) setTimeout(() => { if ($("fortuneView").hidden) toast(isEN() ? "🔮 Your fortune card for today is ready" : "🔮 오늘의 운세 카드가 도착했어요", { label: isEN() ? "Draw" : "뽑기", fn: openFortune }); }, 14000); };
   $("enterBtn").addEventListener("click", show); $("nickInput").addEventListener("keydown", (e) => { if (e.key === "Enter") show(); }); }
+
+$("ftBirthGo").onclick = () => {
+  const v = $("ftBirthIn").value, y = +(v || "").slice(0, 4);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(v) || y < 1920 || v > kstDay()) { $("ftBirthNote").textContent = isEN() ? "Please pick a valid date." : "날짜를 다시 골라 주세요."; return; }
+  setBirth(v); me.birthAsked = 1; save(); ftCur = todayFortune(); renderFortune(ftCur); $("ftBirth").hidden = true; flipFortune();
+};
+$("ftBirthSkip").onclick = () => { me.birthAsked = 1; save(); $("ftBirth").hidden = true; flipFortune(); };
+$("ftBirthEdit").onclick = () => { $("ftCard").classList.remove("flip"); $("ftBtns").classList.add("wait"); showBirthAsk(true); };
