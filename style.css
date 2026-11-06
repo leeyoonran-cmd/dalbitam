@@ -419,3 +419,8 @@ body.rec .cnote{display:none!important}
 .bul-toggle small{color:var(--mute);font-size:.76rem}
 .bul-toggle.on{background:rgba(245,197,66,.2);border-color:#f5c542;box-shadow:0 0 0 1px #f5c542 inset}
 .bul-toggle:disabled{opacity:.55}
+.share-inapp{margin-top:8px;background:rgba(245,197,66,.08);border:1px solid rgba(245,197,66,.35);border-radius:12px;padding:10px 12px;text-align:left}
+.share-inapp p{margin:0 0 8px;font-size:.82rem;line-height:1.55;color:#f4ead6;word-break:keep-all}
+.share-inapp .row{display:flex;gap:8px}.share-inapp .row>*{flex:1;padding:9px 6px;font-size:.85rem}
+.share-card img{-webkit-touch-callout:default;user-select:auto;pointer-events:auto}
+.share-card:has(#shareInApp:not([hidden])) img{max-height:54vh}

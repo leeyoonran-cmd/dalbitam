@@ -3879,7 +3879,7 @@ async function shareCard(kind = "visit") {
     if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], text, url }); return; }
   } catch (e) { if (e && e.name === "AbortError") return; }
   // 공유를 못 하는 브라우저: 이미지를 보여 주고 길게 눌러 저장
-  const im = URL.createObjectURL(blob); const ov = $("shareView"); $("shareImg").src = im; $("shareDl").href = im; ov.hidden = false;
+  showShareImage(blob, "dalbitam.png");
 }
 $("shareBtn").onclick = () => { $("soundPanel").hidden = true; shareCard("visit"); };
 $("shareClose").onclick = () => { $("shareView").hidden = true; };
@@ -4435,7 +4435,7 @@ async function shareVerse() {
   const file = new File([blob], "dalbitam-verse.png", { type: "image/png" }), url = location.origin + (EN ? "/?lang=en" : "/");
   const text = EN ? "Today's teaching from Dalbitam, a Korean temple online 🌙" : "오늘의 법문 한 장, 온라인 절 달빛암에서 🌙";
   try { if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], text, url }); return; } } catch (e) { if (e && e.name === "AbortError") return; }
-  const im = URL.createObjectURL(blob); $("shareImg").src = im; $("shareDl").href = im; $("shareDl").download = "dalbitam-verse.png"; $("shareView").hidden = false;
+  showShareImage(blob, "dalbitam-verse.png");
 }
 $("verseSave").onclick = () => { $("verseCard").hidden = true; shareVerse(); };
 
@@ -4582,7 +4582,7 @@ async function shareFortune() {
   const file = new File([blob], "dalbitam-fortune.png", { type: "image/png" }), url = location.origin + (EN ? "/?lang=en" : "/");
   const text = EN ? "My fortune for today from Dalbitam, a Korean temple online 🔮" : "온라인 절 달빛암에서 뽑은 오늘의 운세 🔮";
   try { if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], text, url }); return; } } catch (e) { if (e && e.name === "AbortError") return; }
-  const im = URL.createObjectURL(blob); $("shareImg").src = im; $("shareDl").href = im; $("shareDl").download = "dalbitam-fortune.png"; $("shareView").hidden = false;
+  showShareImage(blob, "dalbitam-fortune.png");
 }
 $("ftSave").onclick = () => { $("fortuneView").hidden = true; shareFortune(); };
 // 입장하면 운세 버튼을 보여 주고, 오늘 아직 안 뽑았으면 살짝 알려 줘요
@@ -4752,3 +4752,33 @@ document.addEventListener("click", (e) => { // 문서 단계에서 먼저 받아
 }, true);
 { const _op = openPanel; openPanel = function (id) { if (id === "wishPanel") renderBulToggle(); _op(id); }; }
 renderBulToggle();
+
+
+/* =========================================================
+   이미지 저장: 인스타 · 카카오톡 같은 앱 안 브라우저에서는 다운로드가 막혀 있어요
+   → 이미지를 길게 눌러 저장할 수 있게 data 주소로 보여 주고, 안 되면 외부 브라우저로 안내
+   ========================================================= */
+const IN_APP = /Instagram|FBAN|FBAV|FB_IAB|KAKAOTALK|Line\/|NAVER\(inapp|DaumApps|everytimeApp|Threads/i.test(navigator.userAgent);
+const IS_IOS = /iPhone|iPad|iPod/i.test(navigator.userAgent), IS_AND = /Android/i.test(navigator.userAgent);
+async function showShareImage(blob, name) {
+  const url = await new Promise((res) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => res(URL.createObjectURL(blob)); r.readAsDataURL(blob); });
+  $("shareImg").src = url; $("shareDl").href = url; $("shareDl").download = name;
+  const EN = isEN(), box = $("shareInApp");
+  box.hidden = !IN_APP;
+  if (IN_APP) {
+    $("shareInAppT").textContent = EN
+      ? "Saving is blocked inside this app's browser. Try long-pressing the image first. If that doesn't work, open Dalbitam in " + (IS_IOS ? "Safari" : "Chrome") + " and save the card again."
+      : "인스타·카톡 앱 안에서는 저장 버튼이 막혀 있어요. 먼저 이미지를 꾹 길게 눌러 보세요. 그래도 안 되면 " + (IS_IOS ? "사파리" : "크롬") + "에서 열어 카드를 다시 저장해 주세요.";
+    $("shareOut").textContent = EN ? "Open in " + (IS_IOS ? "Safari" : "Chrome") : (IS_IOS ? "사파리로 열기" : "크롬으로 열기");
+    $("shareCopy").textContent = EN ? "Copy link" : "주소 복사";
+  }
+  $("shareView").hidden = false;
+}
+function openExternal() {
+  const u = location.origin + "/" + (isEN() ? "?lang=en" : "");
+  if (IS_AND) { location.href = "intent://" + location.host + "/" + (isEN() ? "?lang=en" : "") + "#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=" + encodeURIComponent(u) + ";end"; return; }
+  if (IS_IOS) { location.href = "x-safari-" + u; setTimeout(() => toast(isEN() ? "If Safari didn't open, tap ⋯ at the top right and choose Open in browser" : "사파리가 안 열리면 오른쪽 위 ⋯ 를 눌러 '외부 브라우저로 열기'를 골라 주세요"), 1200); return; }
+  window.open(u, "_blank");
+}
+$("shareOut").onclick = openExternal;
+$("shareCopy").onclick = async () => { const u = location.origin + "/" + (isEN() ? "?lang=en" : ""); try { await navigator.clipboard.writeText(u); toast(isEN() ? "Link copied · paste it into Safari or Chrome" : "주소를 복사했어요 · 사파리나 크롬에 붙여 넣어 주세요"); } catch { toast(u); } };
