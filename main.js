@@ -1320,13 +1320,13 @@ function enterRoom(k) {
     hideWorld(true); if (player.aura) player.aura.visible = false;
     camTarget.set(RO.x, 1.45, RO.z - 2.6); camera.position.set(RO.x, 2.5, RO.z + 3.15);
     player.pos.set(RO.x, 0, RO.z + .6); player.target.copy(player.pos); player.yaw = Math.PI; player.root.rotation.y = Math.PI; player.y = 0; player.sitting = true;
-    camYaw = 0; ZONES.room.name = ROOMS[k].name; ZONES.room.intro = ROOMS[k].intro; zone = "room"; renderActions(); say(ROOMS[k].intro); gain(`visit:${k}`);
+    camYaw = 0; camDist = 7.5; document.body.classList.add("in-room"); ZONES.room.name = ROOMS[k].name; ZONES.room.intro = ROOMS[k].intro; zone = "room"; renderActions(); say(ROOMS[k].intro); gain(`visit:${k}`);
     $("prayBox").classList.add("compact"); $("prayBox").hidden = false; renderPray(true); sendPresence();
   });
 }
 function leaveRoom() {
   stopPray(); const back = roomReturn;
-  fade(() => { hideWorld(false); if (player.aura) player.aura.visible = true; inRoom = null; $("prayBox").hidden = true; player.sitting = false; if (back) { player.pos.set(back.x, 0, back.z); player.target.copy(player.pos); player.yaw = 0; camTarget.set(back.x, 1.6, back.z); camera.position.set(back.x, 1.6 + Math.sin(camPitch) * camDist, back.z + Math.cos(camPitch) * camDist); } camYaw = 0; lastMoveTx = 0; sendPresence(); });
+  fade(() => { hideWorld(false); document.body.classList.remove("in-room"); if (player.aura) player.aura.visible = true; inRoom = null; $("prayBox").hidden = true; player.sitting = false; if (back) { player.pos.set(back.x, 0, back.z); player.target.copy(player.pos); player.yaw = 0; camTarget.set(back.x, 1.6, back.z); camera.position.set(back.x, 1.6 + Math.sin(camPitch) * camDist, back.z + Math.cos(camPitch) * camDist); } camYaw = 0; lastMoveTx = 0; sendPresence(); });
 }
 /* =========================================================
    석굴암 (경주 · 유네스코 세계유산 1995)
@@ -1338,53 +1338,168 @@ const grottoG = new THREE.Group(); grottoG.position.copy(GR); scene.add(grottoG)
 let inGrotto = false, grottoBuddha = null;
 const SG_STONE = new THREE.MeshStandardMaterial({ color: "#efe6d4", roughness: .78, metalness: 0 });
 {
-  const granTex = (w, h, draw) => canvasTex(w, h, (x, W, H) => { noise(x, W, H, "#cfc4ae", .14, 9000, 2); draw && draw(x, W, H); });
-  // 바닥 · 둥근 벽 · 돔 천장
-  const floor = new THREE.Mesh(new THREE.CircleGeometry(3.9, 40), new THREE.MeshStandardMaterial({ map: granTex(256, 256, (x, w, h) => { x.strokeStyle = "rgba(60,50,40,.25)"; x.lineWidth = 2; for (let i = 0; i < 8; i++) { x.beginPath(); x.moveTo(0, i * 32); x.lineTo(w, i * 32); x.stroke(); } }), roughness: .9 }));
-  floor.rotation.x = -Math.PI / 2; grottoG.add(floor);
-  // 아래 벽: 보살 · 나한 부조 15폭 (입구 쪽은 비워 둬요)
-  const reliefTex = (i) => granTex(256, 512, (x, w, h) => {
-    x.strokeStyle = "rgba(70,58,44,.35)"; x.lineWidth = 6; x.strokeRect(6, 6, w - 12, h - 12);
-    const fig = (dx, dy, col) => { x.save(); x.translate(dx, dy); x.fillStyle = col;
-      x.beginPath(); x.arc(w / 2, 120, 26, 0, Math.PI * 2); x.fill(); // 머리
-      if (i % 3 !== 1) { x.strokeStyle = col; x.lineWidth = 5; x.beginPath(); x.arc(w / 2, 120, 44, 0, Math.PI * 2); x.stroke(); } // 두광
-      if (i % 3 === 2) { x.beginPath(); x.moveTo(w / 2 - 16, 98); x.lineTo(w / 2, 62); x.lineTo(w / 2 + 16, 98); x.fill(); } // 보관
-      x.beginPath(); x.moveTo(w / 2 - 22, 150); x.quadraticCurveTo(w / 2 - 62, 300, w / 2 - 54, 470); x.lineTo(w / 2 + 54, 470); x.quadraticCurveTo(w / 2 + 62, 300, w / 2 + 22, 150); x.closePath(); x.fill(); // 옷자락
-      x.beginPath(); x.ellipse(w / 2 + (i % 2 ? 24 : -24), 250, 12, 40, i % 2 ? -.4 : .4, 0, Math.PI * 2); x.fill(); x.restore(); };
-    fig(5, 5, "rgba(80,66,50,.35)"); fig(0, 0, "#e9e0cc");
-    x.strokeStyle = "rgba(90,74,56,.35)"; x.lineWidth = 2; for (let k = 0; k < 9; k++) { x.beginPath(); x.moveTo(w / 2 - 40 + k * 10, 200 + k * 6); x.quadraticCurveTo(w / 2 - 30 + k * 8, 340, w / 2 - 44 + k * 11, 460); x.stroke(); } });
-  const R = 3.9, N = 16;
-  for (let i = 0; i < N; i++) {
-    const a = (i + .5) / N * Math.PI * 2; if (Math.abs(Math.sin(a)) < .2 && Math.cos(a) > 0) continue; // +z 쪽 입구
-    const p = new THREE.Mesh(new THREE.PlaneGeometry(2 * Math.PI * R / N - .06, 2.5), new THREE.MeshStandardMaterial({ map: reliefTex(i), roughness: .85 }));
-    p.position.set(Math.sin(a) * (R - .02), 1.25, Math.cos(a) * (R - .02)); p.rotation.y = a + Math.PI; grottoG.add(p);
-    // 위쪽 감실 (작은 보살이 앉아 있는 둥근 굴)
-    if (i % 2 === 0) { const nm = new THREE.Mesh(new THREE.PlaneGeometry(.9, 1.1), new THREE.MeshStandardMaterial({ map: granTex(128, 160, (x, w, h) => { x.fillStyle = "rgba(40,32,24,.55)"; x.beginPath(); x.moveTo(14, h - 8); x.lineTo(14, 60); x.quadraticCurveTo(w / 2, -10, w - 14, 60); x.lineTo(w - 14, h - 8); x.fill(); x.fillStyle = "#e8dfcb"; x.beginPath(); x.arc(w / 2, 62, 13, 0, 7); x.fill(); x.beginPath(); x.moveTo(w / 2 - 14, 76); x.quadraticCurveTo(w / 2 - 36, 140, w / 2 - 34, 150); x.lineTo(w / 2 + 34, 150); x.quadraticCurveTo(w / 2 + 36, 140, w / 2 + 14, 76); x.fill(); }), roughness: .85 }));
-      nm.position.set(Math.sin(a) * (R - .12), 3.25, Math.cos(a) * (R - .12)); nm.rotation.y = a + Math.PI; grottoG.add(nm); }
+  /* ---------- 입체 부조를 만드는 도구: 높이 그림 → 색 + 노멀맵 ---------- */
+  const mkCanvas = (w, h) => { const c = document.createElement("canvas"); c.width = w; c.height = h; return c; };
+  const blurH = (a, w, h, r) => { const t = new Float32Array(a.length);
+    for (let y = 0; y < h; y++) { let s = 0; for (let x = -r; x <= r; x++) s += a[y * w + Math.min(w - 1, Math.max(0, x))]; for (let x = 0; x < w; x++) { t[y * w + x] = s / (2 * r + 1); s += a[y * w + Math.min(w - 1, x + r + 1)] - a[y * w + Math.max(0, x - r)]; } }
+    for (let x = 0; x < w; x++) { let s = 0; for (let y = -r; y <= r; y++) s += t[Math.min(h - 1, Math.max(0, y)) * w + x]; for (let y = 0; y < h; y++) { a[y * w + x] = s / (2 * r + 1); s += t[Math.min(h - 1, y + r + 1) * w + x] - t[Math.max(0, y - r) * w + x]; } } };
+  let seedN = 1; const rnd = () => ((seedN = (seedN * 16807) % 2147483647) / 2147483647);
+  function reliefMaterial(w, h, draw, { strength = 4, blur = 2, base = [222, 212, 192], rough = .86, rep = [1, 1] } = {}) {
+    const hc = mkCanvas(w, h), x = hc.getContext("2d"); x.fillStyle = "#000"; x.fillRect(0, 0, w, h); draw(x, w, h);
+    const d = x.getImageData(0, 0, w, h).data, H = new Float32Array(w * h);
+    for (let i = 0; i < w * h; i++) H[i] = d[i * 4] / 255;
+    if (blur) { blurH(H, w, h, blur); blurH(H, w, h, Math.max(1, blur >> 1)); }
+    const cc = mkCanvas(w, h), nc = mkCanvas(w, h), cx = cc.getContext("2d"), nx = nc.getContext("2d");
+    const ci = cx.createImageData(w, h), ni = nx.createImageData(w, h);
+    for (let y = 0; y < h; y++) for (let xx = 0; xx < w; xx++) {
+      const i = y * w + xx, hv = H[i];
+      const dx = H[y * w + Math.min(w - 1, xx + 1)] - H[y * w + Math.max(0, xx - 1)], dy = H[Math.min(h - 1, y + 1) * w + xx] - H[Math.max(0, y - 1) * w + xx];
+      let nX = -dx * strength, nY = dy * strength, nZ = 1; const L = Math.hypot(nX, nY, nZ); nX /= L; nY /= L; nZ /= L;
+      ni.data[i * 4] = (nX * .5 + .5) * 255; ni.data[i * 4 + 1] = (nY * .5 + .5) * 255; ni.data[i * 4 + 2] = (nZ * .5 + .5) * 255; ni.data[i * 4 + 3] = 255;
+      // 낮은 곳(파인 곳)은 어둡게, 높은 곳은 밝게 + 화강암 점박이
+      const sp = rnd(), k = (.6 + .42 * Math.pow(hv, .8)) * (sp < .06 ? .82 : sp > .97 ? 1.08 : 1) * (.96 + .08 * rnd());
+      ci.data[i * 4] = Math.min(255, base[0] * k); ci.data[i * 4 + 1] = Math.min(255, base[1] * k); ci.data[i * 4 + 2] = Math.min(255, base[2] * k); ci.data[i * 4 + 3] = 255;
+    }
+    cx.putImageData(ci, 0, 0); nx.putImageData(ni, 0, 0);
+    const map = new THREE.CanvasTexture(cc); map.colorSpace = THREE.SRGBColorSpace; const nm = new THREE.CanvasTexture(nc);
+    [map, nm].forEach((t) => { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rep[0], rep[1]); t.anisotropy = 4; });
+    return new THREE.MeshStandardMaterial({ map, normalMap: nm, normalScale: new THREE.Vector2(1.4, 1.4), roughness: rough, metalness: 0 });
   }
-  const wallUp = new THREE.Mesh(new THREE.CylinderGeometry(R, R, 1.5, 48, 1, true), new THREE.MeshStandardMaterial({ map: granTex(512, 64, (x, w, h) => { x.strokeStyle = "rgba(60,50,40,.3)"; x.lineWidth = 2; x.beginPath(); x.moveTo(0, 2); x.lineTo(w, 2); x.stroke(); for (let i = 0; i < 24; i++) { x.beginPath(); x.moveTo(i * w / 24, 0); x.lineTo(i * w / 24, h); x.stroke(); } }), side: THREE.BackSide, roughness: .9 }));
-  wallUp.position.y = 3.25; grottoG.add(wallUp);
-  const wallLow = new THREE.Mesh(new THREE.CylinderGeometry(R + .03, R + .03, 2.5, 48, 1, true), new THREE.MeshStandardMaterial({ color: "#bfb39c", side: THREE.BackSide, roughness: .95 })); wallLow.position.y = 1.25; grottoG.add(wallLow);
-  // 돔: 다듬은 돌을 둥글게 쌓고, 사이사이 주먹돌이 튀어나와 있어요. 꼭대기엔 연꽃 덮개돌
-  const domeTex = granTex(512, 512, (x, w, h) => { x.strokeStyle = "rgba(55,45,35,.35)"; x.lineWidth = 3; const rows = 9;
-    for (let r = 0; r < rows; r++) { const y = r * h / rows; x.beginPath(); x.moveTo(0, y); x.lineTo(w, y); x.stroke(); const n = Math.max(6, Math.round(28 * (1 - r / rows))); for (let c = 0; c < n; c++) { const xx = (c + (r % 2) * .5) * w / n; x.beginPath(); x.moveTo(xx, y); x.lineTo(xx, y + h / rows); x.stroke(); }
-      if (r > 1 && r < rows - 1 && r % 2 === 0) for (let c = 0; c < n; c += 2) { const xx = (c + .5) * w / n; x.fillStyle = "rgba(50,40,30,.35)"; x.beginPath(); x.arc(xx + 3, y + h / rows / 2 + 3, 9, 0, 7); x.fill(); x.fillStyle = "#ddd2bc"; x.beginPath(); x.arc(xx, y + h / rows / 2, 9, 0, 7); x.fill(); } } });
-  const dome = new THREE.Mesh(new THREE.SphereGeometry(R, 48, 20, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ map: domeTex, side: THREE.BackSide, roughness: .9 }));
-  dome.position.y = 4.0; dome.scale.y = .85; grottoG.add(dome);
-  const cap = new THREE.Mesh(new THREE.CircleGeometry(.75, 24), new THREE.MeshStandardMaterial({ map: granTex(128, 128, (x, w, h) => { x.fillStyle = "#e4d9c2"; for (let k = 0; k < 12; k++) { x.save(); x.translate(w / 2, h / 2); x.rotate(k / 12 * Math.PI * 2); x.beginPath(); x.ellipse(0, -36, 9, 24, 0, 0, 7); x.fill(); x.strokeStyle = "rgba(70,58,44,.4)"; x.lineWidth = 2; x.stroke(); x.restore(); } x.beginPath(); x.arc(w / 2, h / 2, 12, 0, 7); x.fill(); x.stroke(); }), roughness: .85 }));
-  cap.rotation.x = Math.PI / 2; cap.position.y = 4.0 + R * .85 - .01; grottoG.add(cap);
-  // 본존불 뒤 벽의 연꽃 광배 (둥근 돌판)
-  const halo = new THREE.Mesh(new THREE.CircleGeometry(.95, 40), new THREE.MeshStandardMaterial({ map: granTex(256, 256, (x, w, h) => { x.strokeStyle = "rgba(70,58,44,.45)"; x.lineWidth = 4; [120, 100, 70].forEach((r) => { x.beginPath(); x.arc(w / 2, h / 2, r, 0, 7); x.stroke(); }); x.fillStyle = "#e9e0cc"; for (let k = 0; k < 16; k++) { x.save(); x.translate(w / 2, h / 2); x.rotate(k / 16 * Math.PI * 2); x.beginPath(); x.ellipse(0, -48, 9, 20, 0, 0, 7); x.fill(); x.stroke(); x.restore(); } }), roughness: .85 }));
-  halo.position.set(0, 3.55, -R + .04); grottoG.add(halo);
-  // 입구 쪽 통로 (전실로 이어지는 짧은 길) — 밖으로 희미한 빛
-  const door = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 2.6), new THREE.MeshBasicMaterial({ color: "#f3e8cf" })); door.position.set(0, 1.3, R + .6); door.rotation.y = Math.PI; grottoG.add(door);
-  [-1, 1].forEach((s) => { const pl = cyl(.18, .2, 3, SG_STONE, s * 1.05, 1.5, R - .05, 12, grottoG); });
-  box(2.6, .35, .5, SG_STONE, 0, 3.05, R - .05, grottoG);
-  // 조명: 은은한 새벽빛이 입구로 들어와 부처님 얼굴을 비춰요
-  const gl = new THREE.PointLight("#ffe2b8", 30, 11, 1.4); gl.position.set(0, 3.2, 2.4); grottoG.add(gl);
-  const gl2 = new THREE.PointLight("#ffd29a", 6, 7, 1.6); gl2.position.set(0, .6, 1.2); grottoG.add(gl2);
-  const amb = new THREE.HemisphereLight("#fff4e0", "#5a4a38", .55); grottoG.add(amb); grottoG.userData.lights = [gl, gl2, amb];
+  // 높이 그림 붓: 가운데가 높고 가장자리가 낮은 둥근 덩어리
+  const blob = (x, cxp, cyp, rx, ry, top = 1, rot = 0) => { x.save(); x.translate(cxp, cyp); x.rotate(rot); x.scale(1, ry / rx);
+    const g = x.createRadialGradient(0, 0, 0, 0, 0, rx); const v = Math.round(255 * top); g.addColorStop(0, `rgb(${v},${v},${v})`); g.addColorStop(.7, `rgb(${v * .8 | 0},${v * .8 | 0},${v * .8 | 0})`); g.addColorStop(1, `rgb(${v * .45 | 0},${v * .45 | 0},${v * .45 | 0})`);
+    x.fillStyle = g; x.beginPath(); x.arc(0, 0, rx, 0, Math.PI * 2); x.fill(); x.restore(); };
+  const shape = (x, pts, v, close = true) => { x.fillStyle = `rgb(${v},${v},${v})`; x.beginPath(); x.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) { const p = pts[i]; p.length === 4 ? x.quadraticCurveTo(p[0], p[1], p[2], p[3]) : x.lineTo(p[0], p[1]); } if (close) x.closePath(); x.fill(); };
+  const line = (x, pts, v, wdt) => { x.strokeStyle = `rgb(${v},${v},${v})`; x.lineWidth = wdt; x.lineCap = "round"; x.beginPath(); x.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) { const p = pts[i]; p.length === 4 ? x.quadraticCurveTo(p[0], p[1], p[2], p[3]) : x.lineTo(p[0], p[1]); } x.stroke(); };
+  // 서 있는 인물 한 명 (부조): kind = monk(제자) · bodhi(보살) · deva(천부) · gwaneum(십일면관음)
+  function figure(x, w, h, kind, flip) {
+    const c = w / 2, hy = kind === "gwaneum" ? 150 : 128, hr = kind === "monk" ? 27 : 25;
+    x.save(); if (flip) { x.translate(w, 0); x.scale(-1, 1); }
+    // 바탕 판: 테두리는 높고, 안쪽은 한 단 파여 있어요
+    x.fillStyle = "rgb(150,150,150)"; x.fillRect(0, 0, w, h); x.fillStyle = "rgb(70,70,70)"; x.fillRect(12, 12, w - 24, h - 24);
+    // 두광
+    if (kind !== "monk") { x.strokeStyle = "rgb(120,120,120)"; x.lineWidth = 7; x.beginPath(); x.ellipse(c, hy, kind === "gwaneum" ? 58 : 48, kind === "gwaneum" ? 66 : 50, 0, 0, Math.PI * 2); x.stroke(); }
+    // 옷 (몸통 ~ 발끝)
+    const sw = kind === "monk" ? 56 : 46, hem = h - 40;
+    shape(x, [[c - 20, hy + 26], [c - sw, hy + 64], [c - sw - 8, hy + 200, c - sw + 2, hem], [c + sw - 2, hem], [c + sw + 8, hy + 200, c + sw, hy + 64], [c + 20, hy + 26]], 175);
+    blob(x, c, hy + 120, sw * .9, 90, .95);
+    // 옷 주름: 제자는 왼쪽 어깨에서 내려오는 가사 주름, 보살은 세로로 흐르는 치마 주름
+    for (let k = 0; k < 7; k++) {
+      if (kind === "monk") line(x, [[c - sw + 10 + k * 12, hy + 60 + k * 10], [c - 10 + k * 8, hy + 210, c - sw + 20 + k * 15, hem - 6]], 120, 3);
+      else line(x, [[c - 30 + k * 10, hy + 170], [c - 34 + k * 11, hy + 280, c - 36 + k * 12, hem - 6]], 125, 3);
+    }
+    if (kind !== "monk") { // 천의 자락: 양 어깨에서 발치까지 흘러내려요
+      line(x, [[c - sw + 6, hy + 70], [c - sw - 22, hy + 220, c - sw - 10, hem + 4]], 200, 9); line(x, [[c + sw - 6, hy + 70], [c + sw + 22, hy + 220, c + sw + 10, hem + 4]], 200, 9);
+      for (let k = 0; k < 9; k++) blob(x, c - 26 + k * 6.5, hy + 52 + Math.sin(k / 8 * Math.PI) * 16, 5, 5, 1); // 목걸이 구슬
+    }
+    if (kind === "gwaneum") { for (let k = 0; k < 14; k++) blob(x, c + Math.sin(k / 13 * Math.PI) * 30 - 2, hy + 80 + k * 18, 4.5, 4.5, 1); } // 무릎까지 내려오는 영락
+    // 머리 · 목
+    blob(x, c, hy + 30, 13, 16, .85); blob(x, c, hy, hr, hr * 1.18, 1);
+    if (kind === "monk") { blob(x, c - hr + 3, hy + 2, 6, 11, .8); blob(x, c + hr - 3, hy + 2, 6, 11, .8); }
+    else { // 보관
+      shape(x, [[c - hr, hy - 14], [c - hr + 4, hy - 46], [c - 8, hy - 30], [c, hy - 58], [c + 8, hy - 30], [c + hr - 4, hy - 46], [c + hr, hy - 14]], 215);
+      if (kind === "gwaneum") { // 머리 위 작은 얼굴 열 개 + 맨 위 하나
+        [[-22, -64], [-8, -70], [8, -70], [22, -64], [-30, -48], [30, -48], [-15, -86], [0, -90], [15, -86], [0, -106]].forEach(([dx, dy]) => blob(x, c + dx, hy + dy, 8, 9, 1)); }
+      blob(x, c - hr + 2, hy + 18, 5, 14, .8); blob(x, c + hr - 2, hy + 18, 5, 14, .8);
+    }
+    // 손과 지물
+    if (kind === "monk") { blob(x, c + 4, hy + 92, 16, 13, 1); if (rnd() < .5) blob(x, c + 4, hy + 108, 22, 12, .9); else line(x, [[c - 6, hy + 70], [c + 12, hy + 118]], 230, 7); }
+    else if (kind === "gwaneum") { blob(x, c - 24, hy + 96, 12, 12, 1); blob(x, c - 26, hy + 120, 14, 24, .95); line(x, [[c - 26, hy + 96], [c - 26, hy + 70]], 220, 5); blob(x, c + 40, hy + 210, 11, 13, 1); }
+    else { blob(x, c - 30, hy + 104, 12, 12, 1); line(x, [[c - 30, hy + 104], [c - 34, hy + 20]], 210, 4); blob(x, c - 34, hy + 16, 14, 10, 1); blob(x, c + 26, hy + 150, 11, 12, 1); if (kind === "deva") for (let k = 0; k < 3; k++) line(x, [[c - sw + 4, hy + 100 + k * 26], [c + sw - 4, hy + 100 + k * 26]], 205, 6); }
+    // 발과 연꽃 받침
+    blob(x, c - 16, hem + 8, 14, 7, .9); blob(x, c + 16, hem + 8, 14, 7, .9);
+    for (let k = 0; k < 7; k++) blob(x, c - 54 + k * 18, h - 22, 12, 9, .8);
+    x.restore();
+  }
+  /* ---------- 바닥 · 아래 벽 · 윗벽 ---------- */
+  const R = 3.9;
+  const floor = new THREE.Mesh(new THREE.CircleGeometry(R, 48), reliefMaterial(512, 512, (x, w, h) => {
+    x.fillStyle = "rgb(200,200,200)"; x.fillRect(0, 0, w, h); x.strokeStyle = "rgb(60,60,60)"; x.lineWidth = 4;
+    for (let r = 0; r < 8; r++) { x.beginPath(); x.moveTo(0, r * 64); x.lineTo(w, r * 64); x.stroke(); for (let c = 0; c < 5; c++) { const xx = (c + (r % 2) * .5) * 128; x.beginPath(); x.moveTo(xx, r * 64); x.lineTo(xx, r * 64 + 64); x.stroke(); } } }, { strength: 2.5, blur: 2, base: [205, 196, 178] }));
+  floor.rotation.x = -Math.PI / 2; grottoG.add(floor);
+  const N = 16, pw = 2 * Math.PI * R / N - .08;
+  const kinds = { 1: "deva", 15: "deva", 2: "bodhi", 14: "bodhi", 8: "gwaneum" };
+  for (let i = 1; i < N; i++) { // i = 0 은 입구
+    const a = i / N * Math.PI * 2, kind = kinds[i] || "monk";
+    seedN = 1000 + i * 77;
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(pw, kind === "gwaneum" ? 2.75 : 2.45), reliefMaterial(256, 512, (x, w, h) => figure(x, w, h, kind, i > 8), { strength: 5.5, blur: 2 }));
+    m.position.set(Math.sin(a) * (R - .03), kind === "gwaneum" ? 1.4 : 1.25, Math.cos(a) * (R - .03)); m.rotation.y = a + Math.PI; grottoG.add(m);
+  }
+  // 아래 벽과 윗벽 사이 돌림띠, 바닥 쪽 받침돌
+  const ledge = new THREE.Mesh(new THREE.TorusGeometry(R - .07, .07, 6, 64), SG_STONE); ledge.rotation.x = Math.PI / 2; ledge.position.y = 2.6; grottoG.add(ledge);
+  const plinth = new THREE.Mesh(new THREE.CylinderGeometry(R - .02, R - .02, .16, 64, 1, true), new THREE.MeshStandardMaterial({ color: "#cbbfa8", side: THREE.BackSide, roughness: .95 })); plinth.position.y = .08; grottoG.add(plinth);
+  const wallLow = new THREE.Mesh(new THREE.CylinderGeometry(R + .03, R + .03, 2.8, 64, 1, true), new THREE.MeshStandardMaterial({ color: "#bfb39c", side: THREE.BackSide, roughness: .95 })); wallLow.position.y = 1.4; grottoG.add(wallLow);
+  const wallUp = new THREE.Mesh(new THREE.CylinderGeometry(R, R, 1.45, 64, 1, true), reliefMaterial(1024, 128, (x, w, h) => {
+    x.fillStyle = "rgb(190,190,190)"; x.fillRect(0, 0, w, h); x.strokeStyle = "rgb(70,70,70)"; x.lineWidth = 4; x.beginPath(); x.moveTo(0, 4); x.lineTo(w, 4); x.moveTo(0, h / 2); x.lineTo(w, h / 2); x.stroke();
+    for (let i = 0; i < 32; i++) { const o = (i % 2) * 16; x.beginPath(); x.moveTo(i * 32 + o, 4); x.lineTo(i * 32 + o, h / 2); x.moveTo(i * 32 + 16 - o, h / 2); x.lineTo(i * 32 + 16 - o, h); x.stroke(); } }, { strength: 2.5, blur: 1 }));
+  wallUp.material.side = THREE.BackSide; wallUp.position.y = 3.33; grottoG.add(wallUp);
+  // 감실 10곳: 둥글게 파인 작은 굴 안에 앉은 보살
+  const nicheMat = reliefMaterial(160, 200, (x, w, h) => {
+    x.fillStyle = "rgb(170,170,170)"; x.fillRect(0, 0, w, h);
+    x.fillStyle = "rgb(25,25,25)"; x.beginPath(); x.moveTo(18, h - 10); x.lineTo(18, 74); x.quadraticCurveTo(w / 2, -18, w - 18, 74); x.lineTo(w - 18, h - 10); x.closePath(); x.fill();
+    blob(x, w / 2, 70, 15, 17, 1); blob(x, w / 2, 112, 24, 26, .9); blob(x, w / 2, 150, 42, 20, .95); blob(x, w / 2, 168, 46, 10, .7);
+    shape(x, [[w / 2 - 14, 58], [w / 2, 36], [w / 2 + 14, 58]], 220);
+    x.strokeStyle = "rgb(110,110,110)"; x.lineWidth = 5; x.beginPath(); x.arc(w / 2, 70, 28, 0, Math.PI * 2); x.stroke(); }, { strength: 6, blur: 2 });
+  [2, 3, 4, 5, 6, 10, 11, 12, 13, 14].forEach((i) => { const a = i / N * Math.PI * 2;
+    const n = new THREE.Mesh(new THREE.PlaneGeometry(.82, 1.02), nicheMat); n.position.set(Math.sin(a) * (R - .06), 3.3, Math.cos(a) * (R - .06)); n.rotation.y = a + Math.PI; grottoG.add(n); });
+  /* ---------- 돔 천장: 돌을 둥글게 쌓고, 주먹돌(돌못) 30개가 튀어나와 있어요 ---------- */
+  const domeMat = reliefMaterial(1024, 512, (x, w, h) => { x.fillStyle = "rgb(185,185,185)"; x.fillRect(0, 0, w, h); x.strokeStyle = "rgb(60,60,60)"; x.lineWidth = 4; const rows = 10;
+    for (let r = 0; r < rows; r++) { const y = r * h / rows; x.beginPath(); x.moveTo(0, y); x.lineTo(w, y); x.stroke(); const n = Math.max(8, Math.round(40 * Math.cos(r / rows * Math.PI / 2))); for (let c = 0; c < n; c++) { const xx = (c + (r % 2) * .5) * w / n; x.beginPath(); x.moveTo(xx, y); x.lineTo(xx, y + h / rows); x.stroke(); } } }, { strength: 2.5, blur: 1 });
+  domeMat.side = THREE.BackSide;
+  const dome = new THREE.Mesh(new THREE.SphereGeometry(R, 64, 24, 0, Math.PI * 2, 0, Math.PI / 2), domeMat); dome.position.y = 4.05; dome.scale.y = .85; grottoG.add(dome);
+  const nailGeo = new THREE.CylinderGeometry(.09, .13, .42, 8);
+  [.62, .9, 1.18].forEach((th, row) => { for (let k = 0; k < 10; k++) { const ph = (k + row * .5) / 10 * Math.PI * 2;
+    const p = new THREE.Vector3(Math.sin(th) * Math.sin(ph) * R, 4.05 + Math.cos(th) * R * .85, Math.sin(th) * Math.cos(ph) * R);
+    const n = new THREE.Mesh(nailGeo, SG_STONE); const inward = new THREE.Vector3(0, 4.05, 0).sub(p).normalize(); n.position.copy(p).addScaledVector(inward, .17);
+    n.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), inward); grottoG.add(n); } });
+  // 꼭대기 연꽃 덮개돌 (실제로 세 조각으로 금이 가 있어요)
+  const capMat = reliefMaterial(256, 256, (x, w, h) => { x.fillStyle = "rgb(140,140,140)"; x.fillRect(0, 0, w, h);
+    for (let ring = 0; ring < 2; ring++) for (let k = 0; k < 14; k++) { const a = (k + ring * .5) / 14 * Math.PI * 2, r = ring ? 58 : 92; blob(x, w / 2 + Math.cos(a) * r, h / 2 + Math.sin(a) * r, ring ? 16 : 22, ring ? 26 : 34, 1, a + Math.PI / 2); }
+    blob(x, w / 2, h / 2, 30, 30, .9); for (let k = 0; k < 9; k++) blob(x, w / 2 + Math.cos(k / 9 * 6.28) * 16, h / 2 + Math.sin(k / 9 * 6.28) * 16, 5, 5, 1);
+    x.strokeStyle = "rgb(0,0,0)"; x.lineWidth = 3; x.beginPath(); x.moveTo(w / 2 + 6, h / 2 - 20); x.lineTo(w / 2 + 40, 30); x.lineTo(w / 2 + 52, 0); x.moveTo(w / 2 - 4, h / 2 + 22); x.lineTo(60, h - 30); x.stroke(); }, { strength: 6, blur: 2 });
+  const cap = new THREE.Mesh(new THREE.CircleGeometry(.85, 40), capMat); cap.rotation.x = Math.PI / 2; cap.position.y = 4.05 + R * .85 - .02; grottoG.add(cap);
+  /* ---------- 뒤 벽의 연꽃 광배 ---------- */
+  const haloMat = reliefMaterial(512, 512, (x, w, h) => { x.fillStyle = "rgb(110,110,110)"; x.fillRect(0, 0, w, h);
+    x.strokeStyle = "rgb(200,200,200)"; x.lineWidth = 12; x.beginPath(); x.arc(w / 2, h / 2, 236, 0, Math.PI * 2); x.stroke();
+    for (let k = 0; k < 40; k++) { const a = k / 40 * Math.PI * 2; blob(x, w / 2 + Math.cos(a) * 214, h / 2 + Math.sin(a) * 214, 7, 7, 1); } // 구슬 테
+    for (let k = 0; k < 32; k++) { const a = k / 32 * Math.PI * 2; blob(x, w / 2 + Math.cos(a) * 160, h / 2 + Math.sin(a) * 160, 22, 42, .95, a + Math.PI / 2); } // 연잎 32장
+    x.strokeStyle = "rgb(170,170,170)"; x.lineWidth = 6; x.beginPath(); x.arc(w / 2, h / 2, 108, 0, Math.PI * 2); x.stroke();
+    blob(x, w / 2, h / 2, 60, 60, .7); }, { strength: 6, blur: 2 });
+  const halo = new THREE.Mesh(new THREE.CircleGeometry(1.2, 64), haloMat); halo.position.set(0, 4.55, -R + .06); grottoG.add(halo);
+  /* ---------- 연꽃 대좌: 아래 복련 · 가운데 기둥 · 위 앙련 ---------- */
+  const PED = new THREE.Group(); PED.position.set(0, 0, -1.05); grottoG.add(PED); grottoG.userData.ped = PED;
+  const petalMat = (up) => reliefMaterial(512, 128, (x, w, h) => { x.fillStyle = "rgb(90,90,90)"; x.fillRect(0, 0, w, h);
+    for (let k = 0; k < 16; k++) { const cx = (k + .5) * w / 16; shape(x, up ? [[cx - 15, h - 4], [cx - 18, h * .35, cx, 6], [cx + 18, h * .35, cx + 15, h - 4]] : [[cx - 15, 4], [cx - 18, h * .65, cx, h - 6], [cx + 18, h * .65, cx + 15, 4]], 230); blob(x, cx, up ? h * .55 : h * .45, 10, 26, 1); } }, { strength: 5, blur: 2 });
+  const lathe = (pts, m, y) => { const g = new THREE.LatheGeometry(pts.map(([r, yy]) => new THREE.Vector2(r, yy)), 48); const o = new THREE.Mesh(g, m); o.position.y = y || 0; PED.add(o); return o; };
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(1.42, 1.5, .3, 8), SG_STONE); base.position.y = .15; base.rotation.y = Math.PI / 8; PED.add(base);
+  lathe([[1.42, 0], [1.38, .1], [1.2, .2], [1.0, .24]], petalMat(false), .3);
+  const core = new THREE.Mesh(new THREE.CylinderGeometry(.86, .86, .42, 32), SG_STONE); core.position.y = .75; PED.add(core);
+  for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2; const p = new THREE.Mesh(new THREE.CylinderGeometry(.075, .075, .42, 10), SG_STONE); p.position.set(Math.cos(a) * .9, .75, Math.sin(a) * .9); PED.add(p); }
+  lathe([[.9, 0], [1.05, .06], [1.28, .26], [1.34, .4], [1.3, .44], [0, .44]], petalMat(true), .96);
+  PED.userData.top = 1.4;
+  /* ---------- 입구 쪽: 팔각 돌기둥 한 쌍 · 바깥 새벽빛 ---------- */
+  const door = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 2.7), new THREE.MeshBasicMaterial({ color: "#f3e8cf" })); door.position.set(0, 1.35, R + .6); door.rotation.y = Math.PI; grottoG.add(door);
+  [-1, 1].forEach((s) => { const pl = new THREE.Mesh(new THREE.CylinderGeometry(.19, .2, 3.1, 8), SG_STONE); pl.position.set(s * 1.0, 1.55, R - .1); grottoG.add(pl); });
+  box(2.5, .32, .45, SG_STONE, 0, 3.1, R - .1, grottoG);
+  /* ---------- 조명: 입구로 들어온 새벽빛이 부처님 얼굴을 비춰요 ---------- */
+  const gl = new THREE.PointLight("#ffe2b8", 26, 11, 1.4); gl.position.set(0, 3.0, 2.6); grottoG.add(gl);
+  const gl2 = new THREE.PointLight("#ffd29a", 5, 7, 1.6); gl2.position.set(0, .6, 1.4); grottoG.add(gl2);
+  const face = new THREE.SpotLight("#fff0d6", 70, 12, .42, .6, 1.2); face.position.set(0, 3.4, 3.4); face.target.position.set(0, 3.7, -1.05); grottoG.add(face, face.target);
+  const side = new THREE.PointLight("#ffd9a8", 8, 9, 1.6); side.position.set(-2.6, 3.6, -.6); grottoG.add(side);
+  const amb = new THREE.HemisphereLight("#fff4e0", "#5a4a38", .42); grottoG.add(amb); grottoG.userData.lights = [gl, gl2, face, side, amb];
   grottoG.visible = false;
+}
+// 석굴암 본존불: 국립박물관 석불좌상 3D 스캔을 하얀 화강암으로 (대웅전 불상과 따로 불러와요)
+let grottoBuddhaLoading = false;
+function makeGrottoBuddha() {
+  if (grottoBuddha || grottoBuddhaLoading) return; grottoBuddhaLoading = true;
+  new GLTFLoader().load("buddha.glb", (gltf) => {
+    const m = gltf.scene, stoneM = new THREE.MeshStandardMaterial({ color: "#f3ecdf", vertexColors: true, roughness: .72, metalness: 0 });
+    m.traverse((o) => { if (o.isMesh) { o.geometry.computeVertexNormals(); o.material = o.geometry.attributes.color ? stoneM : SG_STONE; } });
+    const bb = new THREE.Box3().setFromObject(m), size = bb.getSize(new THREE.Vector3()), k = 3.05 / size.y;
+    m.scale.setScalar(k); m.position.set(-(bb.min.x + bb.max.x) / 2 * k, grottoG.userData.ped.userData.top - .04 - bb.min.y * k, -(bb.min.z + bb.max.z) / 2 * k);
+    const g = new THREE.Group(); g.add(m); g.position.set(0, 0, -1.05); grottoG.add(g); grottoBuddha = g;
+  }, undefined, () => { grottoBuddhaLoading = false; });
 }
 // 바깥: 흙으로 덮인 둥근 언덕과 앞쪽 목조 전각
 {
@@ -1429,9 +1544,9 @@ function enterGrotto() {
   if (!player) return; standUp(); stopAutoBow(); pendingSeat = null; autoPath = null;
   fade(() => {
     inGrotto = true; grottoG.visible = true; hideWorld(true); if (player.aura) player.aura.visible = false;
-    if (!grottoBuddha) { grottoBuddha = statue.clone(true); grottoBuddha.traverse((o) => { if (o.isMesh) o.material = SG_STONE; }); grottoBuddha.scale.setScalar(.54); grottoBuddha.position.set(0, -.1, -1.2); grottoG.add(grottoBuddha); }
-    player.pos.set(GR.x, 0, GR.z + 2.3); player.target.copy(player.pos); player.yaw = Math.PI; player.root.rotation.y = Math.PI; player.y = 0; player.sitting = true;
-    camYaw = 0; camPitch = .3; camTarget.set(GR.x, 2.2, GR.z - 1); camera.position.set(GR.x, 2.9, GR.z + 3.6);
+    makeGrottoBuddha();
+    player.pos.set(GR.x, 0, GR.z + 2.5); player.target.copy(player.pos); player.yaw = Math.PI; player.root.rotation.y = Math.PI; player.y = 0; player.sitting = true;
+    camYaw = 0; camPitch = .3; camDist = 7.5; camTarget.set(GR.x, 2.9, GR.z - 1); camera.position.set(GR.x, 3.1, GR.z + 3.7);
     zone = "grotto"; renderActions(); say(ZONES.grotto.intro); gain("visit:grotto"); sendPresence();
   });
 }
@@ -3948,8 +4063,8 @@ function tick() {
     if (z !== zone) { const prev = zone; if (prev === "searock" && z !== "searock" && pray && pray.k === "yongwang") { stopPray(); pray = null; $("prayBox").hidden = true; } if (prev === "peak" && z !== "peak") { if (pray && pray.timer) stopPray(); pray = null; dipper.active = false; dipper.full = false; $("prayBox").hidden = true; applyTimeOfDay(); } zone = z; if (z !== "sea" && z !== "searock" && loopEls.wave && !loopEls.wave.paused) loopEls.wave.pause(); renderActions(); say(ZONES[zone].intro); gain(`visit:${z === "searock" ? "sea" : z}`); if (z === "peak") reachPeak(); if (z === "hall") enterHallView(prev); }
     // 대웅전 안에서는 동자승 뒤쪽 위에서 부처님을 함께 바라보는 구도로 바꿔요
     if (inRoom) { // 개인 법당: 동자승 뒤에서 탱화와 불단을 바라봐요
-      const yaw = clamp(camYaw, -.5, .5), cp = clamp(camPitch, .1, .6);
-      const cw = new THREE.Vector3(RO.x + Math.sin(yaw) * 2, 2.25 + cp * .6, RO.z + 3.15 - Math.abs(Math.sin(yaw)) * .4);
+      const yaw = clamp(camYaw, -.5, .5), cp = clamp(camPitch, .1, .6), zf = clamp(camDist / 7.5, .45, 1.08); // 두 손가락으로 가까이 · 멀리
+      const cw = new THREE.Vector3(RO.x + Math.sin(yaw) * 2 * zf, 2.25 + cp * .6 - (1 - zf) * .35, RO.z - 2.6 + (5.75 - Math.abs(Math.sin(yaw)) * .4) * zf);
       camTarget.lerp(new THREE.Vector3(RO.x, 1.45, RO.z - 2.6), Math.min(1, dt * 4)); camera.position.lerp(cw, Math.min(1, dt * 4));
     } else if (inCave) { // 금강굴: 동자승 뒤에서 바위 제단과 굴 벽을 바라봐요
       const yaw = clamp(camYaw, -.7, .7), cp = clamp(camPitch, .05, .6);
@@ -3957,8 +4072,10 @@ function tick() {
       camTarget.lerp(new THREE.Vector3(CV.x, 1.75 + cp * .4, CV.z - 2.6), Math.min(1, dt * 4)); camera.position.lerp(cw, Math.min(1, dt * 4));
     } else if (inGrotto) { // 석굴암: 동자승 뒤에서 본존불을 우러러봐요
       const yaw = clamp(camYaw, -.8, .8), cp = clamp(camPitch, .05, .7);
-      const cw = new THREE.Vector3(GR.x + Math.sin(yaw) * 1.4, 2.5 + cp * 1.4, GR.z + 2.3 + Math.cos(yaw) * 1.3);
-      camTarget.lerp(new THREE.Vector3(GR.x, 2.2 + cp * .6, GR.z - 1), Math.min(1, dt * 4)); camera.position.lerp(cw, Math.min(1, dt * 4));
+      const zd = 1 + (clamp(camDist, 3, 12) - 7) * .06; // 두 손가락으로 가까이 · 멀리
+      const cw = new THREE.Vector3(GR.x + Math.sin(yaw) * 1.5 * zd, 2.6 + cp * 1.5, GR.z + 2.4 + Math.cos(yaw) * 1.4 * zd);
+      cw.z = Math.min(cw.z, GR.z + 3.6);
+      camTarget.lerp(new THREE.Vector3(GR.x, 2.75 + cp * .9, GR.z - 1), Math.min(1, dt * 4)); camera.position.lerp(cw, Math.min(1, dt * 4));
     } else if (zone === "peak" && dipper.active) {
       const top = mh(player.pos.x, player.pos.z), cw = new THREE.Vector3(player.pos.x + 1.2, top + 2.4, player.pos.z + 4.2);
       camTarget.lerp(dipper.g.position.clone().add(new THREE.Vector3(0, 4.5, 0)), Math.min(1, dt * 1.5)); camera.position.lerp(cw, Math.min(1, dt * 2));

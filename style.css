@@ -424,3 +424,4 @@ body.rec .cnote{display:none!important}
 .share-inapp .row{display:flex;gap:8px}.share-inapp .row>*{flex:1;padding:9px 6px;font-size:.85rem}
 .share-card img{-webkit-touch-callout:default;user-select:auto;pointer-events:auto}
 .share-card:has(#shareInApp:not([hidden])) img{max-height:54vh}
+body.in-room .pray-box.compact{top:auto;bottom:calc(var(--sb) + 196px);background:rgba(12,16,24,.5)}
