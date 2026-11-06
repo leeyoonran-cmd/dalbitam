@@ -330,3 +330,5 @@ body.rec .sun-chip{display:none!important}
 .verse-day{margin:0 0 10px;font-size:12px;letter-spacing:.18em;color:#d9b44a}
 .verse-day:empty{display:none}
 .verse-card .row{flex-wrap:wrap}
+.verse-card .row>*{padding:10px 6px;white-space:nowrap;font-size:.86rem}
+body:has(#sunPanel:not([hidden])) .coach,body:has(#sunLamp:not([hidden])) .coach{display:none!important}
