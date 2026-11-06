@@ -336,3 +336,38 @@ body:has(#sunPanel:not([hidden])) .coach,body:has(#sunLamp:not([hidden])) .coach
 .panel{top:var(--vvt,0px);bottom:auto;height:var(--vh,100%)}
 .sun-card:focus-within .sun-dday,.sun-card:focus-within #sunLead,.sun-card:focus-within #sunList,.sun-card:focus-within #sunTotal{display:none}
 .ts-lamp-title,.ts-lamp-vow{word-break:keep-all}
+
+/* ---------- 오늘의 운세 카드 ---------- */
+.right-chips{position:fixed;right:var(--sr);top:calc(var(--st) + var(--vvt,0px) + 56px);z-index:10;display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.right-chips .sun-chip{position:static}
+.fortune-chip{background:linear-gradient(90deg,rgba(70,40,110,.85),rgba(110,60,90,.85));border:1px solid rgba(214,170,255,.55);backdrop-filter:blur(10px);border-radius:999px;padding:6px 12px;font-size:.82rem;font-weight:700;color:#f6ecff}
+body.rec .right-chips{display:none!important}
+.fortune-view{position:fixed;inset:0;z-index:80;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:calc(var(--st) + 16px) var(--sr) calc(var(--sb) + 16px) var(--sl);background:radial-gradient(circle at 50% 38%,rgba(150,110,230,.28),rgba(6,8,14,.93) 65%)}
+.ft-card{width:min(330px,88vw);height:min(520px,66vh);perspective:1400px;cursor:pointer;outline:none}
+.ft-inner{position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform .95s cubic-bezier(.2,.75,.2,1)}
+.ft-card.flip .ft-inner{transform:rotateY(180deg)}
+.ft-face{position:absolute;inset:0;border-radius:22px;backface-visibility:hidden;-webkit-backface-visibility:hidden;border:2px solid rgba(245,197,66,.65);box-shadow:0 18px 50px rgba(0,0,0,.55),0 0 40px rgba(245,197,66,.18)}
+.ft-back{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:radial-gradient(circle at 50% 35%,#3b2d6b,#191530 70%);overflow:hidden}
+.ft-back::before{content:"";position:absolute;inset:12px;border:1px solid rgba(245,197,66,.35);border-radius:14px}
+.ft-moon{width:120px;height:120px;border-radius:50%;background:radial-gradient(circle at 40% 38%,#fff8de,#f5d27a 55%,#c99a3c);box-shadow:0 0 60px 18px rgba(255,220,140,.35);animation:ftGlow 2.6s ease-in-out infinite}
+@keyframes ftGlow{50%{box-shadow:0 0 90px 30px rgba(255,220,140,.5)}}
+.ft-back-t{margin:18px 0 0;font-family:var(--display);font-size:1.7rem;color:#ffe9b0;letter-spacing:.12em}
+.ft-back-s{margin:0;font-size:.85rem;color:rgba(255,240,210,.7)}
+.ft-back-brand{position:absolute;bottom:26px;margin:0;font-size:.72rem;letter-spacing:.25em;color:rgba(245,197,66,.7)}
+.ft-front{transform:rotateY(180deg);background:linear-gradient(180deg,#232a40,#151a28);padding:18px 18px 14px;display:flex;flex-direction:column;align-items:center;text-align:center;overflow:auto}
+.ft-date{margin:0;font-size:.72rem;letter-spacing:.2em;color:#d9b44a}
+.ft-grade{margin:4px 0 0;font-family:"Gowun Batang",serif;font-size:3.1rem;line-height:1.1;color:#f5c542;text-shadow:0 0 24px rgba(245,197,66,.45)}
+.ft-grade-ko{margin:0;font-size:.85rem;color:#ffe3a0}
+.ft-msg{margin:10px 0 10px;font-family:"Gowun Batang",serif;font-size:1rem;line-height:1.55;color:#f4ead6;word-break:keep-all}
+.ft-rows{list-style:none;margin:0;padding:0;width:100%;display:flex;flex-direction:column;gap:6px}
+.ft-rows li{display:grid;grid-template-columns:auto 1fr;gap:2px 8px;text-align:left;background:rgba(0,0,0,.25);border-radius:10px;padding:6px 10px}
+.ft-rows b{font-size:.8rem;color:#ece6d8;white-space:nowrap}
+.ft-rows .st{font-size:.78rem;color:#f5c542;letter-spacing:.05em;text-align:right}
+.ft-rows small{grid-column:1/-1;font-size:.76rem;color:var(--mute);word-break:keep-all}
+.ft-lucky{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:10px;font-size:.76rem;color:#ece6d8}
+.ft-lucky span{display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.06);border-radius:999px;padding:4px 10px}
+.ft-lucky i{display:inline-block;width:12px;height:12px;border-radius:50%;border:1px solid rgba(255,255,255,.4)}
+.ft-todo{margin:8px 0 0;font-size:.8rem;color:#ffd98a;word-break:keep-all}
+.ft-btns{display:flex;flex-direction:column;gap:8px;width:min(330px,88vw);transition:opacity .4s}
+.ft-btns.wait{opacity:0;pointer-events:none}
+.ft-btns .row{display:flex;gap:8px}.ft-btns .row>*{flex:1;padding:10px 6px}

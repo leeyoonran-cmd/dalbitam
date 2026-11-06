@@ -78,7 +78,7 @@
 </div>
 
 <div id="placeTag" class="place-tag">마당</div>
-<button id="sunBtn" class="sun-chip" type="button" hidden></button>
+<div class="right-chips"><button id="sunBtn" class="sun-chip" type="button" hidden></button><button id="fortuneBtn" class="fortune-chip" type="button" hidden>🔮 오늘의 운세</button></div>
 <div id="groupBanner" class="group-banner" hidden></div>
 <button id="recExit" class="rec-exit" type="button" aria-label="촬영 모드 끝내기"></button>
 <button id="hud" class="hud" type="button" aria-label="수행 등급과 오늘의 수행">
@@ -328,6 +328,28 @@
     <button id="sunBow" type="button" class="ghost-btn">🙇 108배로 불 밝히기</button>
     <button id="sunShare" type="button" class="ghost-btn">📸 합격 카드 만들기</button>
     <button id="sunLampClose" type="button" class="ghost-btn">닫기</button>
+  </div>
+</div>
+
+<!-- 오늘의 운세 카드 -->
+<div id="fortuneView" class="fortune-view" hidden>
+  <div id="ftCard" class="ft-card" role="button" tabindex="0" aria-label="운세 카드 뒤집기">
+    <div class="ft-inner">
+      <div class="ft-face ft-back"><div class="ft-moon"></div><p class="ft-back-t">오늘의 운세</p><p class="ft-back-s">카드를 눌러 뒤집어 보세요</p><p class="ft-back-brand no-tr">달빛암 · DALBITAM</p></div>
+      <div class="ft-face ft-front">
+        <p class="ft-date no-tr" id="ftDate"></p>
+        <p class="ft-grade no-tr" id="ftGrade"></p>
+        <p class="ft-grade-ko no-tr" id="ftGradeKo"></p>
+        <p class="ft-msg no-tr" id="ftMsg"></p>
+        <ul class="ft-rows no-tr" id="ftRows"></ul>
+        <div class="ft-lucky no-tr" id="ftLucky"></div>
+        <p class="ft-todo no-tr" id="ftTodo"></p>
+      </div>
+    </div>
+  </div>
+  <div class="ft-btns" id="ftBtns">
+    <button id="ftLantern" type="button" class="primary no-tr"></button>
+    <div class="row"><button id="ftSave" type="button" class="ghost-btn">📸 스토리로 저장</button><button id="ftClose" type="button" class="ghost-btn">닫기</button></div>
   </div>
 </div>
 

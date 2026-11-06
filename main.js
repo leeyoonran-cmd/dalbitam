@@ -4434,3 +4434,116 @@ document.addEventListener("focusin", (e) => {
   const el = e.target; if (!el.matches || !el.matches(".panel input, .panel textarea")) return;
   [320, 650].forEach((ms) => setTimeout(() => { if (document.activeElement === el) el.scrollIntoView({ block: "center", behavior: "smooth" }); }, ms));
 });
+
+/* =========================================================
+   오늘의 운세 카드 (사람마다 하루 한 장 · 스토리 이미지로 저장)
+   ========================================================= */
+const FT = {
+  grades: [["大吉", "대길", "Great Blessing", 2], ["吉", "길", "Blessing", 3], ["中吉", "중길", "Good Fortune", 3], ["小吉", "소길", "Small Blessing", 2], ["平", "평", "A Calm Day", 1]],
+  msgs: [
+    ["막혔던 일이 술술 풀리는 날이에요.", "Things that were stuck begin to flow today."],
+    ["작은 친절이 큰 복이 되어 돌아와요.", "A small kindness returns as a big blessing."],
+    ["서두르지 않아도 괜찮아요. 천천히 가면 닿아요.", "No need to rush. Go slowly and you'll arrive."],
+    ["오래 기다린 소식이 들려올 수 있어요.", "News you've waited for may arrive."],
+    ["오늘 한 결심이 오래 갈 거예요.", "A decision made today will last."],
+    ["웃는 얼굴에 좋은 인연이 찾아와요.", "Good people come to a smiling face."],
+    ["비워 낸 자리에 새 기운이 들어와요.", "New energy fills the space you clear."],
+    ["생각보다 운이 내 편이에요. 한 걸음 내디뎌 보세요.", "Luck is on your side. Take one step forward."],
+    ["쉬어 가는 것도 수행이에요. 오늘은 나를 아껴 주세요.", "Resting is practice too. Be gentle with yourself today."],
+    ["말 한마디가 복을 불러요. 고운 말을 써 보세요.", "One kind word can call in luck."],
+    ["뿌린 만큼 거두는 날이에요. 노력이 보답받아요.", "You reap what you sow today. Effort pays off."],
+    ["걱정했던 일이 생각보다 가볍게 지나가요.", "What you worried about passes more lightly than you think."],
+    ["가까운 사람에게 고마움을 전하면 운이 열려요.", "Thank someone close to you and luck opens up."],
+    ["마음이 고요하면 길이 보여요.", "When the mind is still, the path appears."],
+    ["새로운 시작에 딱 좋은 날이에요.", "A perfect day for a new beginning."],
+    ["작은 행운이 하루 종일 따라다녀요.", "Small luck follows you all day long."]
+  ],
+  cats: [
+    ["gold", "재물", "Wealth", "💰", [["뜻밖의 작은 수입이 생길 수 있어요", "An unexpected bit of income may come"], ["충동구매만 조심하면 좋은 날", "Just watch out for impulse buys"], ["아껴 둔 돈이 든든한 힘이 돼요", "Your savings become your strength"], ["좋은 정보가 들어와요. 귀를 열어 두세요", "Good tips come your way. Keep your ears open"], ["베푼 만큼 돌아오는 날이에요", "What you give comes back to you"], ["쓰기보다 모으기가 이기는 날", "Saving beats spending today"]]],
+    ["wisdom", "학업 · 일", "Study & Work", "📚", [["집중이 잘 돼서 어려운 일도 풀려요", "Your focus is sharp; hard tasks go well"], ["미뤄 둔 일을 끝내기 좋아요", "A good day to finish what you put off"], ["도움을 청하면 귀인이 나타나요", "Ask for help and a helper appears"], ["한 번 더 확인하면 완벽해요", "Double-check once and it's perfect"], ["새로 배우는 것이 쏙쏙 들어와요", "New things stick in your mind"], ["꾸준함이 실력을 이겨요", "Steadiness wins the day"]]],
+    ["health", "건강", "Health", "🍀", [["물을 자주 마시면 몸이 가벼워져요", "Drink water often and feel lighter"], ["일찍 잠들면 내일이 달라져요", "Sleep early and tomorrow changes"], ["가벼운 산책이 보약이에요", "A short walk is the best medicine"], ["어깨 힘을 빼고 깊게 숨 쉬어 보세요", "Relax your shoulders and breathe deeply"], ["따뜻한 차 한 잔이 마음까지 데워요", "A warm cup of tea warms the heart too"], ["무리하지 않는 게 오늘의 비결", "Not overdoing it is today's secret"]]],
+    ["love", "인연", "Relationships", "💗", [["먼저 건넨 안부가 반가운 답으로 와요", "A hello you send first gets a warm reply"], ["오래된 인연이 다시 이어질 수 있어요", "An old connection may reconnect"], ["가족과 나눈 대화에서 힘을 얻어요", "Talking with family gives you strength"], ["진심은 결국 전해져요", "Sincerity always gets through"], ["새로운 사람을 만나기 좋은 날", "A good day to meet someone new"], ["작은 선물이 마음을 열어요", "A small gift opens hearts"]]]
+  ],
+  colors: [["달빛 금색", "Moonlit gold", "#f5c542"], ["연꽃 분홍", "Lotus pink", "#f29ac8"], ["단청 초록", "Dancheong green", "#3f8f7d"], ["밤하늘 남색", "Night indigo", "#4a5fa8"], ["한지 흰색", "Hanji white", "#f3eee3"], ["노을 주황", "Sunset orange", "#f2a65a"], ["하늘 파랑", "Sky blue", "#8fc4ff"], ["소나무 초록", "Pine green", "#5f8f4e"]],
+  todos: [["목탁 30번 치기", "Strike the moktak 30 times"], ["탑돌이 한 바퀴", "Walk once around the pagoda"], ["범종 세 번 치기", "Ring the temple bell 3 times"], ["향 하나 피우기", "Light a stick of incense"], ["공양간에서 차 한 잔", "Have a cup of tea at the kitchen hall"], ["염주 한 바퀴 돌리기", "Count the prayer beads once around"], ["108배 올리기", "Do 108 bows"], ["소원 연등 하나 달기", "Hang a wish lantern"]]
+};
+function ftRng(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+function todayFortune() {
+  let h = 2166136261; for (const ch of (me.nick || "스님") + "|" + kstDay()) h = Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0;
+  const r = ftRng(h), pick = (arr) => arr[Math.floor(r() * arr.length)];
+  const tot = FT.grades.reduce((s, g) => s + g[3], 0); let x = r() * tot, grade = FT.grades[0]; for (const g of FT.grades) { if ((x -= g[3]) < 0) { grade = g; break; } }
+  const base = grade[0] === "大吉" ? 4 : grade[0] === "平" ? 2 : 3;
+  const rows = FT.cats.map(([kind, ko, en, emo, lines]) => ({ kind, ko, en, emo, stars: clamp(base + Math.floor(r() * 3) - 1, 2, 5), line: pick(lines) }));
+  return { grade, msg: pick(FT.msgs), rows, color: pick(FT.colors), num: 1 + Math.floor(r() * 9), todo: pick(FT.todos), best: rows.reduce((b, w) => (w.stars > b.stars ? w : b), rows[0]) };
+}
+const ftStars = (n) => "★".repeat(n) + "☆".repeat(5 - n);
+let ftCur = null;
+function renderFortune(f) {
+  const EN = isEN(), [, m, d] = kstDay().split("-").map(Number), MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  $("ftDate").textContent = EN ? `TODAY'S FORTUNE · ${MON[m - 1]} ${d}` : `${me.nick || "스님"}님의 오늘의 운세 · ${m}월 ${d}일`;
+  $("ftGrade").textContent = f.grade[0]; $("ftGradeKo").textContent = EN ? f.grade[2] : f.grade[1];
+  $("ftMsg").textContent = f.msg[EN ? 1 : 0];
+  const ul = $("ftRows"); ul.innerHTML = "";
+  f.rows.forEach((w) => { const li = document.createElement("li"); li.innerHTML = `<b>${w.emo} ${EN ? w.en : w.ko}</b><span class="st">${ftStars(w.stars)}</span><small></small>`; li.querySelector("small").textContent = w.line[EN ? 1 : 0]; ul.appendChild(li); });
+  $("ftLucky").innerHTML = `<span><i style="background:${f.color[2]}"></i>${EN ? f.color[1] : f.color[0]}</span><span>${EN ? "Lucky number" : "행운의 숫자"} ${f.num}</span>`;
+  $("ftTodo").textContent = EN ? `🙏 Today's practice: ${f.todo[1]}` : `🙏 오늘의 수행: ${f.todo[0]}`;
+  const kd = LANTERN_KINDS[f.best.kind];
+  $("ftLantern").textContent = EN ? `${kd.emoji} A good day for a ${({ gold: "Gold", wisdom: "Wisdom", health: "Health", love: "Love" })[f.best.kind]} Lantern` : `${kd.emoji} 오늘은 ${kd.name} 달기 좋은 날`;
+}
+function openFortune() {
+  ftCur = todayFortune(); renderFortune(ftCur);
+  const first = me.ftDay !== kstDay();
+  $("ftCard").classList.toggle("flip", !first); $("ftBtns").classList.toggle("wait", first);
+  document.querySelectorAll(".panel").forEach((p) => (p.hidden = true));
+  $("fortuneView").hidden = false; sfx.soft(); visitAct("fortune");
+}
+function flipFortune() {
+  if ($("ftCard").classList.contains("flip")) return;
+  $("ftCard").classList.add("flip"); me.ftDay = kstDay(); save();
+  setTimeout(() => { sfx.bell(); if (navigator.vibrate) navigator.vibrate([20, 40, 20]); }, 450);
+  setTimeout(() => $("ftBtns").classList.remove("wait"), 900);
+  if (player) playAnim(player, "greet");
+}
+$("ftCard").onclick = flipFortune;
+$("ftCard").addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); flipFortune(); } });
+$("ftClose").onclick = () => { $("fortuneView").hidden = true; };
+$("ftLantern").onclick = () => { $("fortuneView").hidden = true; pickedKind = ftCur.best.kind; kindTouched = true; renderKindPick(); openWish("yard"); };
+$("fortuneBtn").onclick = openFortune;
+// 운세 카드를 스토리 이미지로
+async function shareFortune() {
+  const f = ftCur, EN = isEN(), W = 1080, H = 1920, c = document.createElement("canvas"); c.width = W; c.height = H; const x = c.getContext("2d");
+  try { await Promise.all([document.fonts.load(`700 60px "Gowun Batang"`), document.fonts.load(`40px "Gowun Dodum"`)]); } catch {}
+  const g = x.createRadialGradient(W / 2, 700, 100, W / 2, 800, 1300); g.addColorStop(0, "#2e2456"); g.addColorStop(1, "#0b0d16"); x.fillStyle = g; x.fillRect(0, 0, W, H);
+  for (let i = 0; i < 70; i++) { x.fillStyle = `rgba(255,245,220,${.15 + Math.random() * .5})`; x.beginPath(); x.arc(Math.random() * W, Math.random() * H, Math.random() * 2.2 + .4, 0, Math.PI * 2); x.fill(); }
+  const rr = (X, Y, w, h, r) => { x.beginPath(); x.roundRect ? x.roundRect(X, Y, w, h, r) : x.rect(X, Y, w, h); };
+  const cx = 90, cy = 150, cw = W - 180, chh = 1480;
+  const cg = x.createLinearGradient(0, cy, 0, cy + chh); cg.addColorStop(0, "#232a40"); cg.addColorStop(1, "#151a28"); x.fillStyle = cg; rr(cx, cy, cw, chh, 40); x.fill();
+  x.strokeStyle = "rgba(245,197,66,.7)"; x.lineWidth = 5; x.stroke(); x.strokeStyle = "rgba(245,197,66,.3)"; x.lineWidth = 2; rr(cx + 22, cy + 22, cw - 44, chh - 44, 26); x.stroke();
+  x.textAlign = "center"; x.fillStyle = "#d9b44a"; x.font = `34px "Gowun Dodum",sans-serif`; x.fillText($("ftDate").textContent, W / 2, cy + 110);
+  x.save(); x.shadowColor = "rgba(245,197,66,.6)"; x.shadowBlur = 40; x.fillStyle = "#f5c542"; x.font = `700 200px "Gowun Batang",serif`; x.fillText(f.grade[0], W / 2, cy + 340); x.restore();
+  x.fillStyle = "#ffe3a0"; x.font = `44px "Gowun Dodum",sans-serif`; x.fillText(EN ? f.grade[2] : f.grade[1], W / 2, cy + 420);
+  x.fillStyle = "#f4ead6"; x.font = `52px "Gowun Batang",serif`; const ml = wrapLines(x, f.msg[EN ? 1 : 0], cw - 160); ml.slice(0, 3).forEach((l, i) => x.fillText(l, W / 2, cy + 530 + i * 74));
+  let y = cy + 530 + Math.min(ml.length, 3) * 74 + 30;
+  f.rows.forEach((w) => {
+    x.fillStyle = "rgba(0,0,0,.28)"; rr(cx + 60, y, cw - 120, 150, 22); x.fill();
+    x.textAlign = "left"; x.fillStyle = "#ece6d8"; x.font = `700 40px "Gowun Dodum",sans-serif`; x.fillText(`${w.emo} ${EN ? w.en : w.ko}`, cx + 95, y + 60);
+    x.textAlign = "right"; x.fillStyle = "#f5c542"; x.font = `40px sans-serif`; x.fillText(ftStars(w.stars), cx + cw - 95, y + 60);
+    x.textAlign = "left"; x.fillStyle = "#b9c0cc"; x.font = `34px "Gowun Dodum",sans-serif`; x.fillText(wrapLines(x, w.line[EN ? 1 : 0], cw - 190)[0], cx + 95, y + 115);
+    y += 170;
+  });
+  x.textAlign = "center"; x.font = `36px "Gowun Dodum",sans-serif`;
+  const lk = `${EN ? f.color[1] : f.color[0]}   ·   ${EN ? "Lucky number" : "행운의 숫자"} ${f.num}`, lw = x.measureText(lk).width;
+  x.fillStyle = f.color[2]; x.beginPath(); x.arc(W / 2 - lw / 2 - 30, y + 22, 18, 0, Math.PI * 2); x.fill(); x.fillStyle = "#ece6d8"; x.fillText(lk, W / 2 + 10, y + 35);
+  x.fillStyle = "#ffd98a"; x.font = `38px "Gowun Dodum",sans-serif`; x.fillText(EN ? `Today's practice: ${f.todo[1]}` : `오늘의 수행 · ${f.todo[0]}`, W / 2, y + 110);
+  x.fillStyle = "#f5c542"; x.font = `700 84px "Gowun Batang",serif`; x.fillText(EN ? "Dalbitam" : "달빛암", W / 2, 1760);
+  x.fillStyle = "rgba(244,239,226,.8)"; x.font = `700 40px "Gowun Dodum",sans-serif`; x.fillText(EN ? "Draw yours · dalbitam.vercel.app" : "나도 오늘의 운세 뽑기 · dalbitam.vercel.app", W / 2, 1840);
+  const blob = await new Promise((r) => c.toBlob(r, "image/png")); if (!blob) return;
+  const file = new File([blob], "dalbitam-fortune.png", { type: "image/png" }), url = location.origin + (EN ? "/?lang=en" : "/");
+  const text = EN ? "My fortune for today from Dalbitam, a Korean temple online 🔮" : "온라인 절 달빛암에서 뽑은 오늘의 운세 🔮";
+  try { if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], text, url }); return; } } catch (e) { if (e && e.name === "AbortError") return; }
+  const im = URL.createObjectURL(blob); $("shareImg").src = im; $("shareDl").href = im; $("shareDl").download = "dalbitam-fortune.png"; $("shareView").hidden = false;
+}
+$("ftSave").onclick = () => { $("fortuneView").hidden = true; shareFortune(); };
+// 입장하면 운세 버튼을 보여 주고, 오늘 아직 안 뽑았으면 살짝 알려 줘요
+{ const show = () => { $("fortuneBtn").hidden = false; if (me.ftDay !== kstDay()) setTimeout(() => { if ($("fortuneView").hidden) toast(isEN() ? "🔮 Your fortune card for today is ready" : "🔮 오늘의 운세 카드가 도착했어요", { label: isEN() ? "Draw" : "뽑기", fn: openFortune }); }, 14000); };
+  $("enterBtn").addEventListener("click", show); $("nickInput").addEventListener("keydown", (e) => { if (e.key === "Enter") show(); }); }
