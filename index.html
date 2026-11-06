@@ -54,9 +54,11 @@
     <p class="eyebrow">ONLINE TEMPLE</p>
     <h1 id="siteTitle">달빛암</h1>
     <p class="en-only romaji">Dalbitam · Moonlit Hermitage</p>
+    <p class="en-only tagline no-tr">Make a wish at a Korean temple 🏮</p>
     <p class="lead">목탁 한 번, 숨 한 번.<br>잠시 마음을 내려놓고 쉬어 가세요.</p>
     <p id="gateCount" class="gate-count" hidden></p>
     <button id="gateSun" type="button" class="gate-sun" hidden></button>
+    <button id="gateEv" type="button" class="gate-ev no-tr" hidden></button>
     <label for="nickInput">법명</label>
     <div class="row"><input id="nickInput" maxlength="8" placeholder="예: 고요" autocomplete="off"><button id="nickDice" type="button" class="ghost-btn dice" aria-label="법명 새로 짓기">🎲</button></div>
     <button id="enterBtn" type="button" class="primary">입장하기</button>
@@ -78,7 +80,7 @@
 </div>
 
 <div id="placeTag" class="place-tag">마당</div>
-<div class="right-chips"><button id="sunBtn" class="sun-chip" type="button" hidden></button><button id="fortuneBtn" class="fortune-chip" type="button" hidden>🔮 오늘의 운세</button></div>
+<div class="right-chips"><button id="sunBtn" class="sun-chip" type="button" hidden></button><button id="fortuneBtn" class="fortune-chip" type="button" hidden>🔮 오늘의 운세</button><button id="evBtn" class="ev-chip no-tr" type="button" hidden></button></div>
 <div id="groupBanner" class="group-banner" hidden></div>
 <button id="recExit" class="rec-exit" type="button" aria-label="촬영 모드 끝내기"></button>
 <button id="hud" class="hud" type="button" aria-label="수행 등급과 오늘의 수행">
@@ -206,6 +208,7 @@
     <button id="shareBtn" type="button" class="ghost-btn">📸 공유 카드 만들기</button>
     <button id="shareLink" type="button" class="ghost-btn">🔗 주소 복사하기</button>
     <button type="button" class="ghost-btn" onclick="setLang(LANG==='en'?'ko':'en')">🌐 <span class="no-tr lang-name">English</span></button>
+    <button id="evOpen" type="button" class="ghost-btn">🗓️ 달빛암 행사 일정</button>
     <button id="installBtn" type="button" class="ghost-btn">📲 앱처럼 홈 화면에 추가하기</button>
     <details class="credits"><summary>소리 출처</summary>
       <ul class="no-tr">
@@ -359,6 +362,17 @@
     <button id="ftBirthEdit" type="button" class="ft-link no-tr"></button>
   </div>
 </div>
+
+<!-- 행사 일정 -->
+<div id="evPanel" class="panel" hidden>
+  <div class="panel-card">
+    <div class="panel-head"><h2 id="evTitle" class="no-tr">🗓️ 달빛암 행사</h2><button class="close" data-close type="button" aria-label="닫기">✕</button></div>
+    <p class="muted no-tr" id="evLead"></p>
+    <div id="evList" class="ev-list no-tr"></div>
+  </div>
+</div>
+<!-- 문화 설명 (영어 모드) -->
+<div id="cnote" class="cnote no-tr" hidden><b id="cnoteT"></b><p id="cnoteP"></p><button id="cnoteOk" type="button" class="primary">Got it</button></div>
 
 <!-- 개인 법당 기도 -->
 <div id="prayBox" class="pray-box" hidden>

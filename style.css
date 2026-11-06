@@ -391,3 +391,27 @@ body.rec .right-chips{display:none!important}
 @media (max-height:700px){.ft-card{height:min(560px,calc(var(--vh,100vh) - var(--st) - var(--sb) - 200px))}}
 .fortune-view:has(#ftBirth:not([hidden])) .ft-card{height:min(420px,calc(var(--vh,100vh) - var(--st) - var(--sb) - 260px))}
 .fortune-view:has(#ftBirth:not([hidden])) .ft-moon{width:84px;height:84px}.fortune-view:has(#ftBirth:not([hidden])) .ft-back-t{margin-top:8px;font-size:1.4rem}.fortune-view:has(#ftBirth:not([hidden])) .ft-back-brand{bottom:18px}
+
+/* ---------- 행사 배너 · 일정 ---------- */
+.tagline{margin:-2px 0 4px;font-family:var(--display);font-size:1.02rem;color:#ffd98a}
+.gate-ev{background:rgba(255,255,255,.04);border:1px dashed rgba(242,166,90,.5);border-radius:14px;padding:8px 12px;color:var(--ink);font-size:.84rem;line-height:1.5}
+.gate-ev b{color:var(--lantern)}
+.ev-chip{background:linear-gradient(90deg,rgba(110,40,30,.85),rgba(120,80,20,.85));border:1px solid rgba(242,166,90,.6);backdrop-filter:blur(10px);border-radius:999px;padding:6px 12px;font-size:.82rem;font-weight:700;color:#fff1dc;font-variant-numeric:tabular-nums}
+.ev-list{display:flex;flex-direction:column;gap:10px}
+.ev-item{background:rgba(0,0,0,.25);border:1px solid var(--glass-line);border-left:4px solid var(--lantern);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:6px}
+.ev-item.on{border-left-color:#f5c542;background:rgba(245,197,66,.08)}
+.ev-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.ev-top b{font-family:var(--display);font-size:1.08rem}
+.ev-badge{font-size:.76rem;font-weight:700;color:#2a1a0c;background:var(--lantern);border-radius:999px;padding:3px 9px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.ev-item small{color:var(--mute);font-size:.8rem}
+.ev-item p{margin:0;font-size:.88rem;line-height:1.6;color:#e4ddcf;word-break:keep-all}
+.ev-btns{display:flex;gap:6px;flex-wrap:wrap}
+.ev-btns button,.ev-btns a{font-size:.8rem;padding:7px 11px;border-radius:999px;border:1px solid var(--glass-line);background:transparent;color:var(--ink);text-decoration:none}
+.ev-btns .go{background:var(--lantern);color:#2a1a0c;border:0;font-weight:700}
+/* 문화 설명 카드 */
+.cnote{position:fixed;left:50%;bottom:calc(var(--sb) + 190px);transform:translateX(-50%);z-index:45;width:min(330px,calc(100% - 32px));background:rgba(14,18,28,.94);border:1px solid rgba(245,197,66,.5);border-radius:16px;padding:12px 14px;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+.cnote b{font-family:var(--display);color:#ffd98a;font-size:1rem}
+.cnote p{margin:6px 0 10px;font-size:.86rem;line-height:1.55;color:#ece6d8}
+.cnote .primary{width:100%;padding:8px}
+body.rec .cnote{display:none!important}
+.gate-count.bump,.wish-total.bump{animation:cBump .7s ease}@keyframes cBump{30%{transform:scale(1.05);color:#fff3c4}}

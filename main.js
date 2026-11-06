@@ -4277,7 +4277,21 @@ function countLine(rich) {
   const lit = counts.lit != null ? (isEN() ? `<br>💡 ${b(counts.lit)} lit by 108 bows` : `<br>💡 그중 ${b(counts.lit)}개가 108배로 밝혀졌어요`) : "";
   return isEN() ? `🏮 ${b(counts.total)} wishes hung at Dalbitam so far${lit}` : `🏮 지금까지 ${b(counts.total)}개의 소원이 달빛암에 걸렸어요${lit}`;
 }
+// 숫자가 0부터 쭉 올라가게 (처음 한 번), 새 연등이 달리면 살짝 반짝
+const shown = { total: null, lit: null };
+let countAnim = 0;
 function renderCounts() {
+  if (counts.total != null && shown.total !== counts.total) {
+    const from = shown.total == null ? { t: 0, l: 0 } : { t: shown.total, l: shown.lit || 0 }, to = { t: counts.total, l: counts.lit || 0 }, t0 = performance.now(), dur = shown.total == null ? 1400 : 600;
+    cancelAnimationFrame(countAnim);
+    const step = (now) => { const k = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - k, 3);
+      const save = { total: counts.total, lit: counts.lit }; counts.total = Math.round(from.t + (to.t - from.t) * e); counts.lit = save.lit == null ? null : Math.round(from.l + (to.l - from.l) * e);
+      drawCounts(); counts.total = save.total; counts.lit = save.lit; if (k < 1) countAnim = requestAnimationFrame(step); else { shown.total = to.t; shown.lit = to.l; drawCounts(); } };
+    if (shown.total != null) ["gateCount", "wishTotal"].forEach((id) => { const el = $(id); if (el) { el.classList.remove("bump"); void el.offsetWidth; el.classList.add("bump"); } });
+    countAnim = requestAnimationFrame(step); shown.total = counts.total;
+  } else drawCounts();
+}
+function drawCounts() {
   const html = countLine(true);
   for (const id of ["gateCount", "wishTotal"]) { const el = $(id); if (!el) continue; el.hidden = !html || !counts.total; if (html) el.innerHTML = html; }
   const st = $("sunTotal");
@@ -4576,3 +4590,135 @@ $("ftBirthGo").onclick = () => {
 };
 $("ftBirthSkip").onclick = () => { me.birthAsked = 1; save(); $("ftBirth").hidden = true; flipFortune(); };
 $("ftBirthEdit").onclick = () => { $("ftCard").classList.remove("flip"); $("ftBtns").classList.add("wait"); showBirthAsk(true); };
+
+/* =========================================================
+   하늘 연등: 마당에 다 못 건 지난 소원들을 밤하늘에 띄워요
+   ========================================================= */
+const skyGroup = new THREE.Group(); scene.add(skyGroup);
+let skyLoaded = [], skyFetched = false;
+async function loadSkyWishes() {
+  if (skyFetched || !sb) return; skyFetched = true;
+  try {
+    let res = await sb.from("wishes").select(lanternSchemaOld ? "id,text" : "id,text,kind,lit").order("created_at", { ascending: false }).range(0, 499);
+    if (!res.error) { skyLoaded = res.data || []; renderSky(); }
+  } catch {}
+}
+function renderSky() {
+  skyGroup.clear();
+  const onGround = new Set(), groundText = new Set();
+  lanternGroup.children.forEach((m) => { const w = m.userData.wish; if (w) { if (w.id) onGround.add(w.id); groundText.add(w.text); } });
+  const src = skyLoaded.length ? skyLoaded : wishes;
+  const list = src.filter((w) => (w.id ? !onGround.has(w.id) : !groundText.has(w.text))).slice(0, 460);
+  list.forEach((w, i) => {
+    let h = 2166136261; for (const ch of String(w.id || w.text)) h = Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0;
+    const r = ftRng(h), k = LANTERN_KINDS[w.kind] ? w.kind : null, lit = !k || !!w.lit;
+    const color = k ? LANTERN_KINDS[k].color : lanternColors[i % lanternColors.length];
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color, transparent: true, opacity: lit ? .85 : .28, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
+    const far = r() < .62; // 대부분은 절 뒤 하늘, 일부는 마당 위 높은 곳
+    sp.position.set(far ? -55 + r() * 110 : -24 + r() * 48, far ? 10 + r() * 20 : 13 + r() * 12, far ? -70 + r() * 48 : -20 + r() * 34);
+    const sc = (lit ? 1.1 : .8) * (.75 + r() * .6) * (far ? 1.6 : 1); sp.scale.setScalar(sc);
+    const core = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: lit ? "#fff4d0" : "#8a7a6a", transparent: true, opacity: lit ? .9 : .35, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
+    core.scale.setScalar(.35); sp.add(core);
+    sp.raycast = () => {}; core.raycast = () => {};
+    sp.userData = { y0: sp.position.y, x0: sp.position.x, ph: r() * Math.PI * 2, sp: .15 + r() * .25 };
+    skyGroup.add(sp);
+  });
+}
+(function skyLoop() { const t = performance.now() / 1000; for (const s of skyGroup.children) { const u = s.userData; s.position.y = u.y0 + Math.sin(t * u.sp + u.ph) * .6; s.position.x = u.x0 + Math.sin(t * u.sp * .6 + u.ph * 1.7) * .4; } requestAnimationFrame(skyLoop); })();
+let skyTimer = 0, skyToastShown = false;
+const _onWishesChanged = onWishesChanged;
+onWishesChanged = function () {
+  _onWishesChanged();
+  clearTimeout(skyTimer); skyTimer = setTimeout(() => { if (sb && !skyFetched) loadSkyWishes(); else renderSky(); }, 600);
+  if (!skyToastShown && player && counts.total) { skyToastShown = true; setTimeout(() => toast(isEN() ? `🏮 Every lantern in the sky is a real wish — ${fmtN(counts.total)} so far` : `🏮 하늘에 뜬 연등은 모두 누군가의 소원이에요 · 지금까지 ${fmtN(counts.total)}개`), 5000); }
+};
+
+/* =========================================================
+   외국인을 위한 짧은 문화 설명 (영어 모드에서 처음 해 볼 때 한 번씩)
+   ========================================================= */
+const CNOTES = {
+  mok: ["Moktak · the wooden fish", "Monks strike this hollow wooden \"fish\" to keep the rhythm of chanting. A fish never closes its eyes, so it reminds you to stay awake and mindful."],
+  bow: ["108 bows", "In Korean Buddhism, 108 stands for the troubles of the human mind. With each bow you set one of them down. Finish 108 and your wish lantern lights up."],
+  wish: ["Lotus wish lanterns", "Koreans hang lotus lanterns at temples, most of all on Buddha's Birthday. Each lantern carries a wish, and its light stands for wisdom that clears the dark."],
+  bell: ["The temple bell", "Korean temples ring the great bronze bell at dawn and dusk to wake all beings. On New Year's Eve, Koreans ring it 33 times to welcome the new year."],
+  tap: ["Tapdori · circling the pagoda", "Walking clockwise around a stone pagoda while holding a wish in mind is called tapdori. Visitors still do it at temples all over Korea."],
+  incense: ["Burning incense", "Incense is an offering of fragrance. As the smoke rises, people quietly send up their thanks and wishes."],
+  bead: ["Prayer beads", "A Korean mala has 108 beads. Moving one bead with each breath or chant helps the mind settle and count without thinking."],
+  greet: ["Hapjang · palms together", "Pressing your palms together and bowing slightly is how people greet each other at a Korean temple. It means \"I respect the Buddha in you.\""],
+  giwa: ["Giwa · roof tile wishes", "When a temple re-tiles its roofs, visitors write wishes on the new tiles. Your wish quite literally becomes part of the temple."]
+};
+if (!me.cnotes || typeof me.cnotes !== "object") me.cnotes = {};
+let cnoteTimer = 0;
+function cultureNote(name) {
+  if (!isEN()) return; const k = String(name).split(":")[0], n = CNOTES[k]; if (!n || me.cnotes[k]) return;
+  me.cnotes[k] = 1; save(); clearTimeout(cnoteTimer);
+  $("cnoteT").textContent = n[0]; $("cnoteP").textContent = n[1]; $("cnote").hidden = false;
+  cnoteTimer = setTimeout(() => { $("cnote").hidden = true; }, 14000);
+}
+$("cnoteOk").onclick = () => { $("cnote").hidden = true; };
+const _act = act;
+act = function (name, extra) { const r = _act(name, extra); try { cultureNote(name); } catch {} return r; };
+// 연등 패널 · 기와 패널을 처음 열 때도 설명해 줘요
+const _openPanel = openPanel;
+openPanel = function (id) { _openPanel(id); if (id === "wishPanel") cultureNote("wish"); if (id === "giwaPanel") cultureNote("giwa"); };
+
+/* =========================================================
+   연말 행사: "곧 열려요" 배너 · 일정 · 캘린더에 추가
+   ========================================================= */
+const EVENTS = [
+  { id: "dongji", emo: "🥣", ko: "동지 팥죽 공양", en: "Dongji · Red-Bean Porridge Day", date: "2026-12-22", start: "2026-12-22T00:00:00+09:00", end: "2026-12-23T00:00:00+09:00", go: "kitchen",
+    dko: "1년 중 밤이 가장 긴 날이에요. 팥죽 한 그릇으로 묵은 액운을 털어 내는 날, 달빛암 공양간에서 팥죽 공양이 열려요.",
+    den: "The longest night of the year. Koreans eat red-bean porridge (patjuk) on this day to chase away bad luck. A porridge offering opens at the temple kitchen." },
+  { id: "jeya", emo: "🔔", ko: "제야의 타종", en: "New Year's Eve Bell", date: "2026-12-31", start: "2026-12-31T22:00:00+09:00", end: "2027-01-01T02:00:00+09:00", go: "yard", at: "밤 11시", atEn: "11 PM KST",
+    dko: "12월 31일 밤, 범종을 33번 울리며 함께 새해를 맞아요. 자정이 지나면 새해 해맞이도 준비하고 있어요.",
+    den: "On New Year's Eve, Koreans ring the great temple bell 33 times to welcome the new year. Ring it together at midnight (Korea time). A New Year's sunrise is on the way too." }
+];
+const evState = (e) => { const n = Date.now(); return n < Date.parse(e.start) ? "soon" : n < Date.parse(e.end) ? "on" : "past"; };
+const evDays = (e) => Math.round((Date.parse(e.date) - Date.parse(kstDay())) / 864e5);
+const upcoming = () => EVENTS.filter((e) => evState(e) !== "past");
+function evBadge(e) { const st = evState(e), d = evDays(e); if (st === "on") return isEN() ? "Open now" : "지금 열렸어요"; return isEN() ? (d === 0 ? "Tonight" : `D-${d}`) : (d === 0 ? "오늘 밤" : `곧 열려요 · D-${d}`); }
+function evDateText(e) { const [, m, d] = e.date.split("-").map(Number), MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]; return isEN() ? `${MON[m - 1]} ${d}${e.atEn ? " · " + e.atEn : ""}` : `${m}월 ${d}일${e.at ? " " + e.at : ""}`; }
+function icsFor(e) {
+  const z = (iso) => new Date(iso).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+  const st = e.id === "jeya" ? "2026-12-31T23:00:00+09:00" : e.start, en = e.id === "jeya" ? "2027-01-01T00:30:00+09:00" : e.end;
+  const title = (isEN() ? e.en : e.ko) + " · " + (isEN() ? "Dalbitam" : "달빛암"), desc = (isEN() ? e.den : e.dko) + " https://dalbitam.vercel.app/";
+  return { title, desc, st: z(st), en: z(en),
+    ics: ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Dalbitam//KO", "BEGIN:VEVENT", `UID:${e.id}-2026@dalbitam.vercel.app`, `DTSTAMP:${z(new Date().toISOString())}`, `DTSTART:${z(st)}`, `DTEND:${z(en)}`, `SUMMARY:${title}`, `DESCRIPTION:${desc.replace(/,/g, "\\,")}`, "URL:https://dalbitam.vercel.app/", "BEGIN:VALARM", "TRIGGER:-PT30M", "ACTION:DISPLAY", `DESCRIPTION:${title}`, "END:VALARM", "END:VEVENT", "END:VCALENDAR"].join("\r\n") };
+}
+function addToCalendar(e) {
+  const c = icsFor(e), blob = new Blob([c.ics], { type: "text/calendar" }), a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = `dalbitam-${e.id}.ics`; document.body.appendChild(a); a.click(); a.remove();
+  visitAct("calendar"); toast(isEN() ? "📅 Calendar file ready" : "📅 캘린더 파일을 만들었어요");
+}
+function gcalUrl(e) { const c = icsFor(e); return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(c.title)}&dates=${c.st}/${c.en}&details=${encodeURIComponent(c.desc)}`; }
+function openEvents() {
+  const EN = isEN(); $("evTitle").textContent = EN ? "🗓️ Temple Events" : "🗓️ 달빛암 행사";
+  $("evLead").textContent = EN ? "Seasonal days at Dalbitam. Add them to your calendar so you don't miss them." : "달빛암에서 열리는 절기 행사예요. 캘린더에 넣어 두면 잊지 않고 올 수 있어요.";
+  const box = $("evList"); box.innerHTML = "";
+  const list = upcoming(); if (!list.length) { box.textContent = EN ? "New events are coming soon." : "새 행사를 준비하고 있어요."; }
+  list.forEach((e) => {
+    const st = evState(e), d = document.createElement("div"); d.className = "ev-item" + (st === "on" ? " on" : "");
+    d.innerHTML = `<div class="ev-top"><b>${e.emo} ${EN ? e.en : e.ko}</b><span class="ev-badge">${evBadge(e)}</span></div><small>${evDateText(e)}</small><p></p><div class="ev-btns"></div>`;
+    d.querySelector("p").textContent = EN ? e.den : e.dko;
+    const btns = d.querySelector(".ev-btns");
+    if (st === "on") { const g = document.createElement("button"); g.type = "button"; g.className = "go"; g.textContent = EN ? "Go now" : "지금 가기"; g.onclick = () => { $("evPanel").hidden = true; goPlace(e.go); }; btns.appendChild(g); }
+    const c1 = document.createElement("button"); c1.type = "button"; c1.textContent = EN ? "📅 Add to calendar" : "📅 캘린더에 추가"; c1.onclick = () => addToCalendar(e); btns.appendChild(c1);
+    const c2 = document.createElement("a"); c2.href = gcalUrl(e); c2.target = "_blank"; c2.rel = "noopener"; c2.textContent = EN ? "Google Calendar" : "구글 캘린더"; btns.appendChild(c2);
+    box.appendChild(d);
+  });
+  openPanel("evPanel"); visitAct("events");
+}
+let openEvAfter = false;
+function setupEvents() {
+  const list = upcoming(); if (!list.length) return;
+  const EN = isEN(), g = $("gateEv");
+  g.innerHTML = (EN ? "🗓️ <b>Coming soon</b> · " : "🗓️ <b>곧 열려요</b> · ") + list.map((e) => `${e.emo} ${EN ? e.en.split(" · ")[0] : e.ko} ${evDateText(e).split(" · ")[0].replace(/ 밤.*$/, "")}`).join(" · ");
+  g.hidden = false; g.onclick = () => { openEvAfter = true; $("enterBtn").click(); };
+  const n = list[0], b = $("evBtn"), st = evState(n), d = evDays(n);
+  b.textContent = st === "on" ? `${n.emo} ${EN ? "Open now" : (n.id === "dongji" ? "오늘은 동지" : "제야의 타종")}` : `${n.emo} ${EN ? (n.id === "dongji" ? "Dongji" : "NYE bell") : (n.id === "dongji" ? "동지" : "제야")} D-${d}`;
+  b.onclick = openEvents;
+}
+$("evOpen").onclick = () => { $("soundPanel").hidden = true; openEvents(); };
+setupEvents();
+{ const showEv = () => { if (!upcoming().length) return; $("evBtn").hidden = false; if (openEvAfter) setTimeout(openEvents, 1400); };
+  $("enterBtn").addEventListener("click", showEv); $("nickInput").addEventListener("keydown", (e) => { if (e.key === "Enter") showEv(); }); }

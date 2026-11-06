@@ -22,6 +22,7 @@ window.romanize = (s) => [...String(s)].map((ch) => { const c = ch.charCodeAt(0)
 
 const D = {
   // 오늘의 법문 · 수능 합격 기원
+  "🗓️ 달빛암 행사 일정": "🗓️ Temple events",
   "생년월일": "Birthday",
   "🔮 오늘의 운세": "🔮 Today's fortune", "오늘의 운세": "Today's Fortune", "카드를 눌러 뒤집어 보세요": "Tap the card to turn it over", "📸 스토리로 저장": "📸 Save for story", "운세 카드 뒤집기": "Turn over the fortune card",
   "오늘의 법문": "Today's teaching",
