@@ -2230,6 +2230,9 @@ for (let row = 0; row < 3; row++) {
   const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(pts, 3));
   scene.add(new THREE.Line(g, new THREE.LineBasicMaterial({ color: "#6b5a48" })));
 }
+// 불전 연등: 대웅전 안, 부처님 앞 양쪽 천장에 두 줄로 (가운데는 부처님이 보이게 비워 둬요)
+const BUL_SLOTS = [];
+for (const z of [-29.6, -27.4]) for (let k = 0; k < 6; k++) for (const sx of [-1, 1]) BUL_SLOTS.push(new THREE.Vector3(sx * (3.4 + k * 1.55), 6.2 - Math.sin(k / 5 * Math.PI) * .45 + (z > -28 ? -.5 : 0), z));
 const lanternColors = ["#f2a65a", "#e86a5a", "#f2d05a", "#7fc7a0", "#d98ac9", "#7fb0e6"];
 // 연등 종류: 소원 성격에 따라 색이 달라요
 const LANTERN_KINDS = {
@@ -2260,8 +2263,11 @@ const BEAM_TEX = canvasTex(8, 128, (x, w, h) => { const g = x.createLinearGradie
 BEAM_TEX.wrapS = BEAM_TEX.wrapT = THREE.ClampToEdgeWrapping;
 function renderLanterns(list) {
   lanternGroup.clear();
-  const yard = list.filter((w) => w.place !== "sea").slice(0, lanternSlots.length), sea = list.filter((w) => w.place === "sea").slice(0, seaSlots.length);
+  const isBul = (w) => String(w.text || "").startsWith("🪷");
+  const yard = list.filter((w) => w.place !== "sea" && !isBul(w)).slice(0, lanternSlots.length), sea = list.filter((w) => w.place === "sea").slice(0, seaSlots.length);
+  const bul = list.filter((w) => w.place !== "sea" && isBul(w)).slice(0, BUL_SLOTS.length);
   yard.forEach((w, i) => hangLantern(w, i, lanternSlots[i]));
+  bul.forEach((w, i) => hangLantern(w, i, BUL_SLOTS[i]));
   sea.forEach((w, i) => hangLantern(w, i, seaSlots[i]));
   const has = !!lanternGroup.children.find((l) => l.userData.mine); ["goMyLantern", "goMyLantern2"].forEach((id) => { const b = document.getElementById(id); if (b) b.hidden = !has; });
 }
@@ -2272,7 +2278,7 @@ function hangLantern(w, i, slot) {
     const base = new THREE.Color(color);
     const mat = new THREE.MeshStandardMaterial({ color: lit ? base : base.clone().multiplyScalar(.38), emissive: color, emissiveIntensity: lit ? (k === "gold" ? 1.35 : 1.05) : .05 });
     const m = new THREE.Mesh(LOTUS.geo, [mat, LOTUS.leaf]);
-    m.scale.setScalar(1.3); m.position.copy(slot); m.userData.wish = w; lanternGroup.add(m);
+    m.scale.setScalar(String(w.text || "").startsWith("🪷") ? 1.75 : 1.3); m.position.copy(slot); m.userData.wish = w; lanternGroup.add(m);
     const tassel = new THREE.Mesh(tasselGeo, new THREE.MeshBasicMaterial({ color: lit ? color : "#5a4a3a" })); tassel.position.y = -.36; m.add(tassel);
     const tag = new THREE.Mesh(new THREE.PlaneGeometry(.1, .26), new THREE.MeshStandardMaterial({ color: "#f6f1e4", side: THREE.DoubleSide })); tag.position.y = -.62; m.add(tag);
     if (lit) {
@@ -4722,3 +4728,27 @@ $("evOpen").onclick = () => { $("soundPanel").hidden = true; openEvents(); };
 setupEvents();
 { const showEv = () => { if (!upcoming().length) return; $("evBtn").hidden = false; if (openEvAfter) setTimeout(openEvents, 1400); };
   $("enterBtn").addEventListener("click", showEv); $("nickInput").addEventListener("keydown", (e) => { if (e.key === "Enter") showEv(); }); }
+
+/* =========================================================
+   불전 연등: 대웅전 부처님 앞에 거는 특별 연등 (지금은 무료 체험 · 하루 한 번)
+   ========================================================= */
+let bulOn = false;
+function renderBulToggle() {
+  const b = $("bulToggle"), EN = isEN(), used = me.bulDay === kstDay(), sea = wishPlace === "sea";
+  b.hidden = sea; b.disabled = used; if (used) bulOn = false;
+  b.classList.toggle("on", bulOn);
+  b.innerHTML = used
+    ? (EN ? "🪷 You've hung today's Buddha Hall lantern<small>You can hang another tomorrow</small>" : "🪷 오늘의 불전 연등을 올렸어요<small>내일 또 올릴 수 있어요</small>")
+    : (EN ? `${bulOn ? "✅" : "🪷"} Hang it in front of the Buddha<small>A special spot in the Main Hall · free for now · once a day</small>` : `${bulOn ? "✅" : "🪷"} 부처님 앞 불전 연등으로 올리기<small>대웅전 안 특별한 자리 · 지금은 무료 · 하루 한 번</small>`);
+}
+$("bulToggle").onclick = () => { bulOn = !bulOn; sfx.soft(); renderBulToggle(); };
+document.addEventListener("click", (e) => { // 문서 단계에서 먼저 받아서, 원래 연등 달기보다 앞서 글 앞에 🪷를 붙여요
+  if (!e.target || !e.target.closest || !e.target.closest("#wishBtn")) return;
+  if (!bulOn || wishPlace === "sea" || me.bulDay === kstDay()) return;
+  const t = $("wishInput").value.trim(); if (!t || t.startsWith(SUN_MARK) || BANNED.some((b) => t.includes(b))) return;
+  $("wishInput").value = "🪷 " + t.replace(/^🪷\s*/, "").slice(0, 37);
+  me.bulDay = kstDay(); save(); bulOn = false; visitAct("buljeon");
+  setTimeout(() => { renderBulToggle(); toast(isEN() ? "🪷 Your lantern now hangs before the Buddha" : "🪷 불전 연등이 부처님 앞에 걸렸어요", { label: isEN() ? "See it" : "보러 가기", fn: () => { $("wishPanel").hidden = true; goPlace("hall"); } }); }, 900);
+}, true);
+{ const _op = openPanel; openPanel = function (id) { if (id === "wishPanel") renderBulToggle(); _op(id); }; }
+renderBulToggle();

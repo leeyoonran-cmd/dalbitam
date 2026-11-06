@@ -415,3 +415,7 @@ body.rec .right-chips{display:none!important}
 .cnote .primary{width:100%;padding:8px}
 body.rec .cnote{display:none!important}
 .gate-count.bump,.wish-total.bump{animation:cBump .7s ease}@keyframes cBump{30%{transform:scale(1.05);color:#fff3c4}}
+.bul-toggle{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;background:rgba(245,197,66,.06);border:1px solid rgba(245,197,66,.35);border-radius:14px;padding:10px 12px;color:var(--ink);font-size:.9rem}
+.bul-toggle small{color:var(--mute);font-size:.76rem}
+.bul-toggle.on{background:rgba(245,197,66,.2);border-color:#f5c542;box-shadow:0 0 0 1px #f5c542 inset}
+.bul-toggle:disabled{opacity:.55}
