@@ -332,3 +332,6 @@ body.rec .sun-chip{display:none!important}
 .verse-card .row{flex-wrap:wrap}
 .verse-card .row>*{padding:10px 6px;white-space:nowrap;font-size:.86rem}
 body:has(#sunPanel:not([hidden])) .coach,body:has(#sunLamp:not([hidden])) .coach{display:none!important}
+/* 키보드가 올라오면 패널을 보이는 화면 안으로 줄여서 입력칸이 가려지지 않게 */
+.panel{top:var(--vvt,0px);bottom:auto;height:var(--vh,100%)}
+.sun-card:focus-within .sun-dday,.sun-card:focus-within #sunLead,.sun-card:focus-within #sunList,.sun-card:focus-within #sunTotal{display:none}

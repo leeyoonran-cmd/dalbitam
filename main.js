@@ -4428,3 +4428,9 @@ function afterEnter() {
   // 수능 전날 · 당일 알림
   if (SUN_ON) { const d = sunDays(); if (d === 1 || d === 0) setTimeout(() => toast(d ? "🎓 내일이 수능이에요. 합격등을 달고 타종해 주세요" : "🎓 오늘 수능이에요. 모든 수험생을 응원해요", { label: d ? "합격등 달기" : "응원하기", fn: openSun }), 3500); }
 }
+
+// 패널 안 입력칸을 누르면, 키보드가 올라온 뒤 그 칸을 보이는 곳으로 끌어와요
+document.addEventListener("focusin", (e) => {
+  const el = e.target; if (!el.matches || !el.matches(".panel input, .panel textarea")) return;
+  [320, 650].forEach((ms) => setTimeout(() => { if (document.activeElement === el) el.scrollIntoView({ block: "center", behavior: "smooth" }); }, ms));
+});
