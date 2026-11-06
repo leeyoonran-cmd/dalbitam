@@ -781,7 +781,7 @@ const buddhaRim = new THREE.PointLight("#ffcf88", 26, 11, 1.5); buddhaRim.positi
 // 전각 불상용 스캔 몸 — 첫 화면에는 안 쓰여서 입장 뒤 천천히 받아요
 lazy(() => {
   new GLTFLoader().load("buddha.glb", (gltf) => {
-    const m = gltf.scene;
+    const m = gltf.scene; cleanScan(m);
     m.traverse((o) => { if (o.isMesh) { o.geometry.computeVertexNormals(); o.material = new THREE.MeshStandardMaterial({ color: "#eab45a", vertexColors: true, metalness: .95, roughness: .36, envMap: goldEnv, envMapIntensity: 1.25 }); } });
     const SC = 1.3; m.scale.setScalar(SC); m.position.set(0, 1.74, .15);
     const hg = statue.userData.headG, nB = statue.userData.nBase || 0;
@@ -1493,15 +1493,9 @@ const SG_STONE = new THREE.MeshStandardMaterial({ color: "#efe6d4", roughness: .
 // 석굴암 본존불: 국립박물관 석불좌상 3D 스캔을 하얀 화강암으로 (대웅전 불상과 따로 불러와요)
 let grottoBuddhaLoading = false;
 const GROTTO_BZ = -1.5; // 본존불은 석굴 한가운데보다 살짝 뒤에 앉아 계세요
-function makeGrottoBuddha() {
-  if (grottoBuddha || grottoBuddhaLoading) return; grottoBuddhaLoading = true;
-  new GLTFLoader().load("buddha.glb", (gltf) => {
-    const stoneM = new THREE.MeshStandardMaterial({ color: "#d8cfbf", roughness: .86, metalness: 0 });
-    const stoneV = new THREE.MeshStandardMaterial({ color: "#d8cfbf", vertexColors: true, roughness: .86, metalness: 0 });
-    // 대웅전과 똑같이 짜 맞춰요: 스캔 몸(머리 없는 석불) + 따로 깎은 머리
-    const H = new THREE.Group(), body = gltf.scene; body.scale.setScalar(1.3); body.position.set(0, 1.74, .15); H.add(body);
-    // 스캔 잡티 지우기: 아주 가늘고 긴 삼각형(가시처럼 보이는 것)을 걸러내요
-    body.traverse((o) => { if (!o.isMesh || !o.geometry) return; const g0 = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry, P = g0.attributes.position, n = P.count / 3;
+// 스캔 잡티 지우기: 아주 가늘고 긴 삼각형(가시처럼 보이는 것)을 걸러내요
+function cleanScan(root) {
+    root.traverse((o) => { if (!o.isMesh || !o.geometry) return; const g0 = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry, P = g0.attributes.position, n = P.count / 3;
       g0.computeBoundingBox(); const big = g0.boundingBox.getSize(new THREE.Vector3()).length() * .035, keep = [];
       const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), ab = new THREE.Vector3(), ac = new THREE.Vector3();
       for (let t = 0; t < n; t++) { a.fromBufferAttribute(P, t * 3); b.fromBufferAttribute(P, t * 3 + 1); c.fromBufferAttribute(P, t * 3 + 2);
@@ -1511,6 +1505,15 @@ function makeGrottoBuddha() {
       const g1 = new THREE.BufferGeometry(); for (const name in g0.attributes) { const at = g0.attributes[name], sz = at.itemSize, arr = new at.array.constructor(keep.length * 3 * sz);
         keep.forEach((t, i) => { for (let v = 0; v < 3; v++) for (let q = 0; q < sz; q++) arr[(i * 3 + v) * sz + q] = at.array[(t * 3 + v) * sz + q]; }); g1.setAttribute(name, new THREE.BufferAttribute(arr, sz, at.normalized)); }
       g1.computeVertexNormals(); o.geometry = g1; });
+}
+function makeGrottoBuddha() {
+  if (grottoBuddha || grottoBuddhaLoading) return; grottoBuddhaLoading = true;
+  new GLTFLoader().load("buddha.glb", (gltf) => {
+    const stoneM = new THREE.MeshStandardMaterial({ color: "#d8cfbf", roughness: .86, metalness: 0 });
+    const stoneV = new THREE.MeshStandardMaterial({ color: "#d8cfbf", vertexColors: true, roughness: .86, metalness: 0 });
+    // 대웅전과 똑같이 짜 맞춰요: 스캔 몸(머리 없는 석불) + 따로 깎은 머리
+    const H = new THREE.Group(), body = gltf.scene; body.scale.setScalar(1.3); body.position.set(0, 1.74, .15); H.add(body);
+    cleanScan(body);
     const hg0 = statue.userData.headG;
     if (hg0) {
       const hg = hg0.clone(true); hg.position.set(.1, .86, -.1); hg.visible = true;
