@@ -390,3 +390,4 @@ body.rec .right-chips{display:none!important}
 .ft-link{background:none;border:0;color:#d9c2ff;font-size:.8rem;text-decoration:underline;padding:2px}
 @media (max-height:700px){.ft-card{height:min(560px,calc(var(--vh,100vh) - var(--st) - var(--sb) - 200px))}}
 .fortune-view:has(#ftBirth:not([hidden])) .ft-card{height:min(420px,calc(var(--vh,100vh) - var(--st) - var(--sb) - 260px))}
+.fortune-view:has(#ftBirth:not([hidden])) .ft-moon{width:84px;height:84px}.fortune-view:has(#ftBirth:not([hidden])) .ft-back-t{margin-top:8px;font-size:1.4rem}.fortune-view:has(#ftBirth:not([hidden])) .ft-back-brand{bottom:18px}
