@@ -371,3 +371,14 @@ body.rec .right-chips{display:none!important}
 .ft-btns{display:flex;flex-direction:column;gap:8px;width:min(330px,88vw);transition:opacity .4s}
 .ft-btns.wait{opacity:0;pointer-events:none}
 .ft-btns .row{display:flex;gap:8px}.ft-btns .row>*{flex:1;padding:10px 6px}
+/* 운세 카드: 화면 높이에 맞추고, 넘치면 카드 안에서 스크롤 */
+.ft-card{height:min(560px,calc(var(--vh,100vh) - var(--st) - var(--sb) - 170px))}
+.ft-front{-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-y}
+@media (max-height:760px){
+  .ft-front{padding:12px 14px 10px}
+  .ft-grade{font-size:2.5rem}
+  .ft-msg{margin:6px 0;font-size:.92rem;line-height:1.45}
+  .ft-rows{gap:4px}.ft-rows li{padding:4px 9px}
+  .ft-rows small{font-size:.72rem}
+  .ft-lucky{margin-top:6px}.ft-todo{margin-top:5px}
+}

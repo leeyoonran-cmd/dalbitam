@@ -35,7 +35,7 @@ const myKey = store.get("sansa3d-key", null) || (() => { const k = "m" + Math.ra
 $("siteTitle").textContent = CONFIG.siteName;
 /* 휴대폰 웹 · 인스타 앱 안에서 화면이 밀려 위쪽 버튼이 가려지지 않게 */
 {
-  const SCROLLABLE = ".panel-card,.chat-log,.gate,.wish-list,.actions,.places,.menu-list,.room-names,.look-opts,.pray-lines";
+  const SCROLLABLE = ".ft-front,.panel-card,.chat-log,.gate,.wish-list,.actions,.places,.menu-list,.room-names,.look-opts,.pray-lines";
   document.addEventListener("touchmove", (e) => { if (!e.target.closest || !e.target.closest(SCROLLABLE)) e.preventDefault(); }, { passive: false });
   const pin = () => { if (window.scrollX || window.scrollY) window.scrollTo(0, 0); const vv = window.visualViewport; document.documentElement.style.setProperty("--vvt", `${vv ? Math.max(0, vv.offsetTop) : 0}px`); document.documentElement.style.setProperty("--vh", `${vv ? vv.height : window.innerHeight}px`); };
   window.addEventListener("scroll", pin, { passive: true }); window.visualViewport?.addEventListener("resize", pin); window.visualViewport?.addEventListener("scroll", pin); window.addEventListener("orientationchange", () => setTimeout(pin, 300)); pin();
